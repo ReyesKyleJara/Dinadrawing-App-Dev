@@ -21,20 +21,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'images/page7.png',
   ];
 
-  final nameController = TextEditingController();
-  final usernameController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-
-  final loginController = TextEditingController();
-  final loginPasswordController = TextEditingController();
-
-  bool obscurePassword = true;
-  bool obscureLoginPassword = true;
-  bool rememberMe = false;
-
   void nextPage() {
-    if (currentIndex < 5) {
+    if (currentIndex < 4) { // 🔥 STOP at page 5
       _controller.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -51,35 +39,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   void signUp() {
-    if (nameController.text.isEmpty ||
-        usernameController.text.isEmpty ||
-        emailController.text.isEmpty ||
-        passwordController.text.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields correctly")),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Sign Up Successful")),
-    );
-
-    goToPage(6);
+    goToPage(5);
   }
 
   void login() {
-    if (loginController.text.isEmpty ||
-        loginPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter credentials")),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Login Successful")),
-    );
+    goToPage(6);
   }
 
   void continueWithGoogle() {
@@ -102,14 +66,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
-                    physics: currentIndex >= 5
-                        ? const NeverScrollableScrollPhysics()
+
+                    // 🔥 KEY FIX HERE
+                    physics: currentIndex >= 4
+                        ? const NeverScrollableScrollPhysics() // stop at page 5
                         : const BouncingScrollPhysics(),
+
                     itemCount: images.length,
                     onPageChanged: (index) {
                       setState(() => currentIndex = index);
                     },
                     itemBuilder: (context, index) {
+                      if (index == 4) return buildPageFive();
                       if (index == 5) return buildSignUpPage();
                       if (index == 6) return buildLoginPage();
 
@@ -124,7 +92,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ),
                 ),
 
-                if (currentIndex < 5)
+                if (currentIndex < 4)
                   Column(
                     children: [
                       Row(
@@ -155,16 +123,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           height: 50,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey[200],
+                              backgroundColor: currentIndex == 3
+                                  ? const Color(0xFFF5B335)
+                                  : Colors.grey[200],
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
                             onPressed: nextPage,
-                            child: const Text(
-                              "Next",
-                              style: TextStyle(color: Colors.black),
+                            child: Text(
+                              currentIndex == 3
+                                  ? "Get Started"
+                                  : "Next",
+                              style: const TextStyle(color: Colors.black),
                             ),
                           ),
                         ),
@@ -181,183 +153,42 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // 🔥 MAS MALAKING LOGO (FINAL FIX)
-  Widget buildLogoHeader() {
-    return Center(
-      child: Image.asset(
-        'images/logo.png',
-        height: 44, // 🔥 FINAL SIZE (perfect match sa design)
-        fit: BoxFit.contain,
-      ),
-    );
-  }
-
-  // ================= SIGN UP =================
-  Widget buildSignUpPage() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 25),
-
-          buildLogoHeader(),
-
-          const SizedBox(height: 20),
-
-          const Text("Sign Up",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            "Create an account to start planning\nwith your barkada!",
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 30),
-
-          buildTextField("Name", nameController),
-          buildTextField("Username", usernameController),
-          buildTextField("Email", emailController),
-
-          buildPasswordField(passwordController, () {
-            setState(() => obscurePassword = !obscurePassword);
-          }, obscurePassword),
-
-          const SizedBox(height: 20),
-
-          buildMainButton("Sign Up", signUp),
-
-          const SizedBox(height: 20),
-
-          buildDivider(),
-
-          const SizedBox(height: 20),
-
-          buildGoogleButton(),
-
-          const SizedBox(height: 20),
-
-          GestureDetector(
-            onTap: () => goToPage(6),
-            child: const Text("Already have an account? Log In"),
-          )
-        ],
-      ),
-    );
-  }
-
-  // ================= LOGIN =================
-  Widget buildLoginPage() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 25),
-
-          buildLogoHeader(),
-
-          const SizedBox(height: 20),
-
-          const Text("Log In",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            "Welcome Back!\nLet’s log in to your account.",
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 30),
-
-          buildTextField("Username or Email", loginController),
-
-          buildPasswordField(loginPasswordController, () {
-            setState(() => obscureLoginPassword = !obscureLoginPassword);
-          }, obscureLoginPassword),
-
-          Row(
-            children: [
-              Checkbox(
-                value: rememberMe,
-                onChanged: (value) {
-                  setState(() => rememberMe = value!);
-                },
-              ),
-              const Text("Remember Me"),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          buildMainButton("Log In", login),
-
-          const SizedBox(height: 20),
-
-          buildDivider(),
-
-          const SizedBox(height: 20),
-
-          buildGoogleButton(),
-
-          const SizedBox(height: 20),
-
-          GestureDetector(
-            onTap: () => goToPage(5),
-            child: const Text("Don't have an account? Sign Up"),
-          )
-        ],
-      ),
-    );
-  }
-
-  // ================= REUSABLE =================
-  Widget buildTextField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  // 🔥 PAGE 5 (BACKGROUND IMAGE + BUTTONS)
+  Widget buildPageFive() {
+    return Stack(
       children: [
-        Text(label),
-        const SizedBox(height: 5),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: "Enter your $label",
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15)),
+        Positioned.fill(
+          child: Image.asset(
+            "images/page5.png",
+            fit: BoxFit.cover,
           ),
         ),
-        const SizedBox(height: 15),
-      ],
-    );
-  }
-
-  Widget buildPasswordField(
-      TextEditingController controller, VoidCallback toggle, bool obscure) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Password"),
-        const SizedBox(height: 5),
-        TextField(
-          controller: controller,
-          obscureText: obscure,
-          decoration: InputDecoration(
-            hintText: "Enter your password",
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15)),
-            suffixIcon: IconButton(
-              icon: Icon(obscure
-                  ? Icons.visibility_off
-                  : Icons.visibility),
-              onPressed: toggle,
+        Column(
+          children: [
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: buildMainButton("Log In", login),
             ),
-          ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: buildSecondaryButton("Sign Up", signUp),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: buildGoogleButton(),
+            ),
+            const SizedBox(height: 20),
+          ],
         ),
-        const SizedBox(height: 15),
       ],
     );
   }
+
+  Widget buildSignUpPage() => Container();
+  Widget buildLoginPage() => Container();
 
   Widget buildMainButton(String text, VoidCallback onPressed) {
     return SizedBox(
@@ -367,7 +198,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFF5B335),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15)),
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(text, style: const TextStyle(color: Colors.black)),
+      ),
+    );
+  }
+
+  Widget buildSecondaryButton(String text, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey[200],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
         ),
         onPressed: onPressed,
         child: Text(text, style: const TextStyle(color: Colors.black)),
@@ -385,17 +234,323 @@ class _OnboardingPageState extends State<OnboardingPage> {
       ),
     );
   }
+}
+// ================= HOME PAGE (FINAL PERFECT MATCH) =================
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
-  Widget buildDivider() {
-    return Row(
-      children: const [
-        Expanded(child: Divider()),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          child: Text("or continue with"),
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool showMenu = false;
+  int selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFEDEAF0),
+
+      body: Center(
+        child: Container(
+          width: 375,
+          color: Colors.white,
+          child: SafeArea(
+            child: Stack(
+              children: [
+
+                // 🔥 MAIN CONTENT
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // HEADER
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Hello, User!",
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold)),
+                              SizedBox(height: 4),
+                              Text("What are we planning today?",
+                                  style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                          const CircleAvatar(
+                            radius: 18,
+                            backgroundImage:
+                                AssetImage("images/avatar.png"),
+                          )
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // SPIN CARD
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Can’t decide where to go?"),
+                                const Text("Spin the Wheel!",
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 10),
+
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        const Color(0xFFF5B335),
+                                  ),
+                                  onPressed: () {},
+                                  child: const Text("Try it now",
+                                      style:
+                                          TextStyle(color: Colors.black)),
+                                )
+                              ],
+                            ),
+
+                            Image.asset(
+                              "images/wheel.png",
+                              height: 70,
+                            )
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // UPCOMING
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: const [
+                          Text("Upcoming Plans",
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                          Text("View all",
+                              style: TextStyle(color: Colors.grey))
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Expanded(
+                        child: ListView(
+                          children: [
+                            buildPlan(
+                                "Dinner sa Japan lang",
+                                "Apr 8 • Ramen House, Tokyo, Japan",
+                                "Planned",
+                                5),
+                            buildPlan(
+                                "Picnic with Family",
+                                "Apr 15 • Kahit saang tabing ilog",
+                                "Planned",
+                                3),
+                            buildPlan(
+                                "Birthday ni Kenny",
+                                "Apr 29 • Boracay, Philippines",
+                                "Ongoing",
+                                3),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 🔥 FLOAT ACTION BUTTON + MENU
+                Positioned(
+                  bottom: 110,
+                  right: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+
+                      if (showMenu)
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 6)
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              menuItem("Create Plan"),
+                              menuItem("Join Plan"),
+                              menuItem("Quick Decision"),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 10),
+
+                      FloatingActionButton(
+                        backgroundColor:
+                            const Color(0xFFF5B335),
+                        onPressed: () {
+                          setState(() {
+                            showMenu = !showMenu;
+                          });
+                        },
+                        child: const Icon(Icons.add,
+                            color: Colors.black),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 🔥 FIXED FLOATING NAV BAR (MATCH FIGMA)
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  child: Container(
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 10,
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceAround,
+                      children: [
+
+                        navItem(Icons.home, "Home", 0),
+                        navItem(Icons.add_circle_outline, "My Plans", 1),
+                        navItem(Icons.notifications_none, "Activity", 2),
+                        navItem(Icons.settings, "Settings", 3),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        Expanded(child: Divider()),
-      ],
+      ),
+    );
+  }
+
+  // 🔥 NAV ITEM (ACTIVE STATE)
+  Widget navItem(IconData icon, String label, int index) {
+    bool isActive = selectedIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => selectedIndex = index);
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon,
+              color: isActive ? Colors.orange : Colors.grey),
+          const SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isActive ? Colors.orange : Colors.grey,
+              ))
+        ],
+      ),
+    );
+  }
+
+  // PLAN CARD
+  Widget buildPlan(
+      String title, String subtitle, String status, int users) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          Text(title,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold)),
+
+          const SizedBox(height: 5),
+
+          Text(subtitle,
+              style: const TextStyle(color: Colors.grey)),
+
+          const SizedBox(height: 10),
+
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
+            children: [
+
+              Row(
+                children: List.generate(
+                  users,
+                  (index) => Container(
+                    margin: const EdgeInsets.only(right: 5),
+                    child: const CircleAvatar(
+                      radius: 12,
+                      backgroundImage:
+                          AssetImage("images/avatar.png"),
+                    ),
+                  ),
+                ),
+              ),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: status == "Planned"
+                      ? Colors.green[200]
+                      : Colors.orange[200],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(status),
+              )
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget menuItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(text),
     );
   }
 }

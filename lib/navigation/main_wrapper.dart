@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/home/home.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -11,7 +12,7 @@ class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    PageContainer(child: Text('DiNaDrawing Home')),
+    HomeScreen(), // Replaced the placeholder with your new HomeScreen
     PageContainer(child: Text('My Plans')),
     PageContainer(child: Text('Notifications')),
     PageContainer(child: Text('Settings')),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/home/home.dart';
 import '../screens/myplans/my_plans.dart'; 
-import '../screens/activity/activity.dart'; // 1. Imported Activity Screen
+import '../screens/activity/activity.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -15,9 +15,9 @@ class _MainWrapperState extends State<MainWrapper> {
 
   // FIX: Tinanggal natin ang 'const' dito para hindi mag-error ang compilation!
   final List<Widget> _pages = [
-    const HomeScreen(), 
-    const MyPlansScreen(), 
-    const ActivityScreen(), 
+    const HomeScreen(),
+    const MyPlansScreen(),
+    const ActivityScreen(),
     const PageContainer(child: Text('Settings')),
   ];
 
@@ -58,10 +58,19 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
-  BottomNavigationBarItem _buildNavItem(String defaultPath, String activePath, int index, String label) {
+  BottomNavigationBarItem _buildNavItem(String? defaultPath, String? activePath, int index, String label, {IconData? iconData}) {
+    if (iconData != null) {
+      final color = _currentIndex == index ? const Color(0xFFF2B73F) : Colors.black;
+      return BottomNavigationBarItem(
+        icon: Icon(iconData, color: color, size: 28),
+        activeIcon: Icon(iconData, color: color, size: 28),
+        label: label,
+      );
+    }
+
     return BottomNavigationBarItem(
       icon: Image.asset(
-        _currentIndex == index ? activePath : defaultPath,
+        _currentIndex == index ? activePath! : defaultPath!,
         width: 28,
         errorBuilder: (context, error, stackTrace) => const Icon(Icons.error_outline, color: Colors.amber),
       ),

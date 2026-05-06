@@ -311,7 +311,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             backgroundColor: Colors.grey.shade300,
             backgroundImage: AssetImage(avatarPath),
             // Fallback icon
-            onBackgroundImageError: (_, __) {},
+            onBackgroundImageError: (_, _) {},
             child: const Icon(Icons.person, color: Colors.grey),
           ),
           const SizedBox(width: 16),
@@ -356,7 +356,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -369,7 +369,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             radius: 20,
             backgroundColor: Colors.grey.shade300,
             backgroundImage: AssetImage(avatarPath),
-            onBackgroundImageError: (_, __) {},
+            onBackgroundImageError: (_, _) {},
             child: const Icon(Icons.person, color: Colors.grey),
           ),
           const SizedBox(width: 16),

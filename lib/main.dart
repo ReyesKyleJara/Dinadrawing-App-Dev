@@ -1,6 +1,5 @@
-import 'package:dinadrawing/navigation/main_wrapper.dart';
 import 'package:flutter/material.dart';
-
+import 'navigation/main_wrapper.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp( 
       debugShowCheckedModeBanner: false,
-      home: MainWrapper(),
+      home: const MainWrapper(),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/home/home.dart';
-import '../screens/myplans/my_plans.dart'; // 1. Added this import (Adjust the path if you saved it differently)
+import '../screens/myplans/my_plans.dart'; 
+import '../screens/activity/activity.dart'; // 1. Imported Activity Screen
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -12,11 +13,12 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    HomeScreen(), 
-    MyPlansScreen(), // 2. Replaced the placeholder with your new My Plans Screen
-    PageContainer(child: Text('Notifications')),
-    PageContainer(child: Text('Settings')),
+  // FIX: Tinanggal natin ang 'const' dito para hindi mag-error ang compilation!
+  final List<Widget> _pages = [
+    const HomeScreen(), 
+    const MyPlansScreen(), 
+    const ActivityScreen(), 
+    const PageContainer(child: Text('Settings')),
   ];
 
   @override

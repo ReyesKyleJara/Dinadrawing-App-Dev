@@ -28,8 +28,14 @@ flutter:
     - images/page4.png
     - images/page5.png
     - images/page6.png
+    - images/page7.png
     - images/logo.png
+<<<<<<< HEAD
     - images/navbar-icons/
+=======
+    - images/page8.png
+    - images/wheel.png
+>>>>>>> c0259bf153d956fd8e79d971f0e0191b3e49f4a8
 
 
 

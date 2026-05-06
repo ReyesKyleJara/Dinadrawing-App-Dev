@@ -1,4 +1,7 @@
+import 'screens/home/home_page.dart';
 import 'package:flutter/material.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/signup_screen.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -21,8 +24,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'images/page7.png',
   ];
 
+  // CONTROLLERS
+  final name = TextEditingController();
+  final username = TextEditingController();
+  final email = TextEditingController();
+  final password = TextEditingController();
+
+  final loginUser = TextEditingController();
+  final loginPass = TextEditingController();
+
+  bool obscure = true;
+  bool obscureLogin = true;
+  bool rememberMe = false;
+
   void nextPage() {
-    if (currentIndex < 4) { // 🔥 STOP at page 5
+    if (currentIndex < 4) {
       _controller.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -38,17 +54,46 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  void signUp() {
-    goToPage(5);
+  void signUp() => goToPage(5);
+  void login() => goToPage(6);
+
+  void submitSignUp() {
+    if (name.text.isEmpty ||
+        username.text.isEmpty ||
+        email.text.isEmpty ||
+        password.text.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Complete all fields")),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Sign Up Success")),
+    );
   }
 
-  void login() {
-    goToPage(6);
+  void submitLogin() {
+  if (loginUser.text.isEmpty || loginPass.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Enter credentials")),
+    );
+    return;
   }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Login Success")),
+  );
+
+  // 🔥 ADD THIS
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (_) => const HomePage()),
+  );
+}
 
   void continueWithGoogle() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Google Sign-In Clicked")),
+      const SnackBar(content: Text("Google Clicked")),
     );
   }
 
@@ -66,27 +111,30 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
-
-                    // 🔥 KEY FIX HERE
                     physics: currentIndex >= 4
-                        ? const NeverScrollableScrollPhysics() // stop at page 5
+                        ? const NeverScrollableScrollPhysics()
                         : const BouncingScrollPhysics(),
-
                     itemCount: images.length,
                     onPageChanged: (index) {
                       setState(() => currentIndex = index);
                     },
                     itemBuilder: (context, index) {
-                      if (index == 4) return buildPageFive();
-                      if (index == 5) return buildSignUpPage();
-                      if (index == 6) return buildLoginPage();
+                          if (index == 4) return buildPageFive();
 
+                          if (index == 5) {
+                            return SignUpScreen(
+                              onSwitchToLogin: () => goToPage(6),
+                            );
+                          }
+
+                          if (index == 6) {
+                            return LoginScreen(
+                              onSwitchToSignup: () => goToPage(5),
+                            );
+  }
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Image.asset(
-                          images[index],
-                          fit: BoxFit.contain,
-                        ),
+                        child: Image.asset(images[index]),
                       );
                     },
                   ),
@@ -95,53 +143,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 if (currentIndex < 4)
                   Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          5,
-                          (i) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: currentIndex == i ? 16 : 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: currentIndex == i
-                                  ? Colors.orange
-                                  : Colors.grey,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                        ),
-                      ),
-
                       const SizedBox(height: 20),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 50,
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: currentIndex == 3
                                   ? const Color(0xFFF5B335)
                                   : Colors.grey[200],
-                              elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
                             onPressed: nextPage,
                             child: Text(
-                              currentIndex == 3
-                                  ? "Get Started"
-                                  : "Next",
+                              currentIndex == 3 ? "Get Started" : "Next",
                               style: const TextStyle(color: Colors.black),
                             ),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -153,15 +177,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // 🔥 PAGE 5 (BACKGROUND IMAGE + BUTTONS)
+  // PAGE 5
   Widget buildPageFive() {
     return Stack(
       children: [
         Positioned.fill(
-          child: Image.asset(
-            "images/page5.png",
-            fit: BoxFit.cover,
-          ),
+          child: Image.asset("images/page5.png", fit: BoxFit.cover),
         ),
         Column(
           children: [
@@ -182,13 +203,192 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
             const SizedBox(height: 20),
           ],
+        )
+      ],
+    );
+  }
+
+  // SIGN UP (FIXED ALIGNMENT)
+  Widget buildSignUpUI() {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset("images/page6.png", fit: BoxFit.cover),
+        ),
+        Center(
+          child: SingleChildScrollView(
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 160),
+
+                  textField("Name", name),
+                  textField("Username", username),
+                  textField("Email", email),
+
+                  passwordField(password, () {
+                    setState(() => obscure = !obscure);
+                  }, obscure),
+
+                  const SizedBox(height: 5),
+
+                  const Text(
+                    "Must be at least 8 characters.",
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  buildMainButton("Sign Up", submitSignUp),
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: const [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text("or continue with"),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  buildGoogleButton(),
+
+                  const SizedBox(height: 15),
+
+                  GestureDetector(
+                    onTap: () => goToPage(6),
+                    child: const Text(
+                      "Already have an account? Log In",
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget buildSignUpPage() => Container();
-  Widget buildLoginPage() => Container();
+  // LOGIN (FIXED ALIGNMENT)
+  Widget buildLoginUI() {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset("images/page7.png", fit: BoxFit.cover),
+        ),
+        Center(
+          child: SingleChildScrollView(
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 170),
+
+                  textField("Username or Email", loginUser),
+
+                  passwordField(loginPass, () {
+                    setState(() => obscureLogin = !obscureLogin);
+                  }, obscureLogin),
+
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: rememberMe,
+                        onChanged: (v) {
+                          setState(() => rememberMe = v!);
+                        },
+                      ),
+                      const Text("Remember Me")
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  buildMainButton("Log In", submitLogin),
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: const [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text("or continue with"),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  buildGoogleButton(),
+
+                  const SizedBox(height: 15),
+
+                  GestureDetector(
+                    onTap: () => goToPage(5),
+                    child: const Text(
+                      "Don't have an account? Sign Up",
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // COMPONENTS
+  Widget textField(String hint, TextEditingController c) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: c,
+        decoration: InputDecoration(
+          hintText: hint,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget passwordField(
+      TextEditingController c, VoidCallback toggle, bool hide) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: c,
+        obscureText: hide,
+        decoration: InputDecoration(
+          hintText: "Password",
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(hide ? Icons.visibility_off : Icons.visibility),
+            onPressed: toggle,
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget buildMainButton(String text, VoidCallback onPressed) {
     return SizedBox(
@@ -225,332 +425,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget buildGoogleButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: OutlinedButton(
-        onPressed: continueWithGoogle,
-        child: const Text("Continue with Google"),
-      ),
-    );
-  }
-}
-// ================= HOME PAGE (FINAL PERFECT MATCH) =================
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  bool showMenu = false;
-  int selectedIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFEDEAF0),
-
-      body: Center(
-        child: Container(
-          width: 375,
-          color: Colors.white,
-          child: SafeArea(
-            child: Stack(
-              children: [
-
-                // 🔥 MAIN CONTENT
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      // HEADER
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Hello, User!",
-                                  style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold)),
-                              SizedBox(height: 4),
-                              Text("What are we planning today?",
-                                  style: TextStyle(color: Colors.grey)),
-                            ],
-                          ),
-                          const CircleAvatar(
-                            radius: 18,
-                            backgroundImage:
-                                AssetImage("images/avatar.png"),
-                          )
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // SPIN CARD
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Can’t decide where to go?"),
-                                const Text("Spin the Wheel!",
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 10),
-
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color(0xFFF5B335),
-                                  ),
-                                  onPressed: () {},
-                                  child: const Text("Try it now",
-                                      style:
-                                          TextStyle(color: Colors.black)),
-                                )
-                              ],
-                            ),
-
-                            Image.asset(
-                              "images/wheel.png",
-                              height: 70,
-                            )
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // UPCOMING
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text("Upcoming Plans",
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
-                          Text("View all",
-                              style: TextStyle(color: Colors.grey))
-                        ],
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      Expanded(
-                        child: ListView(
-                          children: [
-                            buildPlan(
-                                "Dinner sa Japan lang",
-                                "Apr 8 • Ramen House, Tokyo, Japan",
-                                "Planned",
-                                5),
-                            buildPlan(
-                                "Picnic with Family",
-                                "Apr 15 • Kahit saang tabing ilog",
-                                "Planned",
-                                3),
-                            buildPlan(
-                                "Birthday ni Kenny",
-                                "Apr 29 • Boracay, Philippines",
-                                "Ongoing",
-                                3),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 🔥 FLOAT ACTION BUTTON + MENU
-                Positioned(
-                  bottom: 110,
-                  right: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-
-                      if (showMenu)
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 6)
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              menuItem("Create Plan"),
-                              menuItem("Join Plan"),
-                              menuItem("Quick Decision"),
-                            ],
-                          ),
-                        ),
-
-                      const SizedBox(height: 10),
-
-                      FloatingActionButton(
-                        backgroundColor:
-                            const Color(0xFFF5B335),
-                        onPressed: () {
-                          setState(() {
-                            showMenu = !showMenu;
-                          });
-                        },
-                        child: const Icon(Icons.add,
-                            color: Colors.black),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 🔥 FIXED FLOATING NAV BAR (MATCH FIGMA)
-                Positioned(
-                  bottom: 10,
-                  left: 10,
-                  right: 10,
-                  child: Container(
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                        )
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceAround,
-                      children: [
-
-                        navItem(Icons.home, "Home", 0),
-                        navItem(Icons.add_circle_outline, "My Plans", 1),
-                        navItem(Icons.notifications_none, "Activity", 2),
-                        navItem(Icons.settings, "Settings", 3),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 🔥 NAV ITEM (ACTIVE STATE)
-  Widget navItem(IconData icon, String label, int index) {
-    bool isActive = selectedIndex == index;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() => selectedIndex = index);
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon,
-              color: isActive ? Colors.orange : Colors.grey),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isActive ? Colors.orange : Colors.grey,
-              ))
-        ],
-      ),
-    );
-  }
-
-  // PLAN CARD
-  Widget buildPlan(
-      String title, String subtitle, String status, int users) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold)),
-
-          const SizedBox(height: 5),
-
-          Text(subtitle,
-              style: const TextStyle(color: Colors.grey)),
-
-          const SizedBox(height: 10),
-
-          Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-            children: [
-
-              Row(
-                children: List.generate(
-                  users,
-                  (index) => Container(
-                    margin: const EdgeInsets.only(right: 5),
-                    child: const CircleAvatar(
-                      radius: 12,
-                      backgroundImage:
-                          AssetImage("images/avatar.png"),
-                    ),
-                  ),
-                ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: status == "Planned"
-                      ? Colors.green[200]
-                      : Colors.orange[200],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(status),
-              )
-            ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget menuItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Text(text),
+    return OutlinedButton(
+      onPressed: continueWithGoogle,
+      child: const Text("Continue with Google"),
     );
   }
 }

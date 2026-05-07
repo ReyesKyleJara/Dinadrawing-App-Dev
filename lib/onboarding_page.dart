@@ -1,4 +1,4 @@
-import 'screens/home/home_page.dart';
+import 'package:dinadrawing/screens/home/home.dart';
 import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -87,7 +87,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   // 🔥 ADD THIS
   Navigator.pushReplacement(
     context,
-    MaterialPageRoute(builder: (_) => const HomePage()),
+    MaterialPageRoute(builder: (_) => const HomeScreen()),
   );
 }
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../home/home_page.dart';
+import '../../navigation/main_wrapper.dart'; // Binago ang import papunta sa MainWrapper
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onSwitchToSignup;
@@ -25,9 +25,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // Ito yung magdadala sa user sa MainWrapper (kung saan nandoon ang Home at Navbar)
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
+      MaterialPageRoute(builder: (_) => const MainWrapper()),
     );
   }
 
@@ -83,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 15),
 
                   OutlinedButton(
-                    onPressed: () {},
+                    onPressed: () {}, // Note: You added a "Complete Your Account" requirement for Google Sign-In earlier in the project. You'll apply that logic here later!
                     child: const Text("Continue with Google"),
                   ),
 

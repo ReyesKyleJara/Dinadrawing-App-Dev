@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'plan_dashboard/plan_dashboard.dart';
 
 class CreatePlanPage extends StatefulWidget {
   const CreatePlanPage({super.key});
@@ -73,7 +74,22 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       return;
     }
 
-    Navigator.pop(context);
+    String formattedDate = DateFormat('MMMM yyyy').format(selectedDate!);
+    
+    String locationText = locationController.text.isNotEmpty 
+        ? locationController.text 
+        : "Location TBD";
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlanDashboardScreen(
+          planName: planNameController.text.trim(),
+          planDate: formattedDate,
+          planLocation: locationText,
+        ),
+      ),
+    );
+    
     _showSnackBar("Plan created successfully! 🌹", Colors.green);
   }
 

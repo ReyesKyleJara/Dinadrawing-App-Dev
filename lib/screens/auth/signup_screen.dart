@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../navigation/main_wrapper.dart'; // Dinagdag ang import para sa MainWrapper
 
 class SignUpScreen extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
@@ -28,6 +29,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
+    // Ito ang magdadala sa user sa MainWrapper pagkatapos mag sign-up
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const MainWrapper()),
+    );
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Sign Up Success")),
     );
@@ -81,7 +88,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 15),
 
                   OutlinedButton(
-                    onPressed: () {},
+                    onPressed: () {}, // Note: Apply the "Complete Your Account" logic here later as well
                     child: const Text("Continue with Google"),
                   ),
 

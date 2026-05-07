@@ -5,6 +5,7 @@ import '../screens/activity/activity.dart';
 import '../screens/settings/settings.dart'; 
 import '../screens/plans/create_plan.dart';
 import '../screens/plans/join_plan.dart';
+import '../screens/quick_decision/quick_decision.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -45,44 +46,50 @@ class _MainWrapperState extends State<MainWrapper> {
             GestureDetector(
               onTap: _toggleMenu,
               child: Container(
-                color: Colors.transparent, // Changed to transparent to match the clean look
+                color: Colors.transparent, 
               ),
             ),
 
-          // The New Custom Popup Menu
+          // --- Custom Popup Menu (repositioned and shrunk) ---
           if (_showMenu)
             Positioned(
-              bottom: 90, 
+              // Inadjust natin ito pataas (mula 85) para hiwalay na sa FAB, di na sila overlap.
+              bottom: 95, 
               right: 24, 
               child: Container(
-                width: 220, // Set a fixed width so all items align nicely
+                width: 220, 
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20), // Slightly rounder corners
+                  // Slightly smaller corner radius for a tighter look
+                  borderRadius: BorderRadius.circular(16), 
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 8))
+                    BoxShadow(
+                      color: Colors.black12, 
+                      blurRadius: 15, 
+                      offset: Offset(0, 8)
+                    )
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 8), // Top padding
+                    const SizedBox(height: 6), // reduced from 8
                     _buildMenuItem(Icons.add, "Create Plan", () {
                       _toggleMenu();
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePlanPage()));
                     }),
-                    const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: Color(0xFFEEEEEE)),
+                    const Divider(height: 1, thickness: 1, indent: 14, endIndent: 14, color: Color(0xFFEEEEEE)),
                     _buildMenuItem(Icons.link, "Join Plan", () {
                       _toggleMenu();
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const JoinPlanPage()));
                     }),
-                    const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: Color(0xFFEEEEEE)),
-                    _buildMenuItem(Icons.pie_chart_outline, "Quick Decision", () { // pie_chart_outline looks like a wheel!
+                    const Divider(height: 1, thickness: 1, indent: 14, endIndent: 14, color: Color(0xFFEEEEEE)),
+                    _buildMenuItem(Icons.pie_chart_outline, "Quick Decision", () { 
                       _toggleMenu();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Quick Decision coming soon")));
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const QuickDecisionPage()));
                     }),
-                    const SizedBox(height: 8), // Bottom padding
+                    const SizedBox(height: 6), // reduced from 8
                   ],
                 ),
               ),
@@ -90,13 +97,23 @@ class _MainWrapperState extends State<MainWrapper> {
         ],
       ),
       
+      // --- Floating Action Button (Now Mini size) ---
       floatingActionButton: (_currentIndex == 0 || _currentIndex == 1) 
-        ? FloatingActionButton(
-            onPressed: _toggleMenu,
-            backgroundColor: const Color(0xFFF2B73F),
-            shape: const CircleBorder(),
-            elevation: 4,
-            child: Icon(_showMenu ? Icons.close : Icons.add, color: Colors.white, size: 30),
+        ? Container(
+            // Liitan pa natin lalo ang FAB container
+            width: 42, // Shrunk from 50
+            height: 42, // Shrunk from 50
+            child: FloatingActionButton(
+              onPressed: _toggleMenu,
+              backgroundColor: const Color(0xFFF2B73F),
+              shape: const CircleBorder(),
+              elevation: 3, // slightly less elevation for a cleaner look
+              // Liitan natin ang padding sa icon para proportioned sya sa maliit na button
+              child: Padding(
+                padding: const EdgeInsets.all(4.0), // reduced padding
+                child: Icon(_showMenu ? Icons.close : Icons.add, color: Colors.white, size: 22), // icon shrunk to 22
+              ),
+            ),
           )
         : null, 
       
@@ -112,8 +129,10 @@ class _MainWrapperState extends State<MainWrapper> {
         backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFFF2B73F), 
         unselectedItemColor: Colors.black,           
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
+        selectedFontSize: 11,   
+        unselectedFontSize: 11, 
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
         showSelectedLabels: true,
         showUnselectedLabels: true,
         items: [
@@ -126,29 +145,33 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
-  // --- The Updated UI Helper for the Menu Item ---
+  // --- Updated Menu Item UI (Shrunk) ---
   Widget _buildMenuItem(IconData icon, String text, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        // Reduced vertical and horizontal padding for a tighter fit
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              // Liitan natin ang yellow circle container
+              width: 28, // Shrunk from 32
+              height: 28, // Shrunk from 32
               decoration: const BoxDecoration(
-                color: Color(0xFFF2B73F), // The yellow background
+                color: Color(0xFFF2B73F), 
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: Colors.white, size: 20), // The white icon
+              // Liitan din natin ang icon sa loob nito
+              child: Icon(icon, color: Colors.white, size: 16), // shrunk to 16
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12), // reduced from 16
             Text(
               text, 
               style: const TextStyle(
                 fontWeight: FontWeight.w500, 
-                fontSize: 16, // Slightly larger text to match design
+                // Liitan natin ang text size mula 14 to 13
+                fontSize: 13, 
                 color: Colors.black,
               ),
             ),
@@ -160,10 +183,13 @@ class _MainWrapperState extends State<MainWrapper> {
 
   BottomNavigationBarItem _buildNavItem(String defaultPath, String activePath, int index, String label) {
     return BottomNavigationBarItem(
-      icon: Image.asset(
-        _currentIndex == index ? activePath : defaultPath,
-        width: 28,
-        errorBuilder: (context, error, stackTrace) => const Icon(Icons.error_outline, color: Colors.amber),
+      icon: Padding(
+        padding: const EdgeInsets.only(bottom: 4.0), 
+        child: Image.asset(
+          _currentIndex == index ? activePath : defaultPath,
+          width: 24, 
+          errorBuilder: (context, error, stackTrace) => const Icon(Icons.error_outline, color: Colors.amber, size: 24),
+        ),
       ),
       label: label,
     );

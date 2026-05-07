@@ -352,13 +352,6 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: const Color(0xFFF2B73F),
-        shape: const CircleBorder(),
-        elevation: 0,
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),

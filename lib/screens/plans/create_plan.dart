@@ -90,7 +90,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       ),
     );
     
-    _showSnackBar("Plan created successfully! 🌹", Colors.green);
+    _showSnackBar("Plan created successfully!", Colors.green);
   }
 
   void _showSnackBar(String message, Color color) {

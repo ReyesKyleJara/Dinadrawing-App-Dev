@@ -1,4 +1,4 @@
-import 'package:dinadrawing/onboarding_page.dart';
+import 'package:dinadrawing/navigation/main_wrapper.dart';
 import 'package:flutter/material.dart';
 
 
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp( 
       debugShowCheckedModeBanner: false,
-      home: OnboardingPage(),
+      home: MainWrapper(),
     );
   }
 }

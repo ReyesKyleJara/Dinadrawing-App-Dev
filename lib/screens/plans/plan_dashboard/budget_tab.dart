@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'setup_budget_screen.dart';
+import 'setup_budget.dart';
 
 class BudgetTab extends StatefulWidget {
   const BudgetTab({super.key});

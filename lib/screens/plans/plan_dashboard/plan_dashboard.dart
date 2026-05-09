@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'feed_tab.dart';
 import 'budget_tab.dart';
+import 'members_page.dart';     // Connection sa Members
+import 'plan_settings.dart';    // Bagong connection sa Settings!
 
 class PlanDashboardScreen extends StatefulWidget {
   final String planName;
@@ -119,13 +121,25 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
               ),
               Row(
                 children: [
+                  // BUTTON PARA SA MEMBERS
                   IconButton(
                     icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
-                    onPressed: () {}, // Invite users
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MembersPage()),
+                      );
+                    }, 
                   ),
+                  // BUTTON PARA SA SETTINGS
                   IconButton(
                     icon: const Icon(Icons.settings_outlined, color: Colors.white),
-                    onPressed: () {}, // TODO: Navigate to Plan Settings later
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PlanSettingsPage()),
+                      );
+                    }, 
                   ),
                 ],
               ),

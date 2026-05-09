@@ -36,5 +36,11 @@ flutter:
     - images/page8.png
     - images/logo.png
     - images/wheel.png
+    - images/menu-myplans.png
+    - images/grid.png
+    - images/list.png
+    - images/delete.png
+    - images/archive.png
     - images/navbar-icons/
+
     

@@ -71,10 +71,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   Widget _buildCustomTabBar() {
     return Container(
-      height: 48,
+      height: 42,
       decoration: BoxDecoration(
         color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
@@ -84,14 +84,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: _selectedTabIndex == 0 ? const Color(0xFFF2B73F) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Notifications',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontWeight: _selectedTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
+                    fontSize: 13,
                     color: _selectedTabIndex == 0 ? Colors.black : Colors.grey.shade600,
                   ),
                 ),
@@ -104,14 +104,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: _selectedTabIndex == 1 ? const Color(0xFFF2B73F) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Pending Tasks',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontWeight: _selectedTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
+                    fontSize: 13,
                     color: _selectedTabIndex == 1 ? Colors.black : Colors.grey.shade600,
                   ),
                 ),

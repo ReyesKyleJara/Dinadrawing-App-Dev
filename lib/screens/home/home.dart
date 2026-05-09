@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../quick_decision/spin_the_wheel.dart';
+import '../myplans/my_plans.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -124,7 +125,14 @@ class HomeScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyPlansScreen(),
+                        ),
+                      );
+                    },
                     child: Text(
                       'View all >',
                       style: TextStyle(color: Colors.grey[600]),

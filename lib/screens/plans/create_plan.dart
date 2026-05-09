@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'plan_dashboard/plan_dashboard.dart';
 
 class CreatePlanPage extends StatefulWidget {
@@ -16,12 +17,14 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
+  GoogleMapController? mapController;
 
   @override
   void dispose() {
     planNameController.dispose();
     descriptionController.dispose();
     locationController.dispose();
+    mapController?.dispose();
     super.dispose();
   }
 
@@ -214,13 +217,28 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
         color: const Color(0xFFF9F9F9),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.map_outlined, size: 30, color: Colors.grey),
-          SizedBox(height: 8),
-          Text("Map view preview", style: TextStyle(color: Colors.grey, fontSize: 12)),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: GoogleMap(
+          onMapCreated: (controller) {
+            setState(() {
+              mapController = controller;
+            });
+          },
+          initialCameraPosition: const CameraPosition(
+            target: LatLng(14.5995, 120.9842),
+            zoom: 15,
+          ),
+          onCameraMove: (CameraPosition position) {
+            if (mounted) {
+              locationController.text = '${position.target.latitude.toStringAsFixed(4)}, ${position.target.longitude.toStringAsFixed(4)}';
+            }
+          },
+          onCameraIdle: () {},
+          zoomControlsEnabled: true,
+          myLocationButtonEnabled: false,
+          myLocationEnabled: false,
+        ),
       ),
     );
   }

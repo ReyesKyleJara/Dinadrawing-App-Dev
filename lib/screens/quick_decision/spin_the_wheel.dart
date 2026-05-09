@@ -624,8 +624,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF2B73F),
-                foregroundColor: Colors.black,
+                backgroundColor: const Color(0xFFA41E8E),
+                foregroundColor: Colors.white,
               ),
               child: const Text('Update'),
             ),

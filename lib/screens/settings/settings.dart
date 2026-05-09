@@ -155,7 +155,7 @@ class _SettingsPageState extends State<SettingsPage> {
     Uint8List? draftAvatarBytes = _avatarBytes;
     IconData? draftSelectedIcon = _selectedIcon;
     final TextEditingController draftNameController = TextEditingController(text: _profileName);
-    final TextEditingController draftUsernameController = TextEditingController(text: _profileUsername);
+    final TextEditingController draftUsernameController = TextEditingController(text: _profileUsername.replaceAll('@', '').trim());
 
     await showModalBottomSheet(
       context: context,
@@ -241,7 +241,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onChanged: (_) => setBottomSheetState(() {}),
               ),
               _buildInputLabel("Username"),
-              _buildValidatedTextField(
+              _buildUsernameField(
                 draftUsernameController,
                 "Enter username",
                 onChanged: (_) => setBottomSheetState(() {}),
@@ -253,9 +253,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     final trimmedName = draftNameController.text.trim();
-                    final trimmedUsername = draftUsernameController.text.trim();
+                    final rawUsername = draftUsernameController.text.trim();
+                    final usernameCore = rawUsername.replaceAll('@', '').trim();
 
-                    if (trimmedName.isEmpty || trimmedUsername.isEmpty) {
+                    if (trimmedName.isEmpty || usernameCore.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("Please fill in all fields"),
@@ -267,7 +268,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         _avatarBytes = draftAvatarBytes;
                         _selectedIcon = draftSelectedIcon;
                         _profileName = trimmedName;
-                        _profileUsername = trimmedUsername;
+                        _profileUsername = '@' + usernameCore;
                       });
                       Navigator.pop(context);
                     }
@@ -433,6 +434,29 @@ class _SettingsPageState extends State<SettingsPage> {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: const Color(0xFFF9F9F9),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsernameField(
+    TextEditingController controller,
+    String hint, {
+    ValueChanged<String>? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        prefixText: '@',
+        prefixStyle: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
         hintText: hint,
         filled: true,
         fillColor: const Color(0xFFF9F9F9),

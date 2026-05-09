@@ -51,17 +51,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
             color: Colors.black,
           ),
         ),
-        // SAFE AVATAR: Won't crash if the image is missing
+        // Match the smaller Home avatar size
         ClipOval(
           child: Image.asset(
             'images/user-avatar.png', // Change this to your actual image path
-            width: 50,
-            height: 50,
+            width: 38,
+            height: 38,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-              radius: 25,
+              radius: 19,
               backgroundColor: Colors.grey,
-              child: Icon(Icons.person, color: Colors.white),
+              child: Icon(Icons.person, color: Colors.white, size: 16),
             ),
           ),
         ),

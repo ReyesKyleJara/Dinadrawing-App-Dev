@@ -425,10 +425,20 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             ),
           ],
         ),
-        const CircleAvatar(
-          radius: 25,
-          backgroundImage: AssetImage('images/user-avatar.png'),
-          backgroundColor: Colors.transparent,
+        // SAFE AVATAR: Won't crash if the image is missing (copied from activity.dart)
+        // Match Home avatar size (smaller)
+        ClipOval(
+          child: Image.asset(
+            'images/user-avatar.png', // Change this to your actual image path
+            width: 38,
+            height: 38,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => const CircleAvatar(
+              radius: 19,
+              backgroundColor: Colors.grey,
+              child: Icon(Icons.person, color: Colors.white, size: 16),
+            ),
+          ),
         ),
       ],
     );

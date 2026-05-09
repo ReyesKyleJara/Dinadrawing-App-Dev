@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../quick_decision/spin_the_wheel.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -32,16 +33,25 @@ class HomeScreen extends StatelessWidget {
                       Text(
                         'What are we planning today?',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
-                  const CircleAvatar(
-                    radius: 25,
-                    backgroundImage: AssetImage('images/user-avatar.png'), // Update path
-                    backgroundColor: Colors.transparent,
+                  // SAFE AVATAR: smaller size to match FAB-like icon
+                  ClipOval(
+                    child: Image.asset(
+                      'images/user-avatar.png', // Change this to your actual image path
+                      width: 38,
+                      height: 38,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const CircleAvatar(
+                        radius: 19,
+                        backgroundColor: Colors.grey,
+                        child: Icon(Icons.person, color: Colors.white, size: 16),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -77,7 +87,14 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SpinWheelPage(),
+                                ),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFF2B73F),
                               foregroundColor: Colors.black,

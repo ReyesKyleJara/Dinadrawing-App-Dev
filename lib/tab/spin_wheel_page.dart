@@ -35,7 +35,6 @@ class _SpinWheelPageState extends State<SpinWheelPage>
 
   late List<WheelOption> options;
   String? selectedOption;
-  int? selectedOptionIndex;
   Color selectedColor = wheelColors[0];
   bool isSpinning = false;
 
@@ -122,7 +121,6 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     _wheelController.forward(from: 0).then((_) {
       setState(() {
         selectedOption = options[selectedIndex].name;
-        selectedOptionIndex = selectedIndex;
         selectedColor = wheelColors[selectedIndex % wheelColors.length];
         isSpinning = false;
       });
@@ -144,7 +142,7 @@ class _SpinWheelPageState extends State<SpinWheelPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Align(
+                Align(
                 alignment: Alignment.topRight,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(50),
@@ -156,9 +154,9 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                 ),
               ),
               const SizedBox(height: 12),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
+                child: const Text(
                   'Result',
                   style: TextStyle(
                     fontSize: 18,
@@ -186,33 +184,57 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
                         side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text('Close'),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _removeSelectedResult,
+                      onPressed: () {
+                        // Remove the option from the wheel and close dialog
+                        setState(() {
+                          final removeIndex = options.indexWhere((o) => o.name == result);
+                          if (removeIndex != -1) {
+                            options.removeAt(removeIndex);
+                          }
+                        });
+                        Navigator.pop(context);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Remove'),
+                      child: const Text(
+                        'Remove',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -222,21 +244,6 @@ class _SpinWheelPageState extends State<SpinWheelPage>
         ),
       ),
     );
-  }
-
-  void _removeSelectedResult() {
-    if (selectedOptionIndex == null || selectedOptionIndex! < 0 || selectedOptionIndex! >= options.length) {
-      Navigator.pop(context);
-      return;
-    }
-
-    setState(() {
-      options.removeAt(selectedOptionIndex!);
-      selectedOption = null;
-      selectedOptionIndex = null;
-    });
-
-    Navigator.pop(context);
   }
 
   @override
@@ -672,8 +679,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF2B73F),
-                foregroundColor: Colors.black,
+                backgroundColor: const Color(0xFFA41E8E),
+                foregroundColor: Colors.white,
               ),
               child: const Text('Update'),
             ),

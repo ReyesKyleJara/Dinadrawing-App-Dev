@@ -377,28 +377,72 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   Widget _buildFilterBar() {
     return Row(
       children: [
-        Icon(Icons.sort, size: 22, color: Colors.grey[600]),
-        const SizedBox(width: 12),
+        // 1. List View Button
         GestureDetector(
           onTap: () => setState(() => _isDetailedView = false),
-          child: Icon(
-            Icons.view_headline,
-            size: 24,
-            color: !_isDetailedView ? Colors.blue : Colors.grey[600],
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              // Gray background when this view is active
+              color: !_isDetailedView ? Colors.grey.shade200 : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Image.asset(
+              'images/list.png',
+              width: 14,
+              height: 14,
+              // Darkens the image when active, makes it gray when inactive
+              color: !_isDetailedView ? Colors.black : Colors.grey[500],
+            ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
+
+        // 2. Grid View Button
         GestureDetector(
           onTap: () => setState(() => _isDetailedView = true),
-          child: Icon(
-            Icons.grid_view,
-            size: 22,
-            color: _isDetailedView ? Colors.blue : Colors.grey[600],
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              // Gray background when this view is active
+              color: _isDetailedView ? Colors.grey.shade200 : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Image.asset(
+              'images/grid.png',
+              width: 14,
+              height: 14,
+              // Darkens the image when active, makes it gray when inactive
+              color: _isDetailedView ? Colors.black : Colors.grey[500],
+            ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 4),
+
+        // 3. More Menu Button
         PopupMenuButton<String>(
-          icon: Icon(Icons.more_vert, size: 22, color: Colors.grey[600]),
+          icon: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              // DITO: Ginawa nating transparent imbis na grey.shade200
+              color: Colors.transparent, 
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Image.asset(
+              'images/menu-myplans.png', 
+              width: 16, 
+              height: 16, 
+              // DITO: Ginawa nating grey[700] para pantay sa ibang inactive icons
+              color: Colors.grey[700], 
+            ),
+          ),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          color: Colors.white,
+          offset: const Offset(0, 45), 
+          elevation: 4,
           onSelected: (value) {
             if (value == 'archive') {
               _openArchivePlansPage();
@@ -406,24 +450,41 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               _openDeletedPlansPage();
             }
           },
-          itemBuilder: (context) => const [
+          itemBuilder: (context) => [
+            // --- ARCHIVE ITEM ---
             PopupMenuItem(
               value: 'archive',
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.archive_outlined, size: 18),
-                  SizedBox(width: 10),
-                  Text('Archive Plan'),
+                  // Pinaliit ang icon
+                  Image.asset('images/archive.png', width: 18, height: 18), 
+                  const SizedBox(width: 10),
+                  // Pinaliit ang text
+                  const Text('Archive Plan', style: TextStyle(fontSize: 13, color: Colors.black)),
                 ],
               ),
             ),
+            
+            // --- CUSTOM DIVIDER ---
+            const PopupMenuItem(
+              enabled: false,
+              height: 1,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+            ),
+
+            // --- DELETE ITEM ---
             PopupMenuItem(
               value: 'delete',
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.delete_outline, size: 18),
-                  SizedBox(width: 10),
-                  Text('Delete Plan'),
+                  // Pinaliit ang icon
+                  Image.asset('images/delete.png', width: 18, height: 18), 
+                  const SizedBox(width: 10),
+                  // Pinaliit ang text
+                  const Text('Delete Plan', style: TextStyle(fontSize: 13, color: Colors.black)),
                 ],
               ),
             ),
@@ -539,7 +600,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
   Widget _buildPlanMenu(String sectionId, Plan plan, {required bool allowArchive}) {
     return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, color: Colors.grey[600], size: 20),
+      icon: Image.asset('images/menu-myplans.png', width: 16, height: 16, color: Colors.grey[600]), 
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.white,
+      elevation: 4,
       onSelected: (value) {
         if (value == 'archive') {
           _archivePlan(sectionId, plan);
@@ -549,28 +613,45 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
       },
       itemBuilder: (context) {
         final items = <PopupMenuEntry<String>>[];
+        
         if (allowArchive) {
           items.add(
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'archive',
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.archive_outlined, size: 18),
-                  SizedBox(width: 10),
-                  Text('Archive Plan'),
+                  // Pinaliit ang icon
+                  Image.asset('images/archive.png', width: 18, height: 18),
+                  const SizedBox(width: 10),
+                  // Pinaliit ang text
+                  const Text('Archive Plan', style: TextStyle(fontSize: 13, color: Colors.black)),
                 ],
               ),
             ),
           );
+          
+          items.add(
+            const PopupMenuItem(
+              enabled: false,
+              height: 1,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+            ),
+          );
         }
+        
         items.add(
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'delete',
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
               children: [
-                Icon(Icons.delete_outline, size: 18),
-                SizedBox(width: 10),
-                Text('Delete Plan'),
+                // Pinaliit ang icon
+                Image.asset('images/delete.png', width: 18, height: 18),
+                const SizedBox(width: 10),
+                // Pinaliit ang text
+                const Text('Delete Plan', style: TextStyle(fontSize: 13, color: Colors.black)),
               ],
             ),
           ),

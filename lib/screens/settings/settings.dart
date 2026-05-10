@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -8,6 +11,27 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  // Avatar state: either bytes for an image, or an icon selected by user
+  Uint8List? _avatarBytes;
+  IconData? _selectedIcon;
+  String _profileName = 'DiNaDrawing';
+  String _profileUsername = '@dinadrawing';
+  final List<IconData> _iconOptions = [
+    Icons.face,
+    Icons.face_2,
+    Icons.face_3,
+    Icons.face_4,
+    Icons.person,
+    Icons.person_2,
+    Icons.person_3,
+    Icons.person_4,
+  ];
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,11 +52,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: () => _showProfileBottomSheet(context),
                   child: Stack(
                     children: [
-                      const CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Color(0xFFF5F5F5),
-                        child: Icon(Icons.person, size: 50, color: Colors.grey),
-                      ),
+                      _buildAvatarWidget(radius: 50),
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -44,6 +64,22 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      _profileName,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _profileUsername,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 40),
@@ -93,11 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, color: Colors.black, size: 20),
-      ),
+      leading: Icon(icon, color: Colors.black, size: 20),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
       trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
     );
@@ -119,103 +151,315 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   // --- Panel 2: Profile Bottom Sheet with Left-Alignment & Validation ---
-  void _showProfileBottomSheet(BuildContext context) {
-    // Controllers to track and validate input
-    final TextEditingController nameController = TextEditingController(text: "DiNaDrawing");
-    final TextEditingController usernameController = TextEditingController(text: "@dinadrawing");
+  Future<void> _showProfileBottomSheet(BuildContext context) async {
+    Uint8List? draftAvatarBytes = _avatarBytes;
+    IconData? draftSelectedIcon = _selectedIcon;
+    final TextEditingController draftNameController = TextEditingController(text: _profileName);
+    final TextEditingController draftUsernameController = TextEditingController(text: _profileUsername.replaceAll('@', '').trim());
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white, 
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25))
+      builder: (context) => StatefulBuilder(
+        builder: (context, setBottomSheetState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 12,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                    const SizedBox(height: 20),
+                    Stack(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showAvatarOptions(
+                            context,
+                            currentAvatarBytes: draftAvatarBytes,
+                            currentSelectedIcon: draftSelectedIcon,
+                            onChanged: (newBytes, newIcon) {
+                              setBottomSheetState(() {
+                                draftAvatarBytes = newBytes;
+                                draftSelectedIcon = newIcon;
+                              });
+                            },
+                          ),
+                          child: _buildAvatarWidget(
+                            radius: 40,
+                            avatarBytes: draftAvatarBytes,
+                            selectedIcon: draftSelectedIcon,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: () => _showAvatarOptions(
+                              context,
+                              currentAvatarBytes: draftAvatarBytes,
+                              currentSelectedIcon: draftSelectedIcon,
+                              onChanged: (newBytes, newIcon) {
+                                setBottomSheetState(() {
+                                  draftAvatarBytes = newBytes;
+                                  draftSelectedIcon = newIcon;
+                                });
+                              },
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                              child: const Icon(Icons.edit, color: Colors.white, size: 14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              _buildInputLabel("Name"),
+              _buildValidatedTextField(
+                draftNameController,
+                "Enter your name",
+                onChanged: (_) => setBottomSheetState(() {}),
+              ),
+              _buildInputLabel("Username"),
+              _buildUsernameField(
+                draftUsernameController,
+                "Enter username",
+                onChanged: (_) => setBottomSheetState(() {}),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final trimmedName = draftNameController.text.trim();
+                    final rawUsername = draftUsernameController.text.trim();
+                    final usernameCore = rawUsername.replaceAll('@', '').trim();
+
+                    if (trimmedName.isEmpty || usernameCore.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Please fill in all fields"),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    } else {
+                      setState(() {
+                        _avatarBytes = draftAvatarBytes;
+                        _selectedIcon = draftSelectedIcon;
+                        _profileName = trimmedName;
+                        _profileUsername = '@' + usernameCore;
+                      });
+                      Navigator.pop(context);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFB84D),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    "Save Profile",
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom, 
-          left: 24, 
-          right: 24, 
-          top: 12
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start, // Align labels to the left
+      ),
+    );
+
+    draftNameController.dispose();
+    draftUsernameController.dispose();
+  }
+
+  Widget _buildAvatarWidget({
+    double radius = 40,
+    Uint8List? avatarBytes,
+    IconData? selectedIcon,
+  }) {
+    final Uint8List? activeAvatarBytes = avatarBytes ?? _avatarBytes;
+    final IconData? activeSelectedIcon = selectedIcon ?? _selectedIcon;
+
+    if (activeAvatarBytes != null) {
+      return CircleAvatar(radius: radius, backgroundColor: const Color(0xFFE0E0E0), backgroundImage: MemoryImage(activeAvatarBytes));
+    }
+
+    if (activeSelectedIcon != null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: const Color(0xFFE0E0E0),
+        child: Icon(activeSelectedIcon, size: radius * 0.8, color: Colors.deepPurple),
+      );
+    }
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFFE0E0E0),
+      child: const Icon(Icons.person, size: 40, color: Colors.grey),
+    );
+  }
+
+  // Show avatar options and update only draft state while bottom sheet is open
+  void _showAvatarOptions(
+    BuildContext context, {
+    required Uint8List? currentAvatarBytes,
+    required IconData? currentSelectedIcon,
+    required void Function(Uint8List? avatarBytes, IconData? selectedIcon) onChanged,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (ctx) => SafeArea(
+        child: Wrap(
           children: [
-            // Center the drag handle and avatar only
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 40, 
-                    height: 4, 
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300], 
-                      borderRadius: BorderRadius.circular(2)
-                    )
-                  ),
-                  const SizedBox(height: 20),
-                  const CircleAvatar(
-                    radius: 40, 
-                    backgroundColor: Color(0xFFE0E0E0), 
-                    child: Icon(Icons.person, size: 40)
-                  ),
-                ],
-              ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Upload Image'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final Uint8List? pickedBytes = await _pickImageBytes();
+                if (pickedBytes != null) {
+                  onChanged(pickedBytes, null);
+                }
+              },
             ),
-            const SizedBox(height: 30),
-
-            _buildInputLabel("Name"),
-            _buildValidatedTextField(nameController, "Enter your name"),
-
-            _buildInputLabel("Username"),
-            _buildValidatedTextField(usernameController, "Enter username"),
-
-            const SizedBox(height: 24),
-
-            // Action Button with Logic
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.trim().isEmpty || usernameController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please fill in all fields"),
-                        backgroundColor: Colors.redAccent,
-                      ),
-                    );
-                  } else {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Profile updated successfully! 🌹")),
-                    );
-                  }
+            ListTile(
+              leading: const Icon(Icons.insert_emoticon),
+              title: const Text('Choose Icon'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final IconData? selected = await _showIconPicker(context);
+                if (selected != null) {
+                  onChanged(null, selected);
+                }
+              },
+            ),
+            if (currentAvatarBytes != null || currentSelectedIcon != null)
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('Reset to Default'),
+                onTap: () {
+                  onChanged(null, null);
+                  Navigator.pop(ctx);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB84D),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text(
-                  "Save Profile",
-                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                ),
               ),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildValidatedTextField(TextEditingController controller, String hint) {
+  Future<Uint8List?> _pickImageBytes() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 85);
+      if (file != null) {
+        return file.readAsBytes();
+      }
+      return null;
+    } catch (e) {
+      // ignore errors for now
+      return null;
+    }
+  }
+
+  Future<IconData?> _showIconPicker(BuildContext context) {
+    return showModalBottomSheet<IconData>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Choose an icon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, childAspectRatio: 1, crossAxisSpacing: 8, mainAxisSpacing: 8),
+              itemCount: _iconOptions.length,
+              itemBuilder: (context, index) {
+                final icon = _iconOptions[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx, icon);
+                  },
+                  child: Center(
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundColor: const Color(0xFFF0F0F0),
+                      child: Icon(icon, size: 28, color: Colors.black87),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildValidatedTextField(
+    TextEditingController controller,
+    String hint, {
+    ValueChanged<String>? onChanged,
+  }) {
     return TextField(
       controller: controller,
+      onChanged: onChanged,
       decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: const Color(0xFFF9F9F9),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsernameField(
+    TextEditingController controller,
+    String hint, {
+    ValueChanged<String>? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        prefixText: '@',
+        prefixStyle: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
         hintText: hint,
         filled: true,
         fillColor: const Color(0xFFF9F9F9),
@@ -506,7 +750,7 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
               ],
             ),
           ),
-          Switch(value: value, activeThumbColor: const Color(0xFFFFB84D), onChanged: onChanged),
+          Switch(value: value, activeColor: const Color(0xFFFFB84D), onChanged: onChanged),
         ],
       ),
     );

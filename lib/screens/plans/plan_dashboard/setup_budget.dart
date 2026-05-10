@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class SetupBudgetScreen extends StatefulWidget {
   const SetupBudgetScreen({super.key});
@@ -10,12 +11,25 @@ class SetupBudgetScreen extends StatefulWidget {
 class ExpenseItem {
   TextEditingController nameCtrl = TextEditingController();
   TextEditingController costCtrl = TextEditingController();
+
+  void dispose() {
+    nameCtrl.dispose();
+    costCtrl.dispose();
+  }
 }
 
 class MemberItem {
   String name;
   double amount;
+  late TextEditingController amountCtrl;
   MemberItem({required this.name, required this.amount});
+
+  MemberItem.withAmountController({required this.name, required this.amount})
+      : amountCtrl = TextEditingController(text: amount.toStringAsFixed(2));
+
+  void dispose() {
+    amountCtrl.dispose();
+  }
 }
 
 class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
@@ -27,17 +41,31 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
   // Data for Step 2
   bool _splitEqually = true;
   List<MemberItem> members = [
-    MemberItem(name: "Member 1", amount: 0),
-    MemberItem(name: "Member 2", amount: 0),
-    MemberItem(name: "Member 3", amount: 0),
+    MemberItem.withAmountController(name: "Member 1", amount: 0),
+    MemberItem.withAmountController(name: "Member 2", amount: 0),
+    MemberItem.withAmountController(name: "Member 3", amount: 0),
   ];
 
   double get totalEstimatedBudget {
     double total = 0;
     for (var exp in expenses) {
-      total += double.tryParse(exp.costCtrl.text) ?? 0;
+      total += _parseAmountText(exp.costCtrl.text);
     }
     return total;
+  }
+
+  String _displayAmount(double amount) {
+    return amount.toStringAsFixed(2);
+  }
+
+  double _parseAmountText(String text) {
+    final cleaned = text.replaceAll(RegExp(r'[^0-9.]'), '');
+    // Ensure only one decimal point
+    final parts = cleaned.split('.');
+    if (parts.length > 2) {
+      return double.tryParse(parts[0] + '.' + parts[1]) ?? 0;
+    }
+    return cleaned.isEmpty ? 0 : (double.tryParse(cleaned) ?? 0);
   }
 
   void _updateEqualSplit() {
@@ -45,8 +73,43 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
       double splitAmount = totalEstimatedBudget / members.length;
       for (var member in members) {
         member.amount = splitAmount;
+        member.amountCtrl.text = splitAmount.toStringAsFixed(2);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    for (final expense in expenses) {
+      expense.dispose();
+    }
+    for (final member in members) {
+      member.dispose();
+    }
+    super.dispose();
+  }
+
+  Map<String, dynamic> _buildResultPayload() {
+    final resultExpenses = expenses
+        .map((expense) => {
+              'name': expense.nameCtrl.text.trim().isEmpty ? 'Expense' : expense.nameCtrl.text.trim(),
+              'amount': double.tryParse(expense.costCtrl.text) ?? 0,
+            })
+        .toList();
+
+    final resultMembers = members
+        .map((member) => {
+              'name': member.name,
+              'amount': member.amount,
+              'isPaid': false,
+            })
+        .toList();
+
+    return {
+      'isBudgetSet': true,
+      'expenses': resultExpenses,
+      'members': resultMembers,
+    };
   }
 
   @override
@@ -101,7 +164,9 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
       case 1:
         return _buildStep1AddExpenses();
       case 2:
-        _updateEqualSplit(); // Auto-calculate before showing Step 2
+        if (_splitEqually) {
+          _updateEqualSplit(); // Auto-calculate only in equal split mode
+        }
         return _buildStep2SetDivision();
       case 3:
         return _buildStep3ConfirmPlan();
@@ -156,11 +221,12 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
                   flex: 1,
                   child: TextField(
                     controller: expenses[index].costCtrl,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textAlign: TextAlign.right,
-                    onChanged: (val) => setState(() {}), // Update total
+                    onChanged: (_) => setState(() {}), // Update total
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                     decoration: const InputDecoration(
-                      hintText: "0.00",
+                      hintText: "00.00",
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -210,7 +276,7 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
 
         const SizedBox(height: 32),
 
-        // Next Button
+        // Next Button (aligned with Total row)
         _buildBottomButton("Next", () {
           setState(() => _currentStep = 2);
         }),
@@ -292,10 +358,30 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
                 const Icon(Icons.person_outline, color: Colors.grey, size: 20),
                 const SizedBox(width: 12),
                 Expanded(child: Text(members[index].name, style: const TextStyle(fontSize: 14))),
-                Text(
-                  members[index].amount.toStringAsFixed(2), 
-                  style: TextStyle(fontSize: 14, color: _splitEqually ? Colors.grey[700] : Colors.black)
-                ),
+                _splitEqually
+                    ? Text(
+                        _displayAmount(members[index].amount),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      )
+                    : SizedBox(
+                        width: 110,
+                        child: TextField(
+                          controller: members[index].amountCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textAlign: TextAlign.right,
+                          onChanged: (val) {
+                            setState(() {
+                              members[index].amount = _parseAmountText(val);
+                            });
+                          },
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                          ),
+                          style: const TextStyle(fontSize: 14, color: Colors.black),
+                        ),
+                      ),
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.all(4),
@@ -319,7 +405,14 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextButton.icon(
-              onPressed: () {}, // Add member logic here
+              onPressed: () {
+                setState(() {
+                  members.add(MemberItem.withAmountController(name: "Member ${members.length + 1}", amount: 0));
+                  if (_splitEqually) {
+                    _updateEqualSplit();
+                  }
+                });
+              },
               icon: const Icon(Icons.add, color: Color(0xFFFFB84D), size: 16),
               label: const Text("Add New Member", style: TextStyle(color: Color(0xFFFFB84D))),
             ),
@@ -345,7 +438,7 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
               child: OutlinedButton(
                 onPressed: () => setState(() => _currentStep = 1),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   side: const BorderSide(color: Colors.grey),
                 ),
@@ -354,7 +447,7 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
             ),
             const SizedBox(width: 16),
             Expanded(
-              flex: 2,
+              flex: 1,
               child: _buildBottomButton("Next", () {
                 setState(() => _currentStep = 3);
               }),
@@ -417,11 +510,11 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
         Row(
           children: [
             Expanded(
-              flex: 1,
               child: OutlinedButton(
                 onPressed: () => setState(() => _currentStep = 2),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  minimumSize: const Size.fromHeight(48),
+                  padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   side: const BorderSide(color: Colors.grey),
                 ),
@@ -430,7 +523,6 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
             ),
             const SizedBox(width: 16),
             Expanded(
-              flex: 2,
               child: _buildBottomButton("Confirm & Save", () {
                 // 1. Ipakita muna ang SnackBar habang buhay pa ang screen!
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -443,7 +535,7 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
                 );
                 
                 // 2. Saka tayo mag-pop at magpasa ng "true" pabalik sa tab
-                Navigator.pop(context, true);
+                Navigator.pop(context, _buildResultPayload());
               }),
             ),
           ],
@@ -454,19 +546,22 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
 
   // --- REUSABLE YELLOW BUTTON ---
   Widget _buildBottomButton(String text, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFFB84D),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFFB84D),
+          elevation: 0,
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15),
+        child: Text(
+          text,
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15),
+        ),
       ),
     );
   }

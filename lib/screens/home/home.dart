@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../navigation/main_wrapper.dart';
 import '../../tab/spin_the_wheel.dart';
-import '../myplans/my_plans.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

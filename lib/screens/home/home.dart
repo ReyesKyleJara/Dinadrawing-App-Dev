@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../quick_decision/spin_the_wheel.dart';
+import '../../navigation/main_wrapper.dart';
+import '../../tab/spin_the_wheel.dart';
 import '../myplans/my_plans.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -129,7 +130,7 @@ class HomeScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const MyPlansScreen(),
+                          builder: (_) => const MainWrapper(initialIndex: 1),
                         ),
                       );
                     },

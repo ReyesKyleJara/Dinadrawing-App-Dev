@@ -232,36 +232,45 @@ class _SetupBudgetScreenState extends State<SetupBudgetScreen> {
         Text("Let's divide ₱${totalEstimatedBudget.toStringAsFixed(2)} among your members.", style: const TextStyle(color: Colors.grey, fontSize: 14)),
         const SizedBox(height: 24),
 
-        // Radio Buttons
-        Theme(
-          data: Theme.of(context).copyWith(unselectedWidgetColor: Colors.grey),
-          child: Column(
-            children: [
-              RadioListTile<bool>(
-                title: const Text("Split Equally", style: TextStyle(fontSize: 14)),
-                value: true,
-                groupValue: _splitEqually,
-                activeColor: const Color(0xFFFFB84D),
-                contentPadding: EdgeInsets.zero,
-                onChanged: (val) {
-                  setState(() {
-                    _splitEqually = val!;
-                    _updateEqualSplit();
-                  });
-                },
-              ),
-              RadioListTile<bool>(
-                title: const Text("Custom Allocation", style: TextStyle(fontSize: 14)),
-                value: false,
-                groupValue: _splitEqually,
-                activeColor: const Color(0xFFFFB84D),
-                contentPadding: EdgeInsets.zero,
-                onChanged: (val) {
-                  setState(() => _splitEqually = val!);
-                },
-              ),
-            ],
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(
+              value: true,
+              label: Text("Split Equally", style: TextStyle(fontSize: 14)),
+            ),
+            ButtonSegment<bool>(
+              value: false,
+              label: Text("Custom Allocation", style: TextStyle(fontSize: 14)),
+            ),
+          ],
+          selected: <bool>{_splitEqually},
+          showSelectedIcon: false,
+          style: ButtonStyle(
+            foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.black;
+              }
+              return Colors.grey[700]!;
+            }),
+            backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const Color(0xFFFFE1B0);
+              }
+              return Colors.white;
+            }),
+            side: const WidgetStatePropertyAll(
+              BorderSide(color: Color(0xFFFFB84D)),
+            ),
           ),
+          onSelectionChanged: (selection) {
+            final splitEqually = selection.first;
+            setState(() {
+              _splitEqually = splitEqually;
+              if (_splitEqually) {
+                _updateEqualSplit();
+              }
+            });
+          },
         ),
         
         const SizedBox(height: 16),

@@ -151,7 +151,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.photo_library_outlined, color: Colors.black87, size: 20),
+                          color: Colors.black.withValues(alpha: 0.3), // Dark translucent background for visibility
                       ),
                       const SizedBox(width: 16),
                       const Text("Upload Custom Image", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
@@ -232,7 +232,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3), // Dark translucent background for visibility
+                      color: Colors.black.withValues(alpha: 0.3), // Dark translucent background for visibility
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.edit, color: Colors.white, size: 16),

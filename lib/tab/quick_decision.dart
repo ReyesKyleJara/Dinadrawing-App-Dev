@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'spin_the_wheel.dart'; 
-import 'blitz_poll.dart';    
+import 'blitz_poll_page.dart';
 
 
 class QuickDecisionPage extends StatefulWidget {

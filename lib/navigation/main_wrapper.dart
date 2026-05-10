@@ -5,17 +5,19 @@ import '../screens/activity/activity.dart';
 import '../screens/settings/settings.dart'; 
 import '../screens/plans/create_plan.dart';
 import '../screens/plans/join_plan.dart';
-import '../screens/quick_decision/quick_decision.dart';
+import '../tab/quick_decision.dart';
 
 class MainWrapper extends StatefulWidget {
-  const MainWrapper({super.key});
+  const MainWrapper({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   State<MainWrapper> createState() => _MainWrapperState();
 }
 
 class _MainWrapperState extends State<MainWrapper> {
-  int _currentIndex = 0;
+  late int _currentIndex;
   bool _showMenu = false; 
 
   final List<Widget> _pages = [
@@ -24,6 +26,12 @@ class _MainWrapperState extends State<MainWrapper> {
     const ActivityScreen(), 
     const SettingsPage(), 
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   void _toggleMenu() {
     setState(() {
@@ -99,7 +107,7 @@ class _MainWrapperState extends State<MainWrapper> {
       
       // --- Floating Action Button (Now Mini size) ---
       floatingActionButton: (_currentIndex == 0 || _currentIndex == 1) 
-        ? Container(
+        ? SizedBox(
             // Liitan pa natin lalo ang FAB container
             width: 42, // Shrunk from 50
             height: 42, // Shrunk from 50

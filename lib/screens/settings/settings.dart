@@ -43,7 +43,10 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              const Text('Settings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const Text(
+                'Settings',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+              ),
               const SizedBox(height: 30),
               
               // Profile Header (Clickable Avatar)
@@ -268,7 +271,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         _avatarBytes = draftAvatarBytes;
                         _selectedIcon = draftSelectedIcon;
                         _profileName = trimmedName;
-                        _profileUsername = '@' + usernameCore;
+                        _profileUsername = '@$usernameCore';
                       });
                       Navigator.pop(context);
                     }
@@ -750,7 +753,7 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
               ],
             ),
           ),
-          Switch(value: value, activeColor: const Color(0xFFFFB84D), onChanged: onChanged),
+          Switch(value: value, activeThumbColor: const Color(0xFFFFB84D), onChanged: onChanged),
         ],
       ),
     );

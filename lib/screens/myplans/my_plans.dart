@@ -334,32 +334,17 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'My Plans',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Manage, view, and edit your plans easily.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
+        const Text(
+          'My Plans',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
         ),
-        // SAFE AVATAR: Won't crash if the image is missing (copied from activity.dart)
-        // Match Home avatar size (smaller)
         ClipOval(
           child: Image.asset(
-            'images/user-avatar.png', // Change this to your actual image path
+            'images/user-avatar.png',
             width: 38,
             height: 38,
             fit: BoxFit.cover,
@@ -383,7 +368,6 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              // Gray background when this view is active
               color: !_isDetailedView ? Colors.grey.shade200 : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -391,7 +375,6 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               'images/list.png',
               width: 14,
               height: 14,
-              // Darkens the image when active, makes it gray when inactive
               color: !_isDetailedView ? Colors.black : Colors.grey[500],
             ),
           ),
@@ -424,16 +407,14 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
           icon: Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              // DITO: Ginawa nating transparent imbis na grey.shade200
-              color: Colors.transparent, 
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Image.asset(
-              'images/menu-myplans.png', 
-              width: 16, 
-              height: 16, 
-              // DITO: Ginawa nating grey[700] para pantay sa ibang inactive icons
-              color: Colors.grey[700], 
+              'images/menu-myplans.png',
+              width: 16,
+              height: 16,
+              color: Colors.grey[700],
             ),
           ),
           padding: EdgeInsets.zero,

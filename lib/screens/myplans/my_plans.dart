@@ -333,6 +333,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,

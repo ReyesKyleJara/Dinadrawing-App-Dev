@@ -72,12 +72,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       _showSnackBar("Please enter a plan name", Colors.redAccent);
       return;
     } 
-    if (selectedDate == null || selectedTime == null) {
-      _showSnackBar("Please select both date and time", Colors.orangeAccent);
-      return;
+    // Date and time are optional now. Only plan name is required.
+    String formattedDate;
+    if (selectedDate != null) {
+      formattedDate = DateFormat('MMMM yyyy').format(selectedDate!);
+    } else {
+      formattedDate = "Date TBD";
     }
-
-    String formattedDate = DateFormat('MMMM yyyy').format(selectedDate!);
     
     String locationText = locationController.text.isNotEmpty 
         ? locationController.text 
@@ -181,7 +182,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildFieldLabel("Date"),
+              _buildFieldLabel("Date (optional)"),
               _buildPickerBox(
                 selectedDate == null ? "Select Date" : DateFormat('MMM dd, yyyy').format(selectedDate!),
                 Icons.calendar_today,
@@ -195,7 +196,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildFieldLabel("Time"),
+              _buildFieldLabel("Time (optional)"),
               _buildPickerBox(
                 selectedTime == null ? "Select Time" : selectedTime!.format(context),
                 Icons.access_time,

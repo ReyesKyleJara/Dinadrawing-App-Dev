@@ -1,9 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../navigation/main_wrapper.dart';
-import '../../tab/spin_the_wheel.dart';
+import '../../tab/quick_decision.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _showWheel = true;
+  Timer? _switchTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _switchTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) setState(() => _showWheel = !_showWheel);
+    });
+  }
+
+  @override
+  void dispose() {
+    _switchTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +82,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Spin the Wheel Card
+              // Quick Decision Card (Spin the Wheel / Blitz Poll)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -82,9 +106,10 @@ class HomeScreen extends StatelessWidget {
                             'Can\'t decide where to go?',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                           ),
+                          const SizedBox(height: 4),
                           const Text(
-                            'Spin the Wheel!',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            'Use spin the wheel or blitz poll for quick decisions',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                           ),
                           const SizedBox(height: 12),
                           ElevatedButton(
@@ -92,7 +117,7 @@ class HomeScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const SpinWheelPage(),
+                                  builder: (_) => const QuickDecisionPage(),
                                 ),
                               );
                             },
@@ -109,8 +134,14 @@ class HomeScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // Placeholder for Wheel Image
-                    Image.asset('images/wheel.png', width: 80, height: 80),
+                    // Animated images switching between wheel and blitz poll
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+                      child: _showWheel
+                          ? Image.asset('images/wheel.png', key: const ValueKey('wheel'), width: 80, height: 80)
+                          : Image.asset('images/page3.png', key: const ValueKey('blitz'), width: 80, height: 80),
+                    ),
                   ],
                 ),
               ),

@@ -70,9 +70,20 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
+        const yellow = Color(0xFFFFB84D);
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFFFFB84D)),
+            colorScheme: const ColorScheme.light(
+              primary: yellow,
+              secondary: yellow,
+              onPrimary: Colors.black,
+            ),
+            timePickerTheme: TimePickerThemeData(
+              dayPeriodColor: yellow,
+              dayPeriodTextColor: Colors.black,
+              dialHandColor: yellow,
+              dialBackgroundColor: Colors.white,
+            ),
           ),
           child: child!,
         );

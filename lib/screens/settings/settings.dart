@@ -77,7 +77,6 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // Pinaliit mula 28 papuntang 24 (Consistent with sleek headers)
               const Text(
                 'Settings',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black),
@@ -90,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: () => _showProfileBottomSheet(context),
                   child: Stack(
                     children: [
-                      _buildAvatarWidget(radius: 45), // Pinaliit ng konti
+                      _buildAvatarWidget(radius: 45), 
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -110,12 +109,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     Text(
                       _profileName,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), // Mula 18 -> 16
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _profileUsername,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500), // Mula 14 -> 12
+                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500), 
                     ),
                   ],
                 ),
@@ -123,7 +122,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 32),
 
               // Account Settings
-              const Text("Account Settings", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12)), // Mula default -> 12
+              const Text("Account Settings", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12)), 
               const SizedBox(height: 8),
               _buildSettingsTile(
                 icon: Icons.person_outline, 
@@ -168,8 +167,8 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: Colors.black, size: 20), // Mas sleek na icon size
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)), // Pinaliit mula 16 -> 14
+      leading: Icon(icon, color: Colors.black, size: 20), 
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)), 
       trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
     );
   }
@@ -177,20 +176,66 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildLogOutButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48, // Sleek button height
+      height: 48, 
       child: OutlinedButton(
         onPressed: () {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
+          // --- LOGOUT CONFIRMATION DIALOG ---
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: const Text(
+                  "Log Out", 
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
+                ),
+                content: const Text(
+                  "Are you sure you want to log out?",
+                  style: TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+                actions: [
+                  // CANCEL BUTTON
+                  TextButton(
+                    onPressed: () => Navigator.pop(context), 
+                    child: const Text(
+                      "Cancel", 
+                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                  // CONFIRM LOGOUT BUTTON
+                  ElevatedButton(
+                    onPressed: () {
+                      // Tuluyan nang maglo-log out kapag pinindot ito
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text(
+                      "Log Out", 
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFF0F0F0), width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: const Text("Log Out", style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)), // Pinaliit mula default -> 14
+        child: const Text(
+          "Log Out", 
+          style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)
+        ), 
       ),
     );
   }
@@ -325,7 +370,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFB84D),
+                    backgroundColor: const Color(0xFFE8B653), // Matched yellow
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -384,38 +429,62 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Wrap(
-            children: [
-              _buildAvatarOptionTile(ctx, Icons.camera_alt, 'Take Photo', () async {
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () async {
+                Navigator.pop(ctx);
                 final Uint8List? pickedBytes = await _takePhotoBytes();
                 if (pickedBytes != null) {
                   onChanged(pickedBytes, null);
+                  setState(() {
+                    _avatarBytes = pickedBytes;
+                    _selectedIcon = null;
+                  });
                   ProfileService.instance.updateProfile(bytes: pickedBytes);
                 }
-              }),
-              _buildAvatarOptionTile(ctx, Icons.photo_library, 'Upload Image', () async {
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Upload Image'),
+              onTap: () async {
+                Navigator.pop(ctx);
                 final Uint8List? pickedBytes = await _pickImageBytes();
                 if (pickedBytes != null) {
                   onChanged(pickedBytes, null);
+                  setState(() {
+                    _avatarBytes = pickedBytes;
+                    _selectedIcon = null;
+                  });
                   ProfileService.instance.updateProfile(bytes: pickedBytes);
                 }
+              },
+            ),
+            _buildAvatarOptionTile(ctx, Icons.insert_emoticon, 'Choose Icon', () async {
+              final IconData? selected = await _showIconPicker(context);
+              if (selected != null) {
+                onChanged(null, selected);
+                setState(() {
+                  _avatarBytes = null;
+                  _selectedIcon = selected;
+                });
+                ProfileService.instance.updateProfile(icon: selected);
+              }
+            }),
+            if (currentAvatarBytes != null || currentSelectedIcon != null)
+              _buildAvatarOptionTile(ctx, Icons.refresh, 'Reset to Default', () {
+                onChanged(null, null);
+                setState(() {
+                  _avatarBytes = null;
+                  _selectedIcon = null;
+                });
+                ProfileService.instance.resetProfile();
               }),
-              _buildAvatarOptionTile(ctx, Icons.insert_emoticon, 'Choose Icon', () async {
-                final IconData? selected = await _showIconPicker(context);
-                if (selected != null) {
-                  onChanged(null, selected);
-                  ProfileService.instance.updateProfile(icon: selected);
-                }
-              }),
-              if (currentAvatarBytes != null || currentSelectedIcon != null)
-                _buildAvatarOptionTile(ctx, Icons.refresh, 'Reset to Default', () {
-                  onChanged(null, null);
-                  ProfileService.instance.resetProfile();
-                }),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -432,24 +501,37 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // --- PINASIMPLENG IMAGE PICKER PARA SA WEB/PHONE ---
   Future<Uint8List?> _pickImageBytes() async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 85);
-      if (file != null) return file.readAsBytes();
+      if (file != null) return await file.readAsBytes();
       return null;
     } catch (e) {
       return null;
     }
   }
 
+  // --- PINASIMPLENG CAMERA PICKER PARA SA WEB/PHONE ---
   Future<Uint8List?> _takePhotoBytes() async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? file = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200, imageQuality: 85);
-      if (file != null) return file.readAsBytes();
+      if (file != null) {
+        return await file.readAsBytes();
+      }
       return null;
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera error: $e', style: const TextStyle(fontSize: 13)),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
       return null;
     }
   }
@@ -498,10 +580,10 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14), // Pinaliit ang text
+      style: const TextStyle(fontSize: 14), 
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13), // Pinaliit ang hint
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13), 
         filled: true,
         fillColor: const Color(0xFFF9F9F9),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -532,6 +614,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 }
+
 
 // --- Panel 3: Security Page ---
 class SecuritySubPage extends StatefulWidget {
@@ -608,7 +691,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
           children: [
             const Text("Manage your account's safety and access.", style: TextStyle(color: Colors.grey, fontSize: 13)),
             const SizedBox(height: 32),
-            const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), // Mula 18 -> 16
+            const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
             
             _buildInputLabel("Current Password"),
@@ -693,7 +776,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.error_outline, size: 14, color: Colors.red), // Gumamit ng material icon para cleaner
+        const Icon(Icons.error_outline, size: 14, color: Colors.red), 
         const SizedBox(width: 8),
         const Expanded(child: Text("Password does not match", style: TextStyle(color: Colors.red, fontSize: 11))),
       ],
@@ -745,13 +828,13 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), // Mula 16 -> 14
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), 
                 const SizedBox(height: 2),
-                Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 11)), // Mula 12 -> 11
+                Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 11)), 
               ],
             ),
           ),
-          Switch(value: value, activeColor: Colors.white, activeTrackColor: const Color(0xFFFFB84D), onChanged: onChanged),
+          Switch(value: value, activeColor: Colors.white, activeTrackColor: const Color(0xFFE8B653), onChanged: onChanged), 
         ],
       ),
     );
@@ -771,7 +854,7 @@ PreferredSizeWidget _buildAppBar(BuildContext context, String title) {
       label: const Text('Back', style: TextStyle(color: Colors.black87, fontSize: 13)),
       style: TextButton.styleFrom(padding: const EdgeInsets.only(left: 20)),
     ),
-    title: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)), // Mula default 20 -> 16
+    title: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)), 
     centerTitle: true,
   );
 }
@@ -779,7 +862,7 @@ PreferredSizeWidget _buildAppBar(BuildContext context, String title) {
 Widget _buildInputLabel(String label) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 6, top: 12),
-    child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)), // Mula 14 -> 13
+    child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)), 
   );
 }
 
@@ -795,11 +878,11 @@ Widget _buildProfileTextField(
     controller: controller,
     obscureText: isPassword ? obscureText : false,
     onChanged: onChanged,
-    style: const TextStyle(fontSize: 14), // Fixed font size to 14
+    style: const TextStyle(fontSize: 14), 
     decoration: InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Adjusted padding
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
       suffixIcon: isPassword
           ? IconButton(
               onPressed: onToggle,
@@ -813,6 +896,10 @@ Widget _buildProfileTextField(
       filled: true,
       fillColor: const Color(0xFFF9F9F9),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE8B653), width: 1.5), 
+      ),
     ),
   );
 }
@@ -820,11 +907,11 @@ Widget _buildProfileTextField(
 Widget _buildActionButton(String text, VoidCallback onTap) {
   return SizedBox(
     width: double.infinity,
-    height: 48, // Mula 50 -> 48
+    height: 48, 
     child: ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFFB84D),
+        backgroundColor: const Color(0xFFE8B653), 
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

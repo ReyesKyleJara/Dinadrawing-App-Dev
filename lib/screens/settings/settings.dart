@@ -3,6 +3,32 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+/// Local ProfileService moved here so Settings owns the model used by avatar widgets.
+class ProfileService {
+  ProfileService._private();
+
+  static final ProfileService instance = ProfileService._private();
+
+  final ValueNotifier<Uint8List?> avatarBytes = ValueNotifier<Uint8List?>(null);
+  final ValueNotifier<IconData?> avatarIcon = ValueNotifier<IconData?>(null);
+  final ValueNotifier<String> name = ValueNotifier<String>('DiNaDrawing');
+  final ValueNotifier<String> username = ValueNotifier<String>('@dinadrawing');
+
+  void updateProfile({Uint8List? bytes, IconData? icon, String? newName, String? newUsername}) {
+    if (bytes != null) avatarBytes.value = bytes;
+    if (icon != null) avatarIcon.value = icon;
+    if (newName != null) name.value = newName;
+    if (newUsername != null) username.value = newUsername;
+  }
+
+  void resetProfile() {
+    avatarBytes.value = null;
+    avatarIcon.value = null;
+    name.value = 'DiNaDrawing';
+    username.value = '@dinadrawing';
+  }
+}
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -21,15 +47,24 @@ class _SettingsPageState extends State<SettingsPage> {
     Icons.face_2,
     Icons.face_3,
     Icons.face_4,
-    Icons.person,
-    Icons.person_2,
-    Icons.person_3,
-    Icons.person_4,
+    Icons.face_5,
+    Icons.face_6,
   ];
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // initialize local fields from shared service
+    final svc = ProfileService.instance;
+    _avatarBytes = svc.avatarBytes.value;
+    _selectedIcon = svc.avatarIcon.value;
+    _profileName = svc.name.value;
+    _profileUsername = svc.username.value;
   }
 
   @override
@@ -273,6 +308,13 @@ class _SettingsPageState extends State<SettingsPage> {
                         _profileName = trimmedName;
                         _profileUsername = '@$usernameCore';
                       });
+                      // update shared service so avatars update across app
+                      ProfileService.instance.updateProfile(
+                        bytes: _avatarBytes,
+                        icon: _selectedIcon,
+                        newName: _profileName,
+                        newUsername: _profileUsername,
+                      );
                       Navigator.pop(context);
                     }
                   },
@@ -314,7 +356,7 @@ class _SettingsPageState extends State<SettingsPage> {
       return CircleAvatar(
         radius: radius,
         backgroundColor: const Color(0xFFE0E0E0),
-        child: Icon(activeSelectedIcon, size: radius * 0.8, color: Colors.deepPurple),
+        child: Icon(activeSelectedIcon, size: radius * 0.8, color: Colors.black87),
       );
     }
 
@@ -340,6 +382,18 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Wrap(
           children: [
             ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final Uint8List? pickedBytes = await _takePhotoBytes();
+                if (pickedBytes != null) {
+                  onChanged(pickedBytes, null);
+                  ProfileService.instance.updateProfile(bytes: pickedBytes);
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('Upload Image'),
               onTap: () async {
@@ -347,6 +401,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 final Uint8List? pickedBytes = await _pickImageBytes();
                 if (pickedBytes != null) {
                   onChanged(pickedBytes, null);
+                  ProfileService.instance.updateProfile(bytes: pickedBytes);
                 }
               },
             ),
@@ -358,6 +413,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 final IconData? selected = await _showIconPicker(context);
                 if (selected != null) {
                   onChanged(null, selected);
+                  ProfileService.instance.updateProfile(icon: selected);
                 }
               },
             ),
@@ -367,6 +423,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: const Text('Reset to Default'),
                 onTap: () {
                   onChanged(null, null);
+                  ProfileService.instance.resetProfile();
                   Navigator.pop(ctx);
                 },
               ),
@@ -390,6 +447,19 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<Uint8List?> _takePhotoBytes() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? file = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200, imageQuality: 85);
+      if (file != null) {
+        return file.readAsBytes();
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<IconData?> _showIconPicker(BuildContext context) {
     return showModalBottomSheet<IconData>(
       context: context,
@@ -406,7 +476,7 @@ class _SettingsPageState extends State<SettingsPage> {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, childAspectRatio: 1, crossAxisSpacing: 8, mainAxisSpacing: 8),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1, crossAxisSpacing: 8, mainAxisSpacing: 8),
               itemCount: _iconOptions.length,
               itemBuilder: (context, index) {
                 final icon = _iconOptions[index];

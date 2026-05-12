@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../settings/settings.dart';
+import '../../navigation/main_wrapper.dart';
 import 'plan_model.dart';
 import 'archived_plans_page.dart';
 import 'deleted_plans_page.dart';
@@ -358,15 +360,30 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
           ],
         ),
         ClipOval(
-          child: Image.asset(
-            'images/user-avatar.png',
-            width: 38,
-            height: 38,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-              radius: 19,
-              backgroundColor: Colors.grey,
-              child: Icon(Icons.person, color: Colors.white, size: 16),
+          child: GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MainWrapper(initialIndex: 3))),
+            child: AnimatedBuilder(
+              animation: Listenable.merge([
+                ProfileService.instance.avatarBytes,
+                ProfileService.instance.avatarIcon,
+              ]),
+              builder: (context, _) {
+                final bytes = ProfileService.instance.avatarBytes.value;
+                final icon = ProfileService.instance.avatarIcon.value;
+
+                if (bytes != null) {
+                  return CircleAvatar(radius: 19, backgroundImage: MemoryImage(bytes));
+                }
+                if (icon != null) {
+                  return CircleAvatar(radius: 19, backgroundColor: Colors.grey[300], child: Icon(icon, size: 16, color: Colors.black));
+                }
+
+                return const CircleAvatar(
+                  radius: 19,
+                  backgroundColor: Color(0xFFE0E0E0),
+                  child: Icon(Icons.person, color: Colors.grey, size: 16),
+                );
+              },
             ),
           ),
         ),

@@ -27,16 +27,14 @@ flutter:
   uses-material-design: true
 
   assets:
-    - images/page1.png
-    - images/page2.png
-    - images/page3.png
-    - images/page4.png
-    - images/page5.png
-    - images/page6.png
-    - images/page7.png
-    - images/page8.png
+    - images/get-started-pg1.png
+    - images/get-started-pg2.png
+    - images/get-started-pg3.png
+    - images/get-started-pg4.png
+    - images/get-started-pg5.png
     - images/logo.png
     - images/wheel.png
+    - images/blitz.png
     - images/menu-myplans.png
     - images/grid.png
     - images/list.png

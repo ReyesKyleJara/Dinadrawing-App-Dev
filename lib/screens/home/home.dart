@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
                       child: _showWheel
                           ? Image.asset('images/wheel.png', key: const ValueKey('wheel'), width: 80, height: 80)
-                          : Image.asset('images/page3.png', key: const ValueKey('blitz'), width: 80, height: 80),
+                          : Image.asset('images/blitz.png', key: const ValueKey('blitz'), width: 80, height: 80),
                     ),
                   ],
                 ),

@@ -38,7 +38,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // Avatar state: either bytes for an image, or an icon selected by user
   Uint8List? _avatarBytes;
   IconData? _selectedIcon;
   String _profileName = 'DiNaDrawing';
@@ -60,7 +59,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    // initialize local fields from shared service
     final svc = ProfileService.instance;
     _avatarBytes = svc.avatarBytes.value;
     _selectedIcon = svc.avatarIcon.value;
@@ -79,26 +77,27 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
+              // Pinaliit mula 28 papuntang 24 (Consistent with sleek headers)
               const Text(
                 'Settings',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black),
               ),
               const SizedBox(height: 30),
               
-              // Profile Header (Clickable Avatar)
+              // Profile Header
               Center(
                 child: GestureDetector(
                   onTap: () => _showProfileBottomSheet(context),
                   child: Stack(
                     children: [
-                      _buildAvatarWidget(radius: 50),
+                      _buildAvatarWidget(radius: 45), // Pinaliit ng konti
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                          child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                          child: const Icon(Icons.edit, color: Colors.white, size: 14),
                         ),
                       ),
                     ],
@@ -111,21 +110,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     Text(
                       _profileName,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), // Mula 18 -> 16
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       _profileUsername,
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500), // Mula 14 -> 12
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
               // Account Settings
-              const Text("Account Settings", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 10),
+              const Text("Account Settings", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12)), // Mula default -> 12
+              const SizedBox(height: 8),
               _buildSettingsTile(
                 icon: Icons.person_outline, 
                 title: "Profile", 
@@ -137,11 +136,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SecuritySubPage()))
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
 
               // App Settings
-              const Text("App Settings", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 10),
+              const Text("App Settings", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12)),
+              const SizedBox(height: 8),
               _buildSettingsTile(
                 icon: Icons.notifications_none, 
                 title: "Notifications",
@@ -150,11 +149,12 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildSettingsTile(
                 icon: Icons.lightbulb_outline, 
                 title: "Appearance", 
-                trailing: const Text("Light", style: TextStyle(color: Colors.grey))
+                trailing: const Text("Light", style: TextStyle(color: Colors.grey, fontSize: 13))
               ),
 
               const SizedBox(height: 40),
               _buildLogOutButton(),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -168,15 +168,16 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: Colors.black, size: 20),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
-      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
+      leading: Icon(icon, color: Colors.black, size: 20), // Mas sleek na icon size
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)), // Pinaliit mula 16 -> 14
+      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
     );
   }
 
   Widget _buildLogOutButton() {
     return SizedBox(
       width: double.infinity,
+      height: 48, // Sleek button height
       child: OutlinedButton(
         onPressed: () {
           Navigator.pushAndRemoveUntil(
@@ -186,16 +187,15 @@ class _SettingsPageState extends State<SettingsPage> {
           );
         },
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFF5F5F5)),
-          padding: const EdgeInsets.symmetric(vertical: 15),
+          side: const BorderSide(color: Color(0xFFF0F0F0), width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: const Text("Log Out", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        child: const Text("Log Out", style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)), // Pinaliit mula default -> 14
       ),
     );
   }
 
-  // --- Panel 2: Profile Bottom Sheet with Left-Alignment & Validation ---
+  // --- Panel 2: Profile Bottom Sheet ---
   Future<void> _showProfileBottomSheet(BuildContext context) async {
     Uint8List? draftAvatarBytes = _avatarBytes;
     IconData? draftSelectedIcon = _selectedIcon;
@@ -210,7 +210,7 @@ class _SettingsPageState extends State<SettingsPage> {
         builder: (context, setBottomSheetState) => Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -269,7 +269,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             child: Container(
                               padding: const EdgeInsets.all(4),
                               decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                              child: const Icon(Icons.edit, color: Colors.white, size: 14),
+                              child: const Icon(Icons.edit, color: Colors.white, size: 12),
                             ),
                           ),
                         ),
@@ -278,7 +278,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
               _buildInputLabel("Name"),
               _buildValidatedTextField(
                 draftNameController,
@@ -294,7 +294,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 48,
                 child: ElevatedButton(
                   onPressed: () {
                     final trimmedName = draftNameController.text.trim();
@@ -304,7 +304,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (trimmedName.isEmpty || usernameCore.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text("Please fill in all fields"),
+                          content: Text("Please fill in all fields", style: TextStyle(fontSize: 13)),
                           backgroundColor: Colors.redAccent,
                         ),
                       );
@@ -315,7 +315,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         _profileName = trimmedName;
                         _profileUsername = '@$usernameCore';
                       });
-                      // update shared service so avatars update across app
                       ProfileService.instance.updateProfile(
                         bytes: _avatarBytes,
                         icon: _selectedIcon,
@@ -332,7 +331,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   child: const Text(
                     "Save Profile",
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -374,7 +373,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // Show avatar options and update only draft state while bottom sheet is open
   void _showAvatarOptions(
     BuildContext context, {
     required Uint8List? currentAvatarBytes,
@@ -384,59 +382,53 @@ class _SettingsPageState extends State<SettingsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Take Photo'),
-              onTap: () async {
-                Navigator.pop(ctx);
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Wrap(
+            children: [
+              _buildAvatarOptionTile(ctx, Icons.camera_alt, 'Take Photo', () async {
                 final Uint8List? pickedBytes = await _takePhotoBytes();
                 if (pickedBytes != null) {
                   onChanged(pickedBytes, null);
                   ProfileService.instance.updateProfile(bytes: pickedBytes);
                 }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Upload Image'),
-              onTap: () async {
-                Navigator.pop(ctx);
+              }),
+              _buildAvatarOptionTile(ctx, Icons.photo_library, 'Upload Image', () async {
                 final Uint8List? pickedBytes = await _pickImageBytes();
                 if (pickedBytes != null) {
                   onChanged(pickedBytes, null);
                   ProfileService.instance.updateProfile(bytes: pickedBytes);
                 }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.insert_emoticon),
-              title: const Text('Choose Icon'),
-              onTap: () async {
-                Navigator.pop(ctx);
+              }),
+              _buildAvatarOptionTile(ctx, Icons.insert_emoticon, 'Choose Icon', () async {
                 final IconData? selected = await _showIconPicker(context);
                 if (selected != null) {
                   onChanged(null, selected);
                   ProfileService.instance.updateProfile(icon: selected);
                 }
-              },
-            ),
-            if (currentAvatarBytes != null || currentSelectedIcon != null)
-              ListTile(
-                leading: const Icon(Icons.refresh),
-                title: const Text('Reset to Default'),
-                onTap: () {
+              }),
+              if (currentAvatarBytes != null || currentSelectedIcon != null)
+                _buildAvatarOptionTile(ctx, Icons.refresh, 'Reset to Default', () {
                   onChanged(null, null);
                   ProfileService.instance.resetProfile();
-                  Navigator.pop(ctx);
-                },
-              ),
-          ],
+                }),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAvatarOptionTile(BuildContext context, IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, size: 20, color: Colors.black87),
+      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
     );
   }
 
@@ -444,12 +436,9 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 85);
-      if (file != null) {
-        return file.readAsBytes();
-      }
+      if (file != null) return file.readAsBytes();
       return null;
     } catch (e) {
-      // ignore errors for now
       return null;
     }
   }
@@ -458,9 +447,7 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? file = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200, imageQuality: 85);
-      if (file != null) {
-        return file.readAsBytes();
-      }
+      if (file != null) return file.readAsBytes();
       return null;
     } catch (e) {
       return null;
@@ -472,31 +459,26 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Choose an icon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1, crossAxisSpacing: 8, mainAxisSpacing: 8),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, childAspectRatio: 1, crossAxisSpacing: 12, mainAxisSpacing: 12),
               itemCount: _iconOptions.length,
               itemBuilder: (context, index) {
                 final icon = _iconOptions[index];
                 return GestureDetector(
-                  onTap: () {
-                    Navigator.pop(ctx, icon);
-                  },
-                  child: Center(
-                    child: CircleAvatar(
-                      radius: 28,
-                      backgroundColor: const Color(0xFFF0F0F0),
-                      child: Icon(icon, size: 28, color: Colors.black87),
-                    ),
+                  onTap: () => Navigator.pop(ctx, icon),
+                  child: CircleAvatar(
+                    backgroundColor: const Color(0xFFF5F5F5),
+                    child: Icon(icon, size: 24, color: Colors.black87),
                   ),
                 );
               },
@@ -516,15 +498,14 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      style: const TextStyle(fontSize: 14), // Pinaliit ang text
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13), // Pinaliit ang hint
         filled: true,
         fillColor: const Color(0xFFF9F9F9),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }
@@ -537,17 +518,16 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         prefixText: '@',
-        prefixStyle: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
+        prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
         hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
         filled: true,
         fillColor: const Color(0xFFF9F9F9),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }
@@ -576,10 +556,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
   bool get _hasSpecial => RegExp(r'[^A-Za-z0-9]').hasMatch(newPasswordController.text);
   bool get _passwordsMatch => newPasswordController.text.isNotEmpty &&
       newPasswordController.text == confirmPasswordController.text;
-  bool get _allPasswordCriteriaValid =>
-      _hasLength &&
-      _hasLetterAndNumber &&
-      _hasSpecial;
+  bool get _allPasswordCriteriaValid => _hasLength && _hasLetterAndNumber && _hasSpecial;
 
   @override
   void dispose() {
@@ -598,24 +575,14 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
     final currentPassword = currentPasswordController.text.trim();
 
     if (currentPassword.isEmpty) {
-      setState(() {
-        _currentPasswordError = "Please enter your current password";
-      });
+      setState(() => _currentPasswordError = "Please enter your current password");
       return;
     }
 
-    if (!_allPasswordCriteriaValid) {
-      return;
-    }
-
-    if (!_passwordsMatch) {
-      return;
-    }
+    if (!_allPasswordCriteriaValid || !_passwordsMatch) return;
 
     if (currentPassword != "correctpassword") {
-      setState(() {
-        _currentPasswordError = "Current password is incorrect";
-      });
+      setState(() => _currentPasswordError = "Current password is incorrect");
       return;
     }
 
@@ -625,7 +592,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
 
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
+      SnackBar(content: Text(message, style: const TextStyle(fontSize: 13)), backgroundColor: color),
     );
   }
 
@@ -639,10 +606,11 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Manage your account's safety and access.", style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 30),
-            const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 20),
+            const Text("Manage your account's safety and access.", style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 32),
+            const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), // Mula 18 -> 16
+            const SizedBox(height: 16),
+            
             _buildInputLabel("Current Password"),
             _buildProfileTextField(
               currentPasswordController,
@@ -650,22 +618,16 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
               isPassword: true,
               obscureText: !_currentPasswordVisible,
               onChanged: (_) {
-                if (_currentPasswordError != null) {
-                  setState(() {
-                    _currentPasswordError = null;
-                  });
-                }
+                if (_currentPasswordError != null) setState(() => _currentPasswordError = null);
               },
               onToggle: () => setState(() => _currentPasswordVisible = !_currentPasswordVisible),
             ),
             if (_currentPasswordError != null)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _currentPasswordError!,
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                ),
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(_currentPasswordError!, style: const TextStyle(color: Colors.red, fontSize: 11)),
               ),
+              
             _buildInputLabel("New Password"),
             _buildProfileTextField(
               newPasswordController,
@@ -675,14 +637,13 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
               onChanged: (_) => setState(() {}),
               onToggle: () => setState(() => _newPasswordVisible = !_newPasswordVisible),
             ),
+            
             const SizedBox(height: 12),
-            const Text(
-              "Password must have atleast:",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-            const SizedBox(height: 10),
+            const Text("Password must have atleast:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+            const SizedBox(height: 8),
             _buildPasswordCriteria(),
-            const SizedBox(height: 20),
+            
+            const SizedBox(height: 16),
             _buildInputLabel("Confirm New Password"),
             _buildProfileTextField(
               confirmPasswordController,
@@ -692,10 +653,11 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
               onChanged: (_) => setState(() {}),
               onToggle: () => setState(() => _confirmPasswordVisible = !_confirmPasswordVisible),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             if (_confirmPasswordValidationRequested && !_passwordsMatch)
               _buildPasswordMatchValidationRow(false),
-            const SizedBox(height: 10),
+              
+            const SizedBox(height: 32),
             _buildActionButton("Change Password", _changePassword),
           ],
         ),
@@ -715,53 +677,26 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
 
   Widget _buildValidationRow(String label, bool valid) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            valid ? Icons.check_circle : Icons.close,
-            size: 18,
-            color: valid ? Colors.green : Colors.grey,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: valid ? Colors.green : Colors.grey,
-                fontSize: 12,
-              ),
-            ),
-          ),
+          Icon(valid ? Icons.check_circle : Icons.close, size: 14, color: valid ? Colors.green : Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(child: Text(label, style: TextStyle(color: valid ? Colors.green : Colors.grey, fontSize: 11))),
         ],
       ),
     );
   }
 
   Widget _buildPasswordMatchValidationRow(bool match) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Image.asset(
-            'images/warning sign.png',
-            width: 18,
-            height: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              "Password does not match",
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.error_outline, size: 14, color: Colors.red), // Gumamit ng material icon para cleaner
+        const SizedBox(width: 8),
+        const Expanded(child: Text("Password does not match", style: TextStyle(color: Colors.red, fontSize: 11))),
+      ],
     );
   }
 }
@@ -789,26 +724,11 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Manage your alerts to stay focused and organized.", style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 30),
-            _buildSwitchTile(
-              "Email reminders",
-              "Receive plan updates in your inbox.",
-              emailReminders,
-              (value) => setState(() => emailReminders = value),
-            ),
-            _buildSwitchTile(
-              "Push notifications",
-              "Get real-time alerts on your device.",
-              pushNotifications,
-              (value) => setState(() => pushNotifications = value),
-            ),
-            _buildSwitchTile(
-              "In-app alerts",
-              "See notifications while using the app.",
-              inAppAlerts,
-              (value) => setState(() => inAppAlerts = value),
-            ),
+            const Text("Manage your alerts to stay focused and organized.", style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 32),
+            _buildSwitchTile("Email reminders", "Receive plan updates in your inbox.", emailReminders, (v) => setState(() => emailReminders = v)),
+            _buildSwitchTile("Push notifications", "Get real-time alerts on your device.", pushNotifications, (v) => setState(() => pushNotifications = v)),
+            _buildSwitchTile("In-app alerts", "See notifications while using the app.", inAppAlerts, (v) => setState(() => inAppAlerts = v)),
           ],
         ),
       ),
@@ -825,12 +745,13 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), // Mula 16 -> 14
+                const SizedBox(height: 2),
+                Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 11)), // Mula 12 -> 11
               ],
             ),
           ),
-          Switch(value: value, activeThumbColor: const Color(0xFFFFB84D), onChanged: onChanged),
+          Switch(value: value, activeColor: Colors.white, activeTrackColor: const Color(0xFFFFB84D), onChanged: onChanged),
         ],
       ),
     );
@@ -843,19 +764,22 @@ PreferredSizeWidget _buildAppBar(BuildContext context, String title) {
   return AppBar(
     backgroundColor: Colors.white,
     elevation: 0,
-    leading: IconButton(
-      icon: const Icon(Icons.arrow_back_ios, size: 16, color: Color(0xFFFFB84D)),
+    leadingWidth: 80,
+    leading: TextButton.icon(
       onPressed: () => Navigator.pop(context),
+      icon: const Icon(Icons.arrow_back_ios, size: 14, color: Colors.black87),
+      label: const Text('Back', style: TextStyle(color: Colors.black87, fontSize: 13)),
+      style: TextButton.styleFrom(padding: const EdgeInsets.only(left: 20)),
     ),
-    title: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-    centerTitle: false,
+    title: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)), // Mula default 20 -> 16
+    centerTitle: true,
   );
 }
 
 Widget _buildInputLabel(String label) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 8, top: 16),
-    child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+    padding: const EdgeInsets.only(bottom: 6, top: 12),
+    child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)), // Mula 14 -> 13
   );
 }
 
@@ -871,14 +795,18 @@ Widget _buildProfileTextField(
     controller: controller,
     obscureText: isPassword ? obscureText : false,
     onChanged: onChanged,
+    style: const TextStyle(fontSize: 14), // Fixed font size to 14
     decoration: InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Adjusted padding
       suffixIcon: isPassword
           ? IconButton(
               onPressed: onToggle,
               icon: Icon(
                 obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                size: 20,
+                size: 18,
+                color: Colors.grey,
               ),
             )
           : null,
@@ -892,7 +820,7 @@ Widget _buildProfileTextField(
 Widget _buildActionButton(String text, VoidCallback onTap) {
   return SizedBox(
     width: double.infinity,
-    height: 50,
+    height: 48, // Mula 50 -> 48
     child: ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
@@ -900,7 +828,7 @@ Widget _buildActionButton(String text, VoidCallback onTap) {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: Text(text, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+      child: Text(text, style: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold)),
     ),
   );
 }

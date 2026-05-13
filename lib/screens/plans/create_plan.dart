@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -601,6 +602,32 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildGoogleMap() {
+    // If running on web, avoid instantiating GoogleMap because the
+    // Google Maps JS API may not be available (causes "maps is undefined").
+    // Show a friendly placeholder and instructions instead.
+    if (kIsWeb) {
+      return Container(
+        color: const Color(0xFFF9F9F9),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.map, size: 48, color: Colors.grey),
+                SizedBox(height: 12),
+                Text(
+                  'Map unavailable on Web.\nAdd the Google Maps JS API key to web/index.html or run on a device.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final fallbackTarget = selectedLocation ?? const LatLng(14.5995, 120.9842);
 
     return GoogleMap(

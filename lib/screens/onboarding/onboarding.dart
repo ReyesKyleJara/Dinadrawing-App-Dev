@@ -212,7 +212,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('images/get-started-pg5.png', height: 24, width: 24), 
               const SizedBox(width: 8),
               const Text(
                 "DiNaDrawing",

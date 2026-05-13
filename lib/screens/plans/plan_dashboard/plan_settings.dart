@@ -151,7 +151,6 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                          color: Colors.black.withValues(alpha: 0.3), // Dark translucent background for visibility
                       ),
                       const SizedBox(width: 16),
                       const Text("Upload Custom Image", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),

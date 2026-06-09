@@ -2,161 +2,383 @@ import 'package:dinadrawing/screens/plans/plan_dashboard/create_poll.dart';
 import 'package:dinadrawing/screens/plans/plan_dashboard/create_task.dart';
 import 'package:flutter/material.dart';
 
+import '../../../services/plan_service.dart';
 
 class FeedTab extends StatefulWidget {
-  const FeedTab({super.key});
+  final int planId;
+
+  const FeedTab({
+    super.key,
+    required this.planId,
+  });
 
   @override
   State<FeedTab> createState() => _FeedTabState();
 }
 
 class _FeedTabState extends State<FeedTab> {
-  // Ang dynamic memory ng feed natin!
-  List<Map<String, dynamic>> posts = [
-    // Default initial post para may laman
-    {
-      'type': 'text',
-      'name': 'andrea',
-      'time': 'Mar 1, 2026 • 2:18 PM',
-      'content': 'agahan!!!',
-    }
-  ];
+  List<Map<String, dynamic>> posts = [];
 
-  // --- COMPOSER MODAL ACTIONS ---
+  bool isLoadingPosts = true;
+  bool isSubmittingPost = false;
 
-  void _openMainComposer() {
-    TextEditingController textCtrl = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // For almost full-screen modal
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        // Set height to about 90% of screen to match image style
-        height: MediaQuery.of(context).size.height * 0.9,
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
-          children: [
-            // --- HEADER ROW (Close | Title | Post) ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.close, color: Colors.black, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const Text(
-                  "Create Post",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                TextButton(
-                  onPressed: () {
-                    if (textCtrl.text.isNotEmpty) {
-                      setState(() {
-                        posts.insert(0, {
-                          'type': 'text',
-                          'name': 'You',
-                          'time': 'Just now',
-                          'content': textCtrl.text,
-                        });
-                      });
-                      Navigator.pop(context); // Close modal
-                    }
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFF5B335), // The yellow from your design
-                    padding: EdgeInsets.zero,
-                  ),
-                  child: const Text("Post", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                ),
-              ],
-            ),
-            const Divider(),
-            
-            // --- CONTENT AREA (Avatar | Input) ---
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.grey,
-                  child: Icon(Icons.person, color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Andrea", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    Text("Just Now", style: TextStyle(color: Colors.grey[500], fontSize: 11)),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TextField(
-                controller: textCtrl,
-                maxLines: null, // Makes it expand as you type
-                keyboardType: TextInputType.multiline,
-                decoration: const InputDecoration(
-                  hintText: "What's on your mind?",
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: InputBorder.none,
-                ),
-                style: const TextStyle(fontSize: 14),
-              ),
-            ),
-            
-            const Divider(),
-
-            // --- FOOTER (Add to post title | Selectable options) ---
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Add to your post",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            _buildComposerOption(
-              Icons.image_outlined, 
-              "Post photo", 
-              () { 
-                Navigator.pop(context); // Close composer first
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Photo upload coming soon!")));
-              }
-            ),
-            _buildComposerOption(
-              Icons.bar_chart, 
-              "Create Poll", 
-              () { 
-                Navigator.pop(context); // Close composer first
-                _openCreatePoll(); // Then open poll screen
-              }
-            ),
-            _buildComposerOption(
-              Icons.content_paste, 
-              "Create Task list", 
-              () { 
-                Navigator.pop(context); // Close composer first
-                _openCreateTask(); // Then open task screen
-              }
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
   }
 
-  // --- Dynamic Route Handlers ---
+  Future<void> _loadPosts() async {
+    setState(() {
+      isLoadingPosts = true;
+    });
+
+    try {
+      final result = await PlanService.getPlanPosts(widget.planId);
+      final postsData = result['posts'];
+
+      if (!mounted) return;
+
+      setState(() {
+        posts = postsData is List
+            ? postsData.map((item) {
+                final post = item as Map<String, dynamic>;
+
+                return {
+                  'id': post['id'],
+                  'type': 'text',
+                  'name': _getUserDisplayName(post),
+                  'time': _formatPostTime(post['created_at']?.toString()),
+                  'content': post['content']?.toString() ?? '',
+                };
+              }).toList()
+            : [];
+
+        isLoadingPosts = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingPosts = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load posts: $e')),
+      );
+    }
+  }
+
+  String _getUserDisplayName(Map<String, dynamic> post) {
+    final user = post['user'];
+
+    if (user is Map<String, dynamic>) {
+      final name = user['name']?.toString();
+      final username = user['username']?.toString();
+
+      if (name != null && name.trim().isNotEmpty) {
+        return name;
+      }
+
+      if (username != null && username.trim().isNotEmpty) {
+        return username;
+      }
+    }
+
+    return 'User';
+  }
+
+  String _formatPostTime(String? rawDate) {
+    if (rawDate == null || rawDate.isEmpty) {
+      return '';
+    }
+
+    try {
+      final date = DateTime.parse(rawDate).toLocal();
+
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+
+      final hour = date.hour > 12
+          ? date.hour - 12
+          : date.hour == 0
+              ? 12
+              : date.hour;
+
+      final minute = date.minute.toString().padLeft(2, '0');
+      final period = date.hour >= 12 ? 'PM' : 'AM';
+
+      return '${months[date.month - 1]} ${date.day}, ${date.year} • $hour:$minute $period';
+    } catch (_) {
+      return rawDate;
+    }
+  }
+
+  void _openMainComposer() {
+  final TextEditingController textCtrl = TextEditingController();
+  final BuildContext parentContext = context;
+
+  showModalBottomSheet(
+    context: parentContext,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(20),
+      ),
+    ),
+    builder: (sheetContext) {
+      bool modalIsSubmitting = false;
+
+      return StatefulBuilder(
+        builder: (sheetContext, setModalState) {
+          Future<void> submitPost() async {
+            final content = textCtrl.text.trim();
+
+            if (content.isEmpty || modalIsSubmitting) {
+              return;
+            }
+
+            setModalState(() {
+              modalIsSubmitting = true;
+            });
+
+            try {
+              final result = await PlanService.createPlanPost(
+                planId: widget.planId,
+                content: content,
+              );
+
+              if (!mounted) return;
+
+              if (result['post'] != null) {
+                Navigator.of(sheetContext).pop();
+
+                await _loadPosts();
+
+                if (!mounted) return;
+
+                ScaffoldMessenger.of(parentContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post created successfully!'),
+                  ),
+                );
+              } else {
+                final message =
+                    result['message']?.toString() ?? 'Failed to create post.';
+
+                if (!mounted) return;
+
+                setModalState(() {
+                  modalIsSubmitting = false;
+                });
+
+                ScaffoldMessenger.of(parentContext).showSnackBar(
+                  SnackBar(content: Text(message)),
+                );
+              }
+            } catch (e) {
+              if (!mounted) return;
+
+              setModalState(() {
+                modalIsSubmitting = false;
+              });
+
+              ScaffoldMessenger.of(parentContext).showSnackBar(
+                SnackBar(content: Text('Connection error: $e')),
+              );
+            }
+          }
+
+          return Container(
+            height: MediaQuery.of(sheetContext).size.height * 0.9,
+            padding: EdgeInsets.fromLTRB(
+              24,
+              16,
+              24,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                      onPressed: modalIsSubmitting
+                          ? null
+                          : () => Navigator.of(sheetContext).pop(),
+                    ),
+                    const Text(
+                      "Create Post",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: modalIsSubmitting ? null : submitPost,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFF5B335),
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: modalIsSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFF5B335),
+                              ),
+                            )
+                          : const Text(
+                              "Post",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+
+                const Divider(),
+
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Colors.grey,
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "You",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "Just Now",
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                Expanded(
+                  child: TextField(
+                    controller: textCtrl,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    decoration: const InputDecoration(
+                      hintText: "What's on your mind?",
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: InputBorder.none,
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+
+                const Divider(),
+
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Add to your post",
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                _buildComposerOption(
+                  Icons.image_outlined,
+                  "Post photo",
+                  () {
+                    Navigator.of(sheetContext).pop();
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      const SnackBar(
+                        content: Text("Photo upload coming soon!"),
+                      ),
+                    );
+                  },
+                ),
+                _buildComposerOption(
+                  Icons.bar_chart,
+                  "Create Poll",
+                  () {
+                    Navigator.of(sheetContext).pop();
+                    _openCreatePoll();
+                  },
+                ),
+                _buildComposerOption(
+                  Icons.content_paste,
+                  "Create Task list",
+                  () {
+                    Navigator.of(sheetContext).pop();
+                    _openCreateTask();
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  ).whenComplete(() {
+    textCtrl.dispose();
+
+    if (mounted) {
+      setState(() {
+        isSubmittingPost = false;
+      });
+    }
+  });
+}
 
   void _openCreatePoll() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreatePoll()),
     );
+
     if (result != null) {
       setState(() {
         posts.insert(0, {
@@ -174,6 +396,7 @@ class _FeedTabState extends State<FeedTab> {
       context,
       MaterialPageRoute(builder: (context) => const CreateTask()),
     );
+
     if (result != null) {
       setState(() {
         posts.insert(0, {
@@ -188,31 +411,43 @@ class _FeedTabState extends State<FeedTab> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        // FIXED: Shrunk this box by 2px on all sides for cleaner look
-        _buildSimplifiedCreatePostBox(),
-        const SizedBox(height: 24),
-        
-        // Render dynamic posts
-        ...posts.map((post) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _buildPostWrapper(post),
-          );
-        }).toList(),
-      ],
+    return RefreshIndicator(
+      onRefresh: _loadPosts,
+      color: const Color(0xFFF5B335),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _buildSimplifiedCreatePostBox(),
+          const SizedBox(height: 10),
+
+          if (isLoadingPosts)
+            const Padding(
+              padding: EdgeInsets.only(top: 60),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFF5B335),
+                ),
+              ),
+            )
+          else if (posts.isEmpty)
+            _buildEmptyPostState()
+          else
+            ...posts.map((post) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildPostWrapper(post),
+              );
+            }),
+        ],
+      ),
     );
   }
 
-  // --- THE NEW MINIMALIST CLEAN POST BOX (Base design Turn 24) ---
-
   Widget _buildSimplifiedCreatePostBox() {
     return GestureDetector(
-      onTap: _openMainComposer, // Tap anywhere inside the box opens the expanded modal
+      onTap: _openMainComposer,
       child: Container(
-        // FIXED: Reduced padding to horizontal:16, vertical:12 for Turn 24 clean look
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -224,7 +459,11 @@ class _FeedTabState extends State<FeedTab> {
             const CircleAvatar(
               radius: 18,
               backgroundColor: Colors.grey,
-              child: Icon(Icons.person, color: Colors.white, size: 20),
+              child: Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -236,8 +475,13 @@ class _FeedTabState extends State<FeedTab> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 alignment: Alignment.centerLeft,
-                // Matches grey text in simplified box Turn 24
-                child: const Text("Type something..", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                child: const Text(
+                  "Type something..",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
               ),
             ),
           ],
@@ -246,11 +490,42 @@ class _FeedTabState extends State<FeedTab> {
     );
   }
 
-  // --- UI Helpers ---
+  Widget _buildEmptyPostState() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 60),
+      child: Column(
+        children: [
+          Icon(
+            Icons.forum_outlined,
+            size: 42,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No posts yet',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Start the conversation by creating the first post.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildComposerOption(IconData icon, String text, VoidCallback onTap) {
     return InkWell(
-      onTap: onTap,
+      onTap: isSubmittingPost ? null : onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
@@ -259,18 +534,24 @@ class _FeedTabState extends State<FeedTab> {
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                text, 
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
+                text,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Colors.grey,
+            ),
           ],
         ),
       ),
     );
   }
-
-  // --- POST RENDERERS ---
 
   Widget _buildPostWrapper(Map<String, dynamic> post) {
     return Container(
@@ -283,7 +564,6 @@ class _FeedTabState extends State<FeedTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header (Profile & Time)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -298,8 +578,20 @@ class _FeedTabState extends State<FeedTab> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(post['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      Text(post['time'], style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                      Text(
+                        post['name']?.toString() ?? 'User',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        post['time']?.toString() ?? '',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -309,48 +601,66 @@ class _FeedTabState extends State<FeedTab> {
           ),
           const SizedBox(height: 16),
 
-          // Dynamic Body
           if (post['type'] == 'text') _buildTextBody(post),
           if (post['type'] == 'poll') _buildPollBody(post),
           if (post['type'] == 'task') _buildTaskBody(post),
 
           const SizedBox(height: 16),
 
-          // Footer Actions
           Row(
             children: [
               Icon(Icons.favorite_border, size: 18, color: Colors.grey[600]),
               const SizedBox(width: 4),
-              Text("Like", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(
+                "Like",
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
               const SizedBox(width: 24),
-              Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey[600]),
+              Icon(
+                Icons.chat_bubble_outline,
+                size: 18,
+                color: Colors.grey[600],
+              ),
               const SizedBox(width: 4),
-              Text("Comment", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(
+                "Comment",
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTextBody(Map<String, dynamic> post) {
-    return Text(post['content'], style: const TextStyle(fontSize: 14));
+    return Text(
+      post['content']?.toString() ?? '',
+      style: const TextStyle(fontSize: 14),
+    );
   }
 
   Widget _buildPollBody(Map<String, dynamic> post) {
     List<String> options = List<String>.from(post['options']);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(post['question'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        Text(
+          post['question'],
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFFFDECB2), // Light yellow pill
+            color: const Color(0xFFFDECB2),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text("Ends in ${post['endsOn']}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+          child: Text(
+            "Ends in ${post['endsOn']}",
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+          ),
         ),
         const SizedBox(height: 16),
         ...options.map((opt) {
@@ -363,36 +673,61 @@ class _FeedTabState extends State<FeedTab> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.radio_button_unchecked, size: 18, color: Colors.grey),
+                const Icon(
+                  Icons.radio_button_unchecked,
+                  size: 18,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 12),
-                Text(opt, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(
+                  opt,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           );
-        }).toList(),
+        }),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("0 total votes", style: TextStyle(fontSize: 11, color: Colors.grey)),
-            if (post['anonymous'])
+            const Text(
+              "0 total votes",
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+            if (post['anonymous'] == true)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
-                child: const Text("Anonymous", style: TextStyle(fontSize: 10, color: Colors.grey)),
-              )
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  "Anonymous",
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ),
           ],
-        )
+        ),
       ],
     );
   }
 
   Widget _buildTaskBody(Map<String, dynamic> post) {
     List<String> tasks = List<String>.from(post['tasks']);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Center(child: Text("TASKS", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
+        const Center(
+          child: Text(
+            "TASKS",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+        ),
         const SizedBox(height: 16),
         ...tasks.map((task) {
           return Padding(
@@ -402,33 +737,50 @@ class _FeedTabState extends State<FeedTab> {
               children: [
                 Text(task, style: const TextStyle(fontSize: 14)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5B335),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text("@mention", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    "@mention",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
           );
-        }).toList(),
+        }),
         const SizedBox(height: 8),
         Row(
           children: [
             const Icon(Icons.add, size: 14, color: Colors.grey),
             const SizedBox(width: 8),
-            const Expanded(child: Text("Add a new task...", style: TextStyle(fontSize: 13, color: Colors.grey))),
+            const Expanded(
+              child: Text(
+                "Add a new task...",
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: const Color(0xFFF5B335),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text("@mention", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              child: const Text(
+                "@mention",
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
-        )
+        ),
       ],
     );
   }

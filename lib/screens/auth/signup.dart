@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
-// BAGONG IMPORT DIN DITO PAPUNTA SA MAIN WRAPPER
 import '../../navigation/main_wrapper.dart';
+import '../../services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,26 +17,91 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
-  void _submitSignUp() {
-    if (_nameController.text.isEmpty ||
-        _usernameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.length < 8) {
+  Future<void> _submitSignUp() async {
+    print('BACKEND SIGNUP FUNCTION IS RUNNING');
+
+    final name = _nameController.text.trim();
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (name.isEmpty || username.isEmpty || email.isEmpty || password.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please complete all fields (Password min. 8 chars)")),
+        const SnackBar(
+          content: Text("Please complete all fields (Password min. 8 chars)"),
+        ),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Sign Up Success!")),
-    );
-    
-    // DINIRETSO NA DIN NATIN SA MAIN WRAPPER AFTER SUCCESSFUL SIGNUP!
-    Navigator.pushReplacement(
-      context, 
-      MaterialPageRoute(builder: (_) => const MainWrapper()),
-    );
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await AuthService.register(
+        name: name,
+        username: username,
+        email: email,
+        password: password,
+      );
+
+      print('SIGNUP RESULT: $result');
+
+      if (!mounted) return;
+
+      if (result.containsKey('token')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Sign Up Success!")),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainWrapper()),
+        );
+      } else {
+        String errorMessage = result['message'] ?? "Sign up failed";
+
+        if (result['errors'] != null && result['errors'] is Map<String, dynamic>) {
+          final errors = result['errors'] as Map<String, dynamic>;
+
+          if (errors.isNotEmpty) {
+            final firstError = errors.values.first;
+
+            if (firstError is List && firstError.isNotEmpty) {
+              errorMessage = firstError.first.toString();
+            }
+          }
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Connection error: $e")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -54,55 +119,110 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: IconButton(
                   padding: EdgeInsets.zero,
                   alignment: Alignment.centerLeft,
-                  icon: const Icon(Icons.arrow_back_ios, size: 18, color: Colors.black87),
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    size: 18,
+                    color: Colors.black87,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
+
               const SizedBox(height: 12),
-              
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('images/logo.png', height: 28, width: 28, errorBuilder: (context, error, stackTrace) => const Icon(Icons.calendar_today, size: 28)),
+                  Image.asset(
+                    'images/logo.png',
+                    height: 28,
+                    width: 28,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.calendar_today, size: 28);
+                    },
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     "DiNaDrawing",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -0.5),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 32),
 
               const Text(
                 "Sign Up",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.black),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
               ),
+
               const SizedBox(height: 12),
-              
+
               const Text(
                 "Create an account to start planning\nwith your barkada!",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black54, height: 1.4),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
               ),
-              
+
               const SizedBox(height: 40),
 
-              _buildLabeledField("Name", "your_name", _nameController, false),
+              _buildLabeledField(
+                label: "Name",
+                hint: "your_name",
+                controller: _nameController,
+                isPassword: false,
+              ),
+
               const SizedBox(height: 20),
-              
-              _buildLabeledField("Username", "username_123", _usernameController, false),
+
+              _buildLabeledField(
+                label: "Username",
+                hint: "username_123",
+                controller: _usernameController,
+                isPassword: false,
+              ),
+
               const SizedBox(height: 20),
-              
-              _buildLabeledField("Email", "example@gmail.com", _emailController, false),
+
+              _buildLabeledField(
+                label: "Email",
+                hint: "example@gmail.com",
+                controller: _emailController,
+                isPassword: false,
+              ),
+
               const SizedBox(height: 20),
-              
-              _buildLabeledField("Password", "passwordmo12345678", _passwordController, true),
-              
+
+              _buildLabeledField(
+                label: "Password",
+                hint: "passwordmo12345678",
+                controller: _passwordController,
+                isPassword: true,
+              ),
+
               const SizedBox(height: 8),
+
               const Text(
                 "Must be at least 8 characters.",
-                style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
 
               const SizedBox(height: 32),
@@ -111,13 +231,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _submitSignUp,
+                  onPressed: _isLoading ? null : _submitSignUp,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8B653), 
+                    backgroundColor: const Color(0xFFE8B653),
+                    disabledBackgroundColor: Colors.grey.shade300,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text("Sign Up", style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Text(
+                          "Sign Up",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
 
@@ -125,12 +264,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               Row(
                 children: [
-                  Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+                  Expanded(
+                    child: Divider(
+                      color: Colors.grey.shade300,
+                      thickness: 1,
+                    ),
+                  ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("or continue with", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      "or continue with",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                  Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+                  Expanded(
+                    child: Divider(
+                      color: Colors.grey.shade300,
+                      thickness: 1,
+                    ),
+                  ),
                 ],
               ),
 
@@ -140,20 +296,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Google Sign-In coming soon!")));
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Google Sign-In coming soon!"),
+                            ),
+                          );
+                        },
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    side: BorderSide(color: Colors.grey.shade300, width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: BorderSide(
+                      color: Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.g_mobiledata, color: Colors.black, size: 28),
-                      const SizedBox(width: 8),
-                      const Text("Continue with Google", style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600)),
+                      Icon(
+                        Icons.g_mobiledata,
+                        color: Colors.black,
+                        size: 28,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "Continue with Google",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -164,18 +342,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Already have an account? ", style: TextStyle(fontSize: 14, color: Colors.black54)),
+                  const Text(
+                    "Already have an account? ",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
+                  ),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                    },
+                    onTap: _isLoading
+                        ? null
+                        : () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
+                            );
+                          },
                     child: const Text(
                       "Log In",
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFE8B653)),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE8B653),
+                      ),
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 24),
             ],
           ),
@@ -184,40 +380,72 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildLabeledField(String label, String hint, TextEditingController controller, bool isPassword) {
+  Widget _buildLabeledField({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required bool isPassword,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
         ),
+
         const SizedBox(height: 8),
+
         TextField(
           controller: controller,
           obscureText: isPassword ? _obscurePassword : false,
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            hintStyle: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 14,
+            ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: Colors.grey.shade300,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: Colors.grey.shade300,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE8B653), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFFE8B653),
+                width: 1.5,
+              ),
             ),
             suffixIcon: isPassword
                 ? IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.grey,
+                    ),
                     onPressed: () {
                       setState(() {
                         _obscurePassword = !_obscurePassword;

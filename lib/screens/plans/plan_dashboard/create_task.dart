@@ -130,7 +130,7 @@ class _CreateTaskScreenState extends State<CreateTask> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: const Color(0xFFF5B335),
           ),
         ],

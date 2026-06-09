@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import '../../services/plan_service.dart';
 import 'plan_dashboard/plan_dashboard.dart';
 
 class CreatePlanPage extends StatefulWidget {
@@ -29,6 +30,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   _SelectionSource selectionSource = _SelectionSource.none;
   bool isMapExpanded = false;
   bool isSearchingLocations = false;
+  bool isSavingPlan = false;
   List<_LocationResult> locationSuggestions = [];
   Timer? _locationSearchDebounce;
   StateSetter? _expandedMapSetState;
@@ -42,8 +44,6 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     mapController?.dispose();
     super.dispose();
   }
-
-  // --- Logic Methods ---
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -63,7 +63,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
         );
       },
     );
-    if (picked != null) setState(() => selectedDate = picked);
+
+    if (picked != null) {
+      setState(() => selectedDate = picked);
+    }
   }
 
   Future<void> _selectTime(BuildContext context) async {
@@ -72,6 +75,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
         const yellow = Color(0xFFFFB84D);
+
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -79,7 +83,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
               secondary: yellow,
               onPrimary: Colors.black,
             ),
-            timePickerTheme: TimePickerThemeData(
+            timePickerTheme: const TimePickerThemeData(
               dayPeriodColor: yellow,
               dayPeriodTextColor: Colors.black,
               dialHandColor: yellow,
@@ -90,11 +94,15 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
         );
       },
     );
-    if (picked != null) setState(() => selectedTime = picked);
+
+    if (picked != null) {
+      setState(() => selectedTime = picked);
+    }
   }
 
   Future<void> _searchLocation(String query) async {
     final trimmedQuery = query.trim();
+
     if (trimmedQuery.isEmpty) {
       _showSnackBar("Please enter a place to search", Colors.orangeAccent);
       return;
@@ -102,6 +110,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
     try {
       final locationResult = await _searchLocationWithFallback(trimmedQuery);
+
       if (locationResult == null) {
         _showSnackBar("No places found", Colors.orangeAccent);
         return;
@@ -121,6 +130,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     _locationSearchDebounce?.cancel();
 
     final trimmedQuery = query.trim();
+
     if (trimmedQuery.length < 2) {
       setState(() {
         locationSuggestions = [];
@@ -141,6 +151,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
     try {
       final suggestions = await _fetchLocationSuggestions(query);
+
       if (!mounted) return;
 
       setState(() {
@@ -149,6 +160,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       });
     } catch (_) {
       if (!mounted) return;
+
       setState(() {
         locationSuggestions = [];
         isSearchingLocations = false;
@@ -174,28 +186,40 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     }
 
     final decoded = jsonDecode(response.body);
+
     if (decoded is! List) {
       return [];
     }
 
-    return decoded.map<_LocationResult>((item) {
-      final locationData = item as Map<String, dynamic>;
-      final latitude = double.tryParse(locationData['lat']?.toString() ?? '');
-      final longitude = double.tryParse(locationData['lon']?.toString() ?? '');
-      final displayName = locationData['display_name']?.toString() ?? query;
+    return decoded
+        .map<_LocationResult>((item) {
+          final locationData = item as Map<String, dynamic>;
+          final latitude =
+              double.tryParse(locationData['lat']?.toString() ?? '');
+          final longitude =
+              double.tryParse(locationData['lon']?.toString() ?? '');
+          final displayName =
+              locationData['display_name']?.toString() ?? query;
 
-      if (latitude == null || longitude == null) {
-        return _LocationResult(
-          location: const LatLng(14.5995, 120.9842),
-          label: displayName,
-        );
-      }
+          if (latitude == null || longitude == null) {
+            return _LocationResult(
+              location: const LatLng(14.5995, 120.9842),
+              label: displayName,
+            );
+          }
 
-      return _LocationResult(
-        location: LatLng(latitude, longitude),
-        label: displayName,
-      );
-    }).where((result) => result.location.latitude != 14.5995 || result.location.longitude != 120.9842 || result.label.isNotEmpty).toList();
+          return _LocationResult(
+            location: LatLng(latitude, longitude),
+            label: displayName,
+          );
+        })
+        .where(
+          (result) =>
+              result.location.latitude != 14.5995 ||
+              result.location.longitude != 120.9842 ||
+              result.label.isNotEmpty,
+        )
+        .toList();
   }
 
   Future<_LocationResult?> _searchLocationWithFallback(String query) async {
@@ -217,6 +241,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       }
 
       final decoded = jsonDecode(response.body);
+
       if (decoded is! List || decoded.isEmpty) {
         return null;
       }
@@ -255,8 +280,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
+
         if (decoded is Map<String, dynamic>) {
           final displayName = decoded['display_name']?.toString();
+
           if (displayName != null && displayName.isNotEmpty) {
             return displayName;
           }
@@ -307,14 +334,19 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Future<void> _handleMapTap(LatLng tappedLocation) async {
-    await _updateSelectedLocation(tappedLocation, source: _SelectionSource.tap);
+    await _updateSelectedLocation(
+      tappedLocation,
+      source: _SelectionSource.tap,
+    );
   }
 
   Future<void> _selectSuggestion(_LocationResult suggestion) async {
     locationController.text = suggestion.label;
+
     setState(() {
       locationSuggestions = [];
     });
+
     await _updateSelectedLocation(
       suggestion.location,
       label: suggestion.label,
@@ -334,7 +366,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
             return Dialog(
               insetPadding: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: SizedBox(
                 height: MediaQuery.of(dialogContext).size.height * 0.75,
                 width: double.infinity,
@@ -347,7 +381,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                           const Expanded(
                             child: Text(
                               'Pick a location',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           IconButton(
@@ -382,43 +419,107 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     }
   }
 
-  void _handleSavePlan() {
+  Future<void> _handleSavePlan() async {
     if (planNameController.text.trim().isEmpty) {
       _showSnackBar("Please enter a plan name", Colors.redAccent);
       return;
-    } 
-    // Date and time are optional now. Only plan name is required.
-    String formattedDate;
-    if (selectedDate != null) {
-      formattedDate = DateFormat('MMMM yyyy').format(selectedDate!);
-    } else {
-      formattedDate = "Date TBD";
     }
-    
-    String locationText = locationController.text.isNotEmpty 
-        ? locationController.text 
-        : "Location TBD";
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PlanDashboardScreen(
-          planName: planNameController.text.trim(),
-          planDate: formattedDate,
-          planLocation: locationText,
-        ),
-      ),
-    );
-    
-    _showSnackBar("Plan created successfully!", Colors.green);
+
+    setState(() {
+      isSavingPlan = true;
+    });
+
+    try {
+      final planDateForApi = selectedDate == null
+          ? null
+          : DateFormat('yyyy-MM-dd').format(selectedDate!);
+
+      final planTimeForApi = selectedTime == null
+          ? null
+          : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}';
+
+      final result = await PlanService.createPlan(
+        title: planNameController.text.trim(),
+        description: descriptionController.text.trim().isEmpty
+            ? null
+            : descriptionController.text.trim(),
+        planDate: planDateForApi,
+        planTime: planTimeForApi,
+        location: locationController.text.trim().isEmpty
+            ? null
+            : locationController.text.trim(),
+        latitude: selectedLocation?.latitude,
+        longitude: selectedLocation?.longitude,
+        status: 'Plan Ongoing',
+      );
+
+      print('CREATE PLAN RESULT: $result');
+
+      if (!mounted) return;
+
+      if (result.containsKey('plan')) {
+        final plan = result['plan'] as Map<String, dynamic>;
+
+        _showSnackBar("Plan created successfully!", Colors.green);
+
+        final createdPlanId = plan['id'];
+
+        if (createdPlanId == null) {
+          _showSnackBar(
+            'Plan created, but unable to open dashboard. Missing plan ID.',
+            Colors.redAccent,
+          );
+          return;
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PlanDashboardScreen(
+              planId: createdPlanId is int
+                  ? createdPlanId
+                  : int.parse(createdPlanId.toString()),
+            ),
+          ),
+        );
+      } else {
+        String errorMessage = result['message'] ?? 'Failed to create plan.';
+
+        if (result['errors'] != null &&
+            result['errors'] is Map<String, dynamic>) {
+          final errors = result['errors'] as Map<String, dynamic>;
+
+          if (errors.isNotEmpty) {
+            final firstError = errors.values.first;
+
+            if (firstError is List && firstError.isNotEmpty) {
+              errorMessage = firstError.first.toString();
+            }
+          }
+        }
+
+        _showSnackBar(errorMessage, Colors.redAccent);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar("Connection error: $e", Colors.redAccent);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSavingPlan = false;
+        });
+      }
+    }
   }
 
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+      ),
     );
   }
-
-  // --- Main Build Method ---
 
   @override
   Widget build(BuildContext context) {
@@ -434,14 +535,17 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
               const SizedBox(height: 24),
               _buildHeader(),
               const SizedBox(height: 24),
-
               _buildFieldLabel("Plan Name (required)"),
               _buildTextField("Enter a plan name", planNameController),
               const SizedBox(height: 24),
-
+              _buildFieldLabel("Description"),
+              _buildTextField(
+                "Enter a short description",
+                descriptionController,
+              ),
+              const SizedBox(height: 24),
               _buildDateTimeFields(context),
               const SizedBox(height: 24),
-
               _buildFieldLabel("Location"),
               _buildTextField(
                 "Search for a location",
@@ -459,10 +563,8 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                 _buildSuggestionList(),
               ],
               const SizedBox(height: 12),
-              
               _buildMapPlaceholder(),
               const SizedBox(height: 32),
-              
               _buildSaveButton(),
               const SizedBox(height: 40),
             ],
@@ -472,11 +574,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     );
   }
 
-  // --- UI Helper Methods ---
-
   Widget _buildBackButton(BuildContext context) {
     return TextButton.icon(
-      onPressed: () => Navigator.pop(context),
+      onPressed: isSavingPlan ? null : () => Navigator.pop(context),
       style: TextButton.styleFrom(
         padding: EdgeInsets.zero,
         alignment: Alignment.centerLeft,
@@ -492,12 +592,12 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Create Plan", 
+          "Create Plan",
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 4),
         Text(
-          "Fill in the details to start planning", 
+          "Fill in the details to start planning",
           style: TextStyle(color: Colors.grey),
         ),
       ],
@@ -513,7 +613,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             children: [
               _buildFieldLabel("Date (optional)"),
               _buildPickerBox(
-                selectedDate == null ? "Select Date" : DateFormat('MMM dd, yyyy').format(selectedDate!),
+                selectedDate == null
+                    ? "Select Date"
+                    : DateFormat('MMM dd, yyyy').format(selectedDate!),
                 Icons.calendar_today,
                 () => _selectDate(context),
               ),
@@ -527,7 +629,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             children: [
               _buildFieldLabel("Time (optional)"),
               _buildPickerBox(
-                selectedTime == null ? "Select Time" : selectedTime!.format(context),
+                selectedTime == null
+                    ? "Select Time"
+                    : selectedTime!.format(context),
                 Icons.access_time,
                 () => _selectTime(context),
               ),
@@ -561,11 +665,18 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                 color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -578,8 +689,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      selectedLocationLabel == null ? 'Tap map to pin' : 'Pin selected',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      selectedLocationLabel == null
+                          ? 'Tap map to pin'
+                          : 'Pin selected',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -593,7 +709,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
               heroTag: 'expand-map',
               backgroundColor: Colors.white,
               onPressed: _showExpandedMap,
-              child: const Icon(Icons.open_in_full, color: Colors.black87),
+              child: const Icon(
+                Icons.open_in_full,
+                color: Colors.black87,
+              ),
             ),
           ),
         ],
@@ -602,18 +721,15 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildGoogleMap() {
-    // If running on web, avoid instantiating GoogleMap because the
-    // Google Maps JS API may not be available (causes "maps is undefined").
-    // Show a friendly placeholder and instructions instead.
     if (kIsWeb) {
       return Container(
         color: const Color(0xFFF9F9F9),
-        child: Center(
+        child: const Center(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(Icons.map, size: 48, color: Colors.grey),
                 SizedBox(height: 12),
                 Text(
@@ -633,6 +749,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     return GoogleMap(
       onMapCreated: (controller) {
         mapController = controller;
+
         if (selectedLocation != null) {
           controller.moveCamera(
             CameraUpdate.newCameraPosition(
@@ -657,24 +774,46 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _handleSavePlan,
+      onPressed: isSavingPlan ? null : _handleSavePlan,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFFFB84D),
+        disabledBackgroundColor: Colors.grey.shade300,
         minimumSize: const Size(double.infinity, 55),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         elevation: 0,
       ),
-      child: const Text(
-        'Save & Continue', 
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
-      ),
+      child: isSavingPlan
+          ? const SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.black,
+              ),
+            )
+          : const Text(
+              'Save & Continue',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
     );
   }
 
   Widget _buildFieldLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
     );
   }
 
@@ -687,16 +826,29 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }) {
     return TextField(
       controller: controller,
-      textInputAction: TextInputAction.search,
+      textInputAction:
+          icon != null ? TextInputAction.search : TextInputAction.done,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: icon != null ? Icon(icon, color: Colors.grey, size: 20) : null,
+        prefixIcon: icon != null
+            ? Icon(
+                icon,
+                color: Colors.grey,
+                size: 20,
+              )
+            : null,
         filled: true,
         fillColor: const Color(0xFFF9F9F9),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
@@ -708,7 +860,11 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFEEEEEE)),
         boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
         ],
       ),
       child: ListView.separated(
@@ -718,9 +874,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final suggestion = locationSuggestions[index];
+
           return ListTile(
             dense: true,
-            leading: const Icon(Icons.place_outlined, color: Color(0xFFFFB84D)),
+            leading: const Icon(
+              Icons.place_outlined,
+              color: Color(0xFFFFB84D),
+            ),
             title: Text(
               suggestion.label,
               maxLines: 2,
@@ -734,21 +894,35 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildPickerBox(String text, IconData icon, VoidCallback onTap) {
-    bool isSelected = !text.contains("Select");
+    final bool isSelected = !text.contains("Select");
+
     return InkWell(
-      onTap: onTap,
+      onTap: isSavingPlan ? null : onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
+        ),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9F9F9), 
-          borderRadius: BorderRadius.circular(12)
+          color: const Color(0xFFF9F9F9),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: isSelected ? const Color(0xFFFFB84D) : Colors.grey),
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? const Color(0xFFFFB84D) : Colors.grey,
+            ),
             const SizedBox(width: 10),
-            Text(text, style: TextStyle(color: isSelected ? Colors.black : Colors.grey, fontSize: 14)),
+            Text(
+              text,
+              style: TextStyle(
+                color: isSelected ? Colors.black : Colors.grey,
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
@@ -762,5 +936,8 @@ class _LocationResult {
   final LatLng location;
   final String label;
 
-  const _LocationResult({required this.location, required this.label});
+  const _LocationResult({
+    required this.location,
+    required this.label,
+  });
 }

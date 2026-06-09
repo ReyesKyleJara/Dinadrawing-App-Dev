@@ -1,34 +1,50 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Para sa clipboard/copy function
+import 'package:flutter/services.dart';
+import '../../../services/plan_service.dart';
 
 class MembersPage extends StatefulWidget {
-  const MembersPage({super.key});
+  final int planId; 
+
+  const MembersPage({super.key, required this.planId});
 
   @override
   State<MembersPage> createState() => _MembersPageState();
 }
 
-class MemberData {
-  final String name;
-  final String? role;
-  final IconData avatarIcon;
-
-  MemberData({required this.name, this.role, required this.avatarIcon});
-}
-
 class _MembersPageState extends State<MembersPage> {
-  // Initial list of members based on your screenshot
-  List<MemberData> members = [
-    MemberData(name: "Andrea", role: "Plan Creator", avatarIcon: Icons.face_3),
-    MemberData(name: "Samir", avatarIcon: Icons.face),
-    MemberData(name: "Lena", avatarIcon: Icons.face_4),
-    MemberData(name: "Carlos", avatarIcon: Icons.face_2),
-  ];
+  List<dynamic> members = [];
+  String inviteCode = '...';
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMembers();
+  }
+
+  Future<void> _fetchMembers() async {
+    try {
+      final result = await PlanService.getPlanById(widget.planId);
+      
+      if (mounted) {
+        setState(() {
+          // Kukunin natin ang members at invite code galing sa database
+          members = result['plan']['members'] ?? [];
+          inviteCode = result['plan']['invite_code'] ?? 'No Code';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB), // Light off-white background
+      backgroundColor: const Color(0xFFF9F9FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -42,7 +58,7 @@ class _MembersPageState extends State<MembersPage> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0), // Consistent 24px margin
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -57,22 +73,24 @@ class _MembersPageState extends State<MembersPage> {
               ),
               const SizedBox(height: 32),
 
-              // Expanded ListView para sa mga members
+              // LOADING STATE O LIST NG MEMBERS
               Expanded(
-                child: ListView.builder(
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    final member = members[index];
-                    return _buildMemberItem(member, index);
-                  },
-                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFF5B335)))
+                    : ListView.builder(
+                        itemCount: members.length,
+                        itemBuilder: (context, index) {
+                          final member = members[index];
+                          return _buildMemberItem(member, index);
+                        },
+                      ),
               ),
 
-              // Invite People Button sa bottom
+              // Invite People Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _showInviteDialog,
+                  onPressed: isLoading ? null : _showInviteDialog,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF5B335),
                     elevation: 0,
@@ -83,11 +101,7 @@ class _MembersPageState extends State<MembersPage> {
                   ),
                   child: const Text(
                     "Invite People",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
               ),
@@ -98,8 +112,12 @@ class _MembersPageState extends State<MembersPage> {
     );
   }
 
-  // --- UI Helper: Member Row with 3-dot Menu ---
-  Widget _buildMemberItem(MemberData member, int index) {
+  Widget _buildMemberItem(Map<String, dynamic> member, int index) {
+    // Kinukuha ang details mula sa JSON ng Laravel
+    final name = member['name'] ?? member['username'] ?? 'Unknown';
+    final role = member['pivot']?['role'] == 'creator' ? 'Plan Creator' : 'Member';
+    
+    // Gagamit tayo ng simpleng avatar kung wala pang profile picture feature
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
@@ -107,7 +125,7 @@ class _MembersPageState extends State<MembersPage> {
           CircleAvatar(
             radius: 22,
             backgroundColor: Colors.grey.shade200,
-            child: Icon(member.avatarIcon, color: Colors.black87),
+            child: const Icon(Icons.person, color: Colors.black87),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -115,21 +133,22 @@ class _MembersPageState extends State<MembersPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  member.name,
+                  name,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
-                if (member.role != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    member.role!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                const SizedBox(height: 2),
+                Text(
+                  role,
+                  style: TextStyle(
+                    fontSize: 12, 
+                    color: role == 'Plan Creator' ? const Color(0xFFF5B335) : Colors.grey.shade600,
+                    fontWeight: role == 'Plan Creator' ? FontWeight.bold : FontWeight.normal,
                   ),
-                ]
+                ),
               ],
             ),
           ),
           
-          // 3-Dot Popup Menu
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_horiz, color: Colors.grey),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -137,31 +156,25 @@ class _MembersPageState extends State<MembersPage> {
             color: Colors.white,
             elevation: 4,
             onSelected: (value) {
-              if (value == 'remove') {
-                setState(() {
-                  members.removeAt(index); // Functionality to remove member
-                });
-              } else if (value == 'message') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Messaging ${member.name} coming soon!")),
-                );
-              }
+               ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("$value action coming soon!")),
+               );
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
+              const PopupMenuItem<String>(
                 value: 'message',
                 child: Row(
-                  children: const [
+                  children: [
                     Icon(Icons.chat_bubble_outline, size: 18, color: Colors.black87),
                     SizedBox(width: 12),
                     Text('Message', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
-              PopupMenuItem<String>(
+              const PopupMenuItem<String>(
                 value: 'remove',
                 child: Row(
-                  children: const [
+                  children: [
                     Icon(Icons.remove_circle_outline, size: 18, color: Colors.black87),
                     SizedBox(width: 12),
                     Text('Remove Member', style: TextStyle(fontSize: 14)),
@@ -175,7 +188,6 @@ class _MembersPageState extends State<MembersPage> {
     );
   }
 
-  // --- UI Helper: Invite Dialog ---
   void _showInviteDialog() {
     showDialog(
       context: context,
@@ -204,12 +216,11 @@ class _MembersPageState extends State<MembersPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Share the plan code or link to invite others.",
+                  "Share the plan code to invite others.",
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 24),
 
-                // Event Code Section
                 const Text("EVENT CODE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
                 const SizedBox(height: 8),
                 Container(
@@ -221,13 +232,13 @@ class _MembersPageState extends State<MembersPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "4MN3BL",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                      Text(
+                        inviteCode, // TOTOONG INVITE CODE MULA SA DATABASE!
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                       ),
                       InkWell(
                         onTap: () {
-                          Clipboard.setData(const ClipboardData(text: "4MN3BL"));
+                          Clipboard.setData(ClipboardData(text: inviteCode));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Code copied!")));
                         },
                         child: Container(
@@ -239,37 +250,6 @@ class _MembersPageState extends State<MembersPage> {
                           child: const Text("COPY", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD6901A))),
                         ),
                       )
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Share Invite Link Section
-                const Text("OR SHARE INVITE LINK", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "https://localhost/DINADRAWING/join...",
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          Clipboard.setData(const ClipboardData(text: "https://localhost/DINADRAWING/join/4MN3BL"));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Link copied!")));
-                        },
-                        child: const Icon(Icons.copy, size: 16, color: Color(0xFFF5B335)),
-                      ),
                     ],
                   ),
                 ),

@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
-import 'feed_tab.dart';
+import '../../myplans/plan_model.dart';
+import '../../../services/plan_service.dart';
 import 'budget_tab.dart';
-import 'members_page.dart';     // Connection sa Members
-import 'plan_settings.dart';    // Bagong connection sa Settings!
+import 'members_page.dart';
+import 'plan_settings.dart';
+import 'feed_tab.dart';
 
 class PlanDashboardScreen extends StatefulWidget {
-  final String planName;
-  final String planDate;
-  final String planLocation;
+  final int planId;
 
   const PlanDashboardScreen({
     super.key,
-    required this.planName,
-    required this.planDate,
-    required this.planLocation,
+    required this.planId,
   });
 
   @override
@@ -21,91 +19,134 @@ class PlanDashboardScreen extends StatefulWidget {
 }
 
 class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
-  bool isFeedActive = true; 
+  bool isFeedActive = true;
+
+  Plan? selectedPlan;
+  bool isLoadingPlan = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSelectedPlan();
+  }
+
+  Future<void> _loadSelectedPlan() async {
+    try {
+      final result = await PlanService.getPlanById(widget.planId);
+
+      if (!mounted) return;
+
+      final planData = result['plan'];
+
+      if (planData == null) {
+        setState(() {
+          errorMessage = result['message']?.toString() ?? 'Plan not found.';
+          isLoadingPlan = false;
+        });
+        return;
+      }
+
+      setState(() {
+        selectedPlan = Plan.fromJson(planData as Map<String, dynamic>);
+        isLoadingPlan = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = 'Failed to load plan: $e';
+        isLoadingPlan = false;
+      });
+    }
+  }
+
+  String _getPlanDateLocationText(Plan plan) {
+    final hasDate = plan.date.trim().isNotEmpty;
+    final hasLocation = plan.location.trim().isNotEmpty;
+
+    if (hasDate && hasLocation) {
+      return '${plan.date} • ${plan.location}';
+    }
+
+    if (hasDate) {
+      return plan.date;
+    }
+
+    if (hasLocation) {
+      return plan.location;
+    }
+
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Light grey background
-      body: Column(
-        children: [
-          _buildBlueHeader(context),
-          
-          // The Custom Toggle Tab (Feed / Budget)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Container(
-              height: 45,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isFeedActive = true),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isFeedActive ? const Color(0xFFF2B73F) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Feed",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isFeedActive ? Colors.black : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isFeedActive = false),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: !isFeedActive ? const Color(0xFFF2B73F) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Budget",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: !isFeedActive ? Colors.black : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    if (isLoadingPlan) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF8F9FA),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFF2B73F),
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage != null || selectedPlan == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4A78D6),
+          foregroundColor: Colors.white,
+          title: const Text('Plan Dashboard'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              errorMessage ?? 'Unable to load plan.',
+              textAlign: TextAlign.center,
             ),
           ),
+        ),
+      );
+    }
 
-          // Main Content Area seamlessly switching between files
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Column(
+        children: [
+          _buildBannerHeader(context),
+          _buildTabSwitcher(),
           Expanded(
-            child: isFeedActive ? const FeedTab() : const BudgetTab(),
+            child: isFeedActive
+                ? FeedTab(planId: widget.planId)
+                : const BudgetTab(),
           ),
         ],
       ),
     );
   }
 
-  // --- UI Helper for the Header ---
+  Widget _buildBannerHeader(BuildContext context) {
+    final plan = selectedPlan!;
+    final bannerColor = Plan.parseColor(plan.bannerColor);
+    final dateLocationText = _getPlanDateLocationText(plan);
 
-  Widget _buildBlueHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF4A78D6), // The vibrant blue from your design
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+      padding: const EdgeInsets.only(
+        top: 58,
+        left: 24,
+        right: 24,
+        bottom: 28,
+      ),
+      decoration: BoxDecoration(
+        color: bannerColor,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(30),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,46 +157,184 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context), // Goes back to previous screen
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.black87,
+                ),
+                onPressed: () => Navigator.pop(context),
               ),
               Row(
                 children: [
-                  // BUTTON PARA SA MEMBERS
                   IconButton(
-                    icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
+                    icon: const Icon(
+                      Icons.person_add_alt_1,
+                      color: Colors.black87,
+                    ),
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const MembersPage()),
+                        MaterialPageRoute(
+                          builder: (context) => MembersPage(planId: widget.planId),
+                        ),
                       );
-                    }, 
+                    },
                   ),
-                  // BUTTON PARA SA SETTINGS
                   IconButton(
-                    icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      color: Colors.black87,
+                    ),
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const PlanSettingsPage()),
-                      );
-                    }, 
+                        MaterialPageRoute(
+                          builder: (context) => PlanSettingsPage(planId: widget.planId),
+                        ),
+                      ).then((updated) {
+                        // REFRESH DATA KAPAG NAG-SAVE SA SETTINGS AT BUMALIK DITO
+                        if (updated == true) {
+                          setState(() {
+                            isLoadingPlan = true;
+                          });
+                          _loadSelectedPlan();
+                        }
+                      });
+                    },
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 30),
           Text(
-            widget.planName,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+            plan.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              color: Colors.black87,
+              height: 1.08,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            "${widget.planDate} • ${widget.planLocation}",
-            style: const TextStyle(fontSize: 14, color: Colors.white70),
-          ),
+          if (dateLocationText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              dateLocationText,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black.withValues(alpha: 0.68),
+                height: 1.25,
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildTabSwitcher() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Container(
+        height: 45,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => isFeedActive = true),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isFeedActive
+                        ? const Color(0xFFF2B73F)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Feed",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isFeedActive ? Colors.black : Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => isFeedActive = false),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: !isFeedActive
+                        ? const Color(0xFFF2B73F)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Budget",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: !isFeedActive ? Colors.black : Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyFeedState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.forum_outlined,
+              size: 46,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'No posts yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Posts from this plan will appear here once the posting feature is added.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import '../settings/settings.dart';
+
 import '../../navigation/main_wrapper.dart';
+import '../../services/auth_service.dart';
 import '../../services/plan_service.dart';
 import '../plans/plan_dashboard/plan_dashboard.dart';
+import '../settings/settings.dart';
+import 'archived_plans.dart';
+import 'deleted_plans.dart';
 import 'plan_model.dart';
-import 'archived_plans_page.dart';
-import 'deleted_plans_page.dart';
 
 class MyPlansScreen extends StatefulWidget {
   const MyPlansScreen({super.key});
@@ -19,14 +21,12 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   bool _isPlansWithMeExpanded = true;
   bool _isDetailedView = true;
   bool _isLoadingPlans = true;
+  bool _isProcessingAction = false;
+
+  int? _currentUserId;
 
   List<Plan> _plansByMe = [];
   List<Plan> _plansWithMe = [];
-
-  final List<Plan> _archivedPlansByMe = [];
-  final List<Plan> _archivedPlansWithMe = [];
-  final List<Plan> _deletedPlansByMe = [];
-  final List<Plan> _deletedPlansWithMe = [];
 
   @override
   void initState() {
@@ -35,31 +35,22 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   }
 
   Future<void> _loadPlans() async {
-    setState(() {
-      _isLoadingPlans = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoadingPlans = true;
+      });
+    }
 
     try {
+      final currentUser = await AuthService.getCurrentUser();
       final result = await PlanService.getPlans();
-
-      final plansByMeData = result['plans_by_me'];
-      final plansWithMeData = result['plans_with_me'];
 
       if (!mounted) return;
 
       setState(() {
-        _plansByMe = plansByMeData is List
-            ? plansByMeData
-                .map((item) => Plan.fromJson(item as Map<String, dynamic>))
-                .toList()
-            : [];
-
-        _plansWithMe = plansWithMeData is List
-            ? plansWithMeData
-                .map((item) => Plan.fromJson(item as Map<String, dynamic>))
-                .toList()
-            : [];
-
+        _currentUserId = _parseInt(currentUser?['id']);
+        _plansByMe = _parsePlans(result['plans_by_me']);
+        _plansWithMe = _parsePlans(result['plans_with_me']);
         _isLoadingPlans = false;
       });
     } catch (e) {
@@ -69,30 +60,49 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
         _isLoadingPlans = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load plans: $e")),
-      );
+      _showSnackBar('Failed to load plans: $e');
     }
+  }
+
+  List<Plan> _parsePlans(dynamic raw) {
+    if (raw is! List) return [];
+
+    return raw
+        .whereType<Map>()
+        .map((item) => Plan.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
+
+  bool _isAdmin(Plan plan) {
+    return _currentUserId != null && plan.adminId == _currentUserId;
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _openPlanDashboard(Plan plan) {
     if (plan.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to open plan. Missing plan ID.'),
-        ),
-      );
+      _showSnackBar('Unable to open plan. Missing plan ID.');
       return;
     }
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PlanDashboardScreen(
-          planId: plan.id!,
-        ),
+        builder: (_) => PlanDashboardScreen(planId: plan.id!),
       ),
-    );
+    ).then((_) => _loadPlans());
   }
 
   void _toggleExpansion(String section) {
@@ -105,241 +115,158 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     });
   }
 
-  List<Plan> _plansForSection(String sectionId) {
-    if (sectionId == 'plansByMe') return _plansByMe;
-    if (sectionId == 'plansWithMe') return _plansWithMe;
-    if (sectionId == 'archivedPlansByMe') return _archivedPlansByMe;
-    if (sectionId == 'archivedPlansWithMe') return _archivedPlansWithMe;
-    if (sectionId == 'deletedPlansByMe') return _deletedPlansByMe;
-    return _deletedPlansWithMe;
-  }
-
-  List<Plan> _archivedPlansForSection(String sectionId) {
-    if (sectionId == 'plansByMe' ||
-        sectionId == 'archivedPlansByMe' ||
-        sectionId == 'deletedPlansByMe') {
-      return _archivedPlansByMe;
-    }
-
-    return _archivedPlansWithMe;
-  }
-
-  List<Plan> _deletedPlansForSection(String sectionId) {
-    if (sectionId == 'plansByMe' ||
-        sectionId == 'archivedPlansByMe' ||
-        sectionId == 'deletedPlansByMe') {
-      return _deletedPlansByMe;
-    }
-
-    return _deletedPlansWithMe;
-  }
-
-  void _archivePlan(String sectionId, Plan plan) {
-    final sourcePlans = _plansForSection(sectionId);
-    final archivedPlans = _archivedPlansForSection(sectionId);
-
-    setState(() {
-      sourcePlans.remove(plan);
-      _deletedPlansByMe.remove(plan);
-      _deletedPlansWithMe.remove(plan);
-      archivedPlans.insert(0, plan);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${plan.title} archived')),
-    );
-  }
-
-  void _restoreArchivedPlan(String sectionId, Plan plan) {
-    final archivedPlans = _archivedPlansForSection(sectionId);
-    final sourcePlans =
-        sectionId == 'plansWithMe' ? _plansWithMe : _plansByMe;
-
-    setState(() {
-      archivedPlans.remove(plan);
-      sourcePlans.add(plan);
-    });
-  }
-
-  void _moveArchivedPlanToDeleted(String sectionId, Plan plan) {
-    final archivedPlans = _archivedPlansForSection(sectionId);
-    final deletedPlans = _deletedPlansForSection(sectionId);
-
-    setState(() {
-      archivedPlans.remove(plan);
-      deletedPlans.insert(0, plan);
-    });
-  }
-
-  void _restoreDeletedPlan(String sectionId, Plan plan) {
-    final deletedPlans = _deletedPlansForSection(sectionId);
-    final sourcePlans =
-        sectionId == 'plansWithMe' ? _plansWithMe : _plansByMe;
-
-    setState(() {
-      deletedPlans.remove(plan);
-      sourcePlans.add(plan);
-    });
-  }
-
-  Future<void> _confirmDeletePlan(String sectionId, Plan plan) async {
-    final shouldDelete = await _showCustomDialog(
-      context,
-      title: 'Delete Plan',
-      content: 'Delete "${plan.title}"? This cannot be undone.',
-      cancelText: 'Cancel',
-      confirmText: 'Delete',
-      confirmColor: Colors.red.shade400,
-    );
-
-    if (shouldDelete == true) {
-      if (!mounted) return;
-
-      final sourcePlans = _plansForSection(sectionId);
-      final deletedPlans = _deletedPlansForSection(sectionId);
-
-      setState(() {
-        sourcePlans.remove(plan);
-        _archivedPlansByMe.remove(plan);
-        _archivedPlansWithMe.remove(plan);
-        deletedPlans.insert(0, plan);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${plan.title} deleted')),
-      );
-    }
-  }
-
-  Future<bool?> _showCustomDialog(
-    BuildContext context, {
+  Future<bool?> _showConfirmDialog({
     required String title,
     required String content,
-    required String cancelText,
     required String confirmText,
     required Color confirmColor,
   }) {
     return showDialog<bool>(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                content,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        backgroundColor: Colors.grey.shade100,
-                      ),
-                      child: Text(
-                        cancelText,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: confirmColor,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        confirmText,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
+        content: Text(
+          content,
+          style: const TextStyle(
+            color: Colors.black87,
+            height: 1.35,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: confirmColor,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              confirmText,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _runPlanAction(Future<void> Function() action) async {
+    if (_isProcessingAction) return;
+
+    setState(() {
+      _isProcessingAction = true;
+    });
+
+    try {
+      await action();
+      await _loadPlans();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingAction = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _archivePlan(Plan plan) async {
+    if (!_isAdmin(plan)) {
+      _showSnackBar('Only the plan admin can archive this plan.');
+      return;
+    }
+
+    if (plan.id == null) {
+      _showSnackBar('Unable to archive plan. Missing plan ID.');
+      return;
+    }
+
+    final confirmed = await _showConfirmDialog(
+      title: 'Archive Plan',
+      content: 'Archive "${plan.title}"? You can restore it later.',
+      confirmText: 'Archive',
+      confirmColor: const Color(0xFFF2B73F),
+    );
+
+    if (confirmed != true) return;
+
+    await _runPlanAction(() async {
+      final result = await PlanService.archivePlan(plan.id!);
+      _showSnackBar(result['message']?.toString() ?? '${plan.title} archived.');
+    });
+  }
+
+  Future<void> _deletePlan(Plan plan) async {
+    if (!_isAdmin(plan)) {
+      _showSnackBar('Only the plan admin can delete this plan.');
+      return;
+    }
+
+    if (plan.id == null) {
+      _showSnackBar('Unable to delete plan. Missing plan ID.');
+      return;
+    }
+
+    final confirmed = await _showConfirmDialog(
+      title: 'Delete Plan',
+      content: 'Move "${plan.title}" to Deleted Plans?',
+      confirmText: 'Delete',
+      confirmColor: Colors.red.shade400,
+    );
+
+    if (confirmed != true) return;
+
+    await _runPlanAction(() async {
+      final result = await PlanService.deletePlan(plan.id!);
+
+      if (result['success'] == false) {
+        _showSnackBar(result['message']?.toString() ?? 'Failed to delete plan.');
+        return;
+      }
+
+      _showSnackBar(
+        result['message']?.toString() ?? '${plan.title} moved to Deleted Plans.',
+      );
+    });
   }
 
   void _openArchivePlansPage() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ArchivePlansPage(
-          plansByMe: _archivedPlansByMe,
-          plansWithMe: _archivedPlansWithMe,
-          onRestore: (sectionId, plan) {
-            _restoreArchivedPlan(sectionId, plan);
-          },
-          onDelete: (sectionId, plan) {
-            _moveArchivedPlanToDeleted(sectionId, plan);
-          },
-        ),
+        builder: (_) => const ArchivedPlansPage(),
       ),
-    );
+    ).then((_) => _loadPlans());
   }
 
   void _openDeletedPlansPage() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DeletedPlansPage(
-          plansByMe: _deletedPlansByMe,
-          plansWithMe: _deletedPlansWithMe,
-          onArchive: (sectionId, plan) {
-            _restoreDeletedPlan(sectionId, plan);
-          },
-          onDeletePermanently: (sectionId, plan) {
-            setState(() {
-              _deletedPlansForSection(sectionId).remove(plan);
-            });
-          },
-        ),
+        builder: (_) => const DeletedPlansPage(),
       ),
-    );
+    ).then((_) => _loadPlans());
   }
 
   String _getPlanDateLocationText(Plan plan) {
@@ -350,80 +277,74 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
       return '${plan.date} • ${plan.location}';
     }
 
-    if (hasDate) {
-      return plan.date;
-    }
+    if (hasDate) return plan.date;
+    if (hasLocation) return plan.location;
 
-    if (hasLocation) {
-      return plan.location;
-    }
-
-    return '';
+    return 'No date or location yet';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24.0,
-            vertical: 20.0,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Active Plans',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                      height: 1.1,
+      body: RefreshIndicator(
+        color: const Color(0xFFF2B73F),
+        onRefresh: _loadPlans,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 20.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Active Plans',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                  _buildFilterBar(),
-                ],
-              ),
-              const SizedBox(height: 20),
-              if (_isLoadingPlans)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFF2B73F),
+                    _buildFilterBar(),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (_isLoadingPlans)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFF2B73F),
+                      ),
                     ),
+                  )
+                else ...[
+                  _buildExpansionSection(
+                    'Plans by Me',
+                    _plansByMe,
+                    _isPlansByMeExpanded,
+                    'plansByMe',
                   ),
-                )
-              else ...[
-                _buildExpansionSection(
-                  'Plans by Me',
-                  _plansByMe,
-                  _isPlansByMeExpanded,
-                  'plansByMe',
-                ),
-                const SizedBox(height: 18),
-                _buildExpansionSection(
-                  'Plans with Me',
-                  _plansWithMe,
-                  _isPlansWithMeExpanded,
-                  'plansWithMe',
-                ),
-                if (_archivedPlansByMe.isNotEmpty ||
-                    _archivedPlansWithMe.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  _buildArchivedSection(),
+                  const SizedBox(height: 18),
+                  _buildExpansionSection(
+                    'Plans with Me',
+                    _plansWithMe,
+                    _isPlansWithMeExpanded,
+                    'plansWithMe',
+                  ),
+                  const SizedBox(height: 90),
                 ],
               ],
-              const SizedBox(height: 90),
-            ],
+            ),
           ),
         ),
       ),
@@ -524,8 +445,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             height: 28,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color:
-                  !_isDetailedView ? Colors.grey.shade200 : Colors.transparent,
+              color: !_isDetailedView ? Colors.grey.shade200 : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Image.asset(
@@ -542,8 +462,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             height: 28,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color:
-                  _isDetailedView ? Colors.grey.shade200 : Colors.transparent,
+              color: _isDetailedView ? Colors.grey.shade200 : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Image.asset(
@@ -576,13 +495,20 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
           itemBuilder: (context) => [
             PopupMenuItem(
               value: 'archive',
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
               child: Row(
                 children: [
-                  Image.asset('images/archive.png', width: 18, height: 18),
+                  Image.asset(
+                    'images/archive.png',
+                    width: 18,
+                    height: 18,
+                  ),
                   const SizedBox(width: 10),
                   const Text(
-                    'Archive Plan',
+                    'Archived Plans',
                     style: TextStyle(fontSize: 13, color: Colors.black),
                   ),
                 ],
@@ -600,13 +526,20 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             ),
             PopupMenuItem(
               value: 'delete',
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
               child: Row(
                 children: [
-                  Image.asset('images/delete.png', width: 18, height: 18),
+                  Image.asset(
+                    'images/delete.png',
+                    width: 18,
+                    height: 18,
+                  ),
                   const SizedBox(width: 10),
                   const Text(
-                    'Delete Plan',
+                    'Deleted Plans',
                     style: TextStyle(fontSize: 13, color: Colors.black),
                   ),
                 ],
@@ -631,9 +564,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
           child: Row(
             children: [
               Icon(
-                isExpanded
-                    ? Icons.keyboard_arrow_down
-                    : Icons.keyboard_arrow_right,
+                isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
                 color: Colors.black,
                 size: 20,
               ),
@@ -659,18 +590,14 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: plans.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) => _isDetailedView
-                  ? _buildDetailedPlanCard(
-                      plans[index],
-                      sectionId,
-                      allowArchive: true,
-                    )
-                  : _buildListPlanCard(
-                      plans[index],
-                      sectionId,
-                      allowArchive: true,
-                    ),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final plan = plans[index];
+
+                return _isDetailedView
+                    ? _buildDetailedPlanCard(plan)
+                    : _buildListPlanCard(plan);
+              },
             ),
         ],
       ],
@@ -698,9 +625,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
-              isPlansByMe
-                  ? Icons.add_circle_outline
-                  : Icons.group_add_outlined,
+              isPlansByMe ? Icons.add_circle_outline : Icons.group_add_outlined,
               color: const Color(0xFFF2B73F),
               size: 28,
             ),
@@ -732,85 +657,13 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     );
   }
 
-  Widget _buildArchivedSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Archived Plans',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_archivedPlansByMe.isNotEmpty) ...[
-          const Text(
-            'Plans by Me',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _archivedPlansByMe.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => _isDetailedView
-                ? _buildDetailedPlanCard(
-                    _archivedPlansByMe[index],
-                    'archivedPlansByMe',
-                    allowArchive: false,
-                  )
-                : _buildListPlanCard(
-                    _archivedPlansByMe[index],
-                    'archivedPlansByMe',
-                    allowArchive: false,
-                  ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        if (_archivedPlansWithMe.isNotEmpty) ...[
-          const Text(
-            'Plans with Me',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _archivedPlansWithMe.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => _isDetailedView
-                ? _buildDetailedPlanCard(
-                    _archivedPlansWithMe[index],
-                    'archivedPlansWithMe',
-                    allowArchive: false,
-                  )
-                : _buildListPlanCard(
-                    _archivedPlansWithMe[index],
-                    'archivedPlansWithMe',
-                    allowArchive: false,
-                  ),
-          ),
-        ],
-      ],
-    );
-  }
+  Widget _buildPlanMenu(Plan plan) {
+    final bool canManage = _isAdmin(plan);
 
-  Widget _buildPlanMenu(
-    String sectionId,
-    Plan plan, {
-    required bool allowArchive,
-  }) {
+    if (!canManage) {
+      return const SizedBox.shrink();
+    }
+
     return PopupMenuButton<String>(
       icon: const Icon(
         Icons.more_vert,
@@ -818,78 +671,77 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
         size: 18,
       ),
       padding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       color: Colors.white,
       elevation: 4,
+      enabled: !_isProcessingAction,
       onSelected: (value) {
         if (value == 'archive') {
-          _archivePlan(sectionId, plan);
+          _archivePlan(plan);
         } else if (value == 'delete') {
-          _confirmDeletePlan(sectionId, plan);
+          _deletePlan(plan);
         }
       },
-      itemBuilder: (context) {
-        final items = <PopupMenuEntry<String>>[];
-
-        if (allowArchive) {
-          items.add(
-            PopupMenuItem(
-              value: 'archive',
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  Image.asset('images/archive.png', width: 18, height: 18),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Archive Plan',
-                    style: TextStyle(fontSize: 13, color: Colors.black),
-                  ),
-                ],
-              ),
-            ),
-          );
-
-          items.add(
-            const PopupMenuItem(
-              enabled: false,
-              height: 1,
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(
-                height: 1,
-                thickness: 1,
-                color: Color(0xFFEEEEEE),
-              ),
-            ),
-          );
-        }
-
-        items.add(
-          PopupMenuItem(
-            value: 'delete',
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                Image.asset('images/delete.png', width: 18, height: 18),
-                const SizedBox(width: 10),
-                const Text(
-                  'Delete Plan',
-                  style: TextStyle(fontSize: 13, color: Colors.black),
-                ),
-              ],
-            ),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'archive',
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
           ),
-        );
-
-        return items;
-      },
+          child: Row(
+            children: [
+              Image.asset(
+                'images/archive.png',
+                width: 18,
+                height: 18,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Archive Plan',
+                style: TextStyle(fontSize: 13, color: Colors.black),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          enabled: false,
+          height: 1,
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: Color(0xFFEEEEEE),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          child: Row(
+            children: [
+              Image.asset(
+                'images/delete.png',
+                width: 18,
+                height: 18,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Delete Plan',
+                style: TextStyle(fontSize: 13, color: Colors.black),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildDetailedPlanCard(
-    Plan plan,
-    String sectionId, {
-    required bool allowArchive,
-  }) {
+  Widget _buildDetailedPlanCard(Plan plan) {
     return GestureDetector(
       onTap: () => _openPlanDashboard(plan),
       child: Container(
@@ -939,11 +791,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                           SizedBox(
                             width: 26,
                             height: 22,
-                            child: _buildPlanMenu(
-                              sectionId,
-                              plan,
-                              allowArchive: allowArchive,
-                            ),
+                            child: _buildPlanMenu(plan),
                           ),
                         ],
                       ),
@@ -963,7 +811,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildMemberAvatars(),
+                          _buildRolePill(plan),
                           _buildStatusPill(plan.status),
                         ],
                       ),
@@ -978,11 +826,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     );
   }
 
-  Widget _buildListPlanCard(
-    Plan plan,
-    String sectionId, {
-    required bool allowArchive,
-  }) {
+  Widget _buildListPlanCard(Plan plan) {
     return GestureDetector(
       onTap: () => _openPlanDashboard(plan),
       child: Container(
@@ -1039,103 +883,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                 ),
               ),
             ),
-            PopupMenuButton<String>(
-              icon: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: Plan.getStatusColor(plan.status),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              color: Colors.white,
-              elevation: 4,
-              onSelected: (value) {
-                if (value == 'archive') {
-                  _archivePlan(sectionId, plan);
-                } else if (value == 'delete') {
-                  _confirmDeletePlan(sectionId, plan);
-                }
-              },
-              itemBuilder: (context) {
-                final items = <PopupMenuEntry<String>>[];
-
-                if (allowArchive) {
-                  items.add(
-                    PopupMenuItem(
-                      value: 'archive',
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Image.asset(
-                            'images/archive.png',
-                            width: 18,
-                            height: 18,
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Archive Plan',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-
-                  items.add(
-                    const PopupMenuItem(
-                      enabled: false,
-                      height: 1,
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Color(0xFFEEEEEE),
-                      ),
-                    ),
-                  );
-                }
-
-                items.add(
-                  PopupMenuItem(
-                    value: 'delete',
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Image.asset(
-                          'images/delete.png',
-                          width: 18,
-                          height: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Delete Plan',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-
-                return items;
-              },
-            ),
+            _buildPlanMenu(plan),
           ],
         ),
       ),
@@ -1159,66 +907,25 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     );
   }
 
-  Widget _buildMemberAvatars() {
-    const radius = 10.0;
-    const iconSize = 12.0;
-    const overlap = 14.0;
+  Widget _buildRolePill(Plan plan) {
+    final isAdmin = _isAdmin(plan);
 
-    return SizedBox(
-      width: 80,
-      height: 24,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          CircleAvatar(
-            radius: radius,
-            backgroundColor: Colors.grey.shade100,
-            child: const Icon(
-              Icons.person,
-              size: iconSize,
-              color: Colors.black,
-            ),
-          ),
-          Positioned(
-            left: overlap,
-            child: CircleAvatar(
-              radius: radius,
-              backgroundColor: Colors.grey.shade100,
-              child: const Icon(
-                Icons.person,
-                size: iconSize,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          Positioned(
-            left: overlap * 2,
-            child: CircleAvatar(
-              radius: radius,
-              backgroundColor: Colors.grey.shade100,
-              child: const Icon(
-                Icons.person,
-                size: iconSize,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const Positioned(
-            left: overlap * 3,
-            child: CircleAvatar(
-              radius: radius,
-              backgroundColor: Color(0xFFE0E0E0),
-              child: Text(
-                '+3',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-        ],
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: isAdmin ? const Color(0xFFFFF3D2) : const Color(0xFFF1F3F6),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        isAdmin ? 'Admin' : 'Member',
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+        ),
       ),
     );
   }

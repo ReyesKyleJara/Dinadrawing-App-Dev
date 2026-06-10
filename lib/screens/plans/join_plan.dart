@@ -101,7 +101,7 @@ class _JoinPlanPageState extends State<JoinPlanPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Enter the 6-character code given by the plan creator to join their plan.',
+              'Enter the 6-character code given by the plan admin to join their plan.',
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.4),
             ),
             const SizedBox(height: 32),

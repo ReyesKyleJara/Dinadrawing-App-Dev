@@ -5,6 +5,38 @@ import 'auth_service.dart';
 class PlanService {
   static const String baseUrl = 'http://127.0.0.1:8000/api';
 
+  static Map<String, dynamic> _decodeResponse(http.Response response) {
+    if (response.body.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    return <String, dynamic>{
+      'data': decoded,
+    };
+  }
+
+  static Future<Map<String, String>?> _authHeaders({
+    bool hasBody = false,
+  }) async {
+    final token = await AuthService.getToken();
+
+    if (token == null) {
+      return null;
+    }
+
+    return {
+      'Accept': 'application/json',
+      if (hasBody) 'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
   static Future<Map<String, dynamic>> createPlan({
     required String title,
     String? description,
@@ -15,21 +47,18 @@ class PlanService {
     double? longitude,
     String status = 'Plan Ongoing',
   }) async {
-    final token = await AuthService.getToken();
+    final headers = await _authHeaders(hasBody: true);
 
-    if (token == null) {
+    if (headers == null) {
       return {
+        'success': false,
         'message': 'User is not logged in.',
       };
     }
 
     final response = await http.post(
       Uri.parse('$baseUrl/plans'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
       body: jsonEncode({
         'title': title,
         'description': description,
@@ -42,17 +71,20 @@ class PlanService {
       }),
     );
 
-    print('CREATE PLAN STATUS: ${response.statusCode}');
-    print('CREATE PLAN BODY: ${response.body}');
+    final data = _decodeResponse(response);
 
-    return jsonDecode(response.body);
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
   static Future<Map<String, dynamic>> getPlans() async {
-    final token = await AuthService.getToken();
+    final headers = await _authHeaders();
 
-    if (token == null) {
+    if (headers == null) {
       return {
+        'success': false,
         'message': 'User is not logged in.',
         'plans_by_me': [],
         'plans_with_me': [],
@@ -61,23 +93,23 @@ class PlanService {
 
     final response = await http.get(
       Uri.parse('$baseUrl/plans'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
     );
 
-    print('GET PLANS STATUS: ${response.statusCode}');
-    print('GET PLANS BODY: ${response.body}');
+    final data = _decodeResponse(response);
 
-    return jsonDecode(response.body);
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
   static Future<Map<String, dynamic>> getPlanById(int planId) async {
-    final token = await AuthService.getToken();
+    final headers = await _authHeaders();
 
-    if (token == null) {
+    if (headers == null) {
       return {
+        'success': false,
         'message': 'User is not logged in.',
         'plan': null,
       };
@@ -85,69 +117,74 @@ class PlanService {
 
     final response = await http.get(
       Uri.parse('$baseUrl/plans/$planId'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
     );
 
-    print('GET SINGLE PLAN STATUS: ${response.statusCode}');
-    print('GET SINGLE PLAN BODY: ${response.body}');
+    final data = _decodeResponse(response);
 
-    return jsonDecode(response.body);
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
   static Future<Map<String, dynamic>> joinPlan({
     required String inviteCode,
   }) async {
-    final token = await AuthService.getToken();
+    final headers = await _authHeaders(hasBody: true);
 
-    if (token == null) {
+    if (headers == null) {
       return {
+        'success': false,
         'message': 'User is not logged in.',
       };
     }
 
     final response = await http.post(
       Uri.parse('$baseUrl/plans/join'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
       body: jsonEncode({
         'invite_code': inviteCode,
       }),
     );
 
-    print('JOIN PLAN STATUS: ${response.statusCode}');
-    print('JOIN PLAN BODY: ${response.body}');
+    final data = _decodeResponse(response);
 
-    return jsonDecode(response.body);
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
-  static Future<Map<String, dynamic>> getPlanPosts(int planId) async {
-    final token = await AuthService.getToken();
+  static Future<Map<String, dynamic>> leavePlan(
+    int planId, {
+    int? newAdminId,
+  }) async {
+    final headers = await _authHeaders(hasBody: newAdminId != null);
 
-    if (token == null) {
+    if (headers == null) {
       return {
+        'success': false,
         'message': 'User is not logged in.',
-        'posts': [],
       };
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/plans/$planId/posts'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+    final response = await http.post(
+      Uri.parse('$baseUrl/plans/$planId/leave'),
+      headers: headers,
+      body: newAdminId != null
+          ? jsonEncode({
+              'new_admin_id': newAdminId,
+            })
+          : null,
     );
 
-    print('GET PLAN POSTS STATUS: ${response.statusCode}');
-    print('GET PLAN POSTS BODY: ${response.body}');
+    final data = _decodeResponse(response);
 
-    return jsonDecode(response.body);
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
   static Future<Map<String, dynamic>> updatePlan({
@@ -159,16 +196,18 @@ class PlanService {
     String? status,
     String? bannerColor,
   }) async {
-    final token = await AuthService.getToken();
-    if (token == null) return {'message': 'User is not logged in.'};
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
 
     final response = await http.patch(
       Uri.parse('$baseUrl/plans/$planId'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
       body: jsonEncode({
         'title': title,
         'description': description,
@@ -179,53 +218,234 @@ class PlanService {
       }),
     );
 
-    print('UPDATE PLAN STATUS: ${response.statusCode}');
-    return jsonDecode(response.body);
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
   static Future<Map<String, dynamic>> deletePlan(int planId) async {
-    final token = await AuthService.getToken();
-    if (token == null) return {'message': 'User is not logged in.'};
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
 
     final response = await http.delete(
       Uri.parse('$baseUrl/plans/$planId'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
     );
 
-    print('DELETE PLAN STATUS: ${response.statusCode}');
-    return jsonDecode(response.body);
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+      'message': data['message'] ?? 'Plan moved to Deleted Plans.',
+    };
+  }
+
+  static Future<Map<String, dynamic>> getArchivedPlans() async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+        'plansByMe': [],
+        'plansWithMe': [],
+      };
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/archived-plans'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
+  }
+
+  static Future<Map<String, dynamic>> archivePlan(int planId) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/plans/$planId/archive'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+      'message': data['message'] ?? 'Plan archived successfully.',
+    };
+  }
+
+  static Future<Map<String, dynamic>> unarchivePlan(int planId) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/plans/$planId/unarchive'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+      'message': data['message'] ?? 'Plan restored from Archived Plans.',
+    };
+  }
+
+  static Future<Map<String, dynamic>> getDeletedPlans() async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+        'plansByMe': [],
+        'plansWithMe': [],
+      };
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/deleted-plans'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
+  }
+
+  static Future<Map<String, dynamic>> restorePlan(int planId) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/plans/$planId/restore'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+      'message': data['message'] ?? 'Plan restored successfully.',
+    };
+  }
+
+  static Future<Map<String, dynamic>> permanentDeletePlan(int planId) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/plans/$planId/force'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+      'message': data['message'] ?? 'Plan permanently deleted.',
+    };
+  }
+
+  static Future<Map<String, dynamic>> getPlanPosts(int planId) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+        'posts': [],
+      };
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/plans/$planId/posts'),
+      headers: headers,
+    );
+
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 
   static Future<Map<String, dynamic>> createPlanPost({
     required int planId,
     required String content,
   }) async {
-    final token = await AuthService.getToken();
+    final headers = await _authHeaders(hasBody: true);
 
-    if (token == null) {
+    if (headers == null) {
       return {
+        'success': false,
         'message': 'User is not logged in.',
       };
     }
 
     final response = await http.post(
       Uri.parse('$baseUrl/plans/$planId/posts'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
       body: jsonEncode({
         'content': content,
       }),
     );
 
-    print('CREATE PLAN POST STATUS: ${response.statusCode}');
-    print('CREATE PLAN POST BODY: ${response.body}');
+    final data = _decodeResponse(response);
 
-    return jsonDecode(response.body);
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
   }
 }

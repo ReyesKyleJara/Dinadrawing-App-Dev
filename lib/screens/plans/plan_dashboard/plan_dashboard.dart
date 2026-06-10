@@ -50,6 +50,7 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
       setState(() {
         selectedPlan = Plan.fromJson(planData as Map<String, dynamic>);
         isLoadingPlan = false;
+        errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -58,6 +59,30 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
         errorMessage = 'Failed to load plan: $e';
         isLoadingPlan = false;
       });
+    }
+  }
+
+  Future<void> _openSettings() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlanSettingsPage(planId: widget.planId),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result == 'deleted' || result == 'left') {
+      Navigator.pop(context, true);
+      return;
+    }
+
+    if (result == true) {
+      setState(() {
+        isLoadingPlan = true;
+      });
+
+      await _loadSelectedPlan();
     }
   }
 
@@ -174,7 +199,9 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MembersPage(planId: widget.planId),
+                          builder: (context) => MembersPage(
+                            planId: widget.planId,
+                          ),
                         ),
                       );
                     },
@@ -184,22 +211,7 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
                       Icons.settings_outlined,
                       color: Colors.black87,
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PlanSettingsPage(planId: widget.planId),
-                        ),
-                      ).then((updated) {
-                        // REFRESH DATA KAPAG NAG-SAVE SA SETTINGS AT BUMALIK DITO
-                        if (updated == true) {
-                          setState(() {
-                            isLoadingPlan = true;
-                          });
-                          _loadSelectedPlan();
-                        }
-                      });
-                    },
+                    onPressed: _openSettings,
                   ),
                 ],
               ),

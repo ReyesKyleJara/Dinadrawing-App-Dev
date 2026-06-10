@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class Plan {
   final int? id;
-  final int? creatorId;
+  final int? adminId;
 
   final String title;
   final String? description;
@@ -20,7 +20,7 @@ class Plan {
 
   Plan({
     this.id,
-    this.creatorId,
+    this.adminId,
     required this.title,
     this.description,
     required this.date,
@@ -40,7 +40,7 @@ class Plan {
 
     return Plan(
       id: _parseInt(json['id']),
-      creatorId: _parseInt(json['creator_id']),
+      adminId: _parseInt(json['admin_id']),
       title: json['title']?.toString() ?? 'Untitled Plan',
       description: json['description']?.toString(),
       date: _formatDisplayDate(json['plan_date']?.toString()),

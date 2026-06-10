@@ -115,7 +115,7 @@ class _MembersPageState extends State<MembersPage> {
   Widget _buildMemberItem(Map<String, dynamic> member, int index) {
     // Kinukuha ang details mula sa JSON ng Laravel
     final name = member['name'] ?? member['username'] ?? 'Unknown';
-    final role = member['pivot']?['role'] == 'creator' ? 'Plan Creator' : 'Member';
+    final role = member['pivot']?['role'] == 'Admin' ? 'Plan Admin' : 'Member';
     
     // Gagamit tayo ng simpleng avatar kung wala pang profile picture feature
     return Padding(
@@ -141,8 +141,8 @@ class _MembersPageState extends State<MembersPage> {
                   role,
                   style: TextStyle(
                     fontSize: 12, 
-                    color: role == 'Plan Creator' ? const Color(0xFFF5B335) : Colors.grey.shade600,
-                    fontWeight: role == 'Plan Creator' ? FontWeight.bold : FontWeight.normal,
+                    color: role == 'Plan Admin' ? const Color(0xFFF5B335) : Colors.grey.shade600,
+                    fontWeight: role == 'Plan Admin' ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ],

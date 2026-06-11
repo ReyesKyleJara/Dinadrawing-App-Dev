@@ -106,6 +106,70 @@ class AuthService {
     return null;
   }
 
+  static Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String username,
+  }) async {
+    final token = await getToken();
+
+    if (token == null) {
+      return {
+        'message': 'You must be logged in to update your profile.',
+      };
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/user/profile'),
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'username': username,
+      }),
+    );
+
+    print('UPDATE PROFILE STATUS: ${response.statusCode}');
+    print('UPDATE PROFILE BODY: ${response.body}');
+
+    return _safeJsonDecode(response.body);
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final token = await getToken();
+
+    if (token == null) {
+      return {
+        'message': 'You must be logged in to change your password.',
+      };
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/password'),
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'current_password': currentPassword,
+        'password': newPassword,
+        'password_confirmation': confirmPassword,
+      }),
+    );
+
+    print('CHANGE PASSWORD STATUS: ${response.statusCode}');
+    print('CHANGE PASSWORD BODY: ${response.body}');
+
+    return _safeJsonDecode(response.body);
+  }
+
   static Future<Map<String, dynamic>> logout() async {
     final token = await getToken();
 

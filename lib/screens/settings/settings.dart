@@ -2,40 +2,13 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../auth/login.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/auth_service.dart';
-
-/// Local ProfileService moved here so Settings owns the model used by avatar widgets.
-class ProfileService {
-  ProfileService._private();
-
-  static final ProfileService instance = ProfileService._private();
-
-  final ValueNotifier<Uint8List?> avatarBytes = ValueNotifier<Uint8List?>(null);
-  final ValueNotifier<IconData?> avatarIcon = ValueNotifier<IconData?>(null);
-  final ValueNotifier<String> name = ValueNotifier<String>('DiNaDrawing');
-  final ValueNotifier<String> username = ValueNotifier<String>('@dinadrawing');
-
-  void updateProfile({
-    Uint8List? bytes,
-    IconData? icon,
-    String? newName,
-    String? newUsername,
-  }) {
-    if (bytes != null) avatarBytes.value = bytes;
-    if (icon != null) avatarIcon.value = icon;
-    if (newName != null) name.value = newName;
-    if (newUsername != null) username.value = newUsername;
-  }
-
-  void resetProfile() {
-    avatarBytes.value = null;
-    avatarIcon.value = null;
-    name.value = 'DiNaDrawing';
-    username.value = '@dinadrawing';
-  }
-}
+import '../../services/firebase_settings_service.dart';
+import '../../services/profile_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -47,8 +20,9 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   Uint8List? _avatarBytes;
   IconData? _selectedIcon;
-  String _profileName = 'DiNaDrawing';
-  String _profileUsername = '@dinadrawing';
+  String _profileName = 'User';
+  String _profileUsername = '@user';
+  String _themeLabel = 'Light';
 
   bool _isLoggingOut = false;
 
@@ -65,11 +39,73 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
 
-    final svc = ProfileService.instance;
-    _avatarBytes = svc.avatarBytes.value;
-    _selectedIcon = svc.avatarIcon.value;
-    _profileName = svc.name.value;
-    _profileUsername = svc.username.value;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ProfileService.instance.loadForCurrentUser();
+      if (!mounted) return;
+
+      final svc = ProfileService.instance;
+      setState(() {
+        _avatarBytes = svc.avatarBytes.value;
+        _selectedIcon = svc.avatarIcon.value;
+        _profileName = svc.name.value;
+        _profileUsername = svc.username.value;
+      });
+
+      await _loadCurrentTheme();
+      await _loadProfileFromBackend();
+    });
+  }
+
+  Future<void> _loadCurrentTheme() async {
+    if (!mounted) return;
+
+    final themeProvider = context.read<ThemeProvider>();
+    setState(() {
+      _themeLabel = themeProvider.labelFor(themeProvider.themeMode);
+    });
+  }
+
+  Future<void> _loadProfileFromBackend() async {
+    try {
+      final firebaseResult = await FirebaseSettingsService.loadProfile();
+      final profile = firebaseResult['profile'] as Map<String, dynamic>?;
+
+      if (profile != null && profile.isNotEmpty) {
+        final name = (profile['name'] ?? '').toString().trim();
+        final username = (profile['username'] ?? '').toString().trim();
+
+        if (!mounted) return;
+
+        setState(() {
+          _profileName = name.isNotEmpty ? name : _profileName;
+          _profileUsername = username.isNotEmpty ? '@$username' : _profileUsername;
+        });
+
+        await ProfileService.instance.updateProfile(
+          newName: _profileName,
+          newUsername: _profileUsername,
+        );
+        return;
+      }
+
+      final backendUser = await AuthService.getCurrentUser();
+      if (!mounted || backendUser == null) return;
+
+      final name = (backendUser['name'] ?? '').toString().trim();
+      final username = (backendUser['username'] ?? '').toString().trim();
+
+      setState(() {
+        _profileName = name.isNotEmpty ? name : _profileName;
+        _profileUsername = username.isNotEmpty ? '@$username' : _profileUsername;
+      });
+
+      await ProfileService.instance.updateProfile(
+        newName: _profileName,
+        newUsername: _profileUsername,
+      );
+    } catch (_) {
+      // Keep the current local profile if remote data is unavailable.
+    }
   }
 
   @override
@@ -83,7 +119,7 @@ class _SettingsPageState extends State<SettingsPage> {
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(dialogContext).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -94,11 +130,11 @@ class _SettingsPageState extends State<SettingsPage> {
               fontSize: 18,
             ),
           ),
-          content: const Text(
+          content: Text(
             "Are you sure you want to log out?",
             style: TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
             ),
           ),
           actions: [
@@ -136,14 +172,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (shouldLogout != true) return;
 
-    setState(() {
-      _isLoggingOut = true;
-    });
-
     try {
-      await AuthService.logout();
+      if (!mounted) return;
 
-      ProfileService.instance.resetProfile();
+      setState(() {
+        _isLoggingOut = true;
+      });
+
+      await ProfileService.instance.clearInMemoryCache();
+      await AuthService.logout();
 
       if (!mounted) return;
 
@@ -155,10 +192,6 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() {
-        _isLoggingOut = false;
-      });
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -168,13 +201,19 @@ class _SettingsPageState extends State<SettingsPage> {
           backgroundColor: Colors.redAccent,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -182,12 +221,12 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Settings',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 30),
@@ -203,13 +242,13 @@ class _SettingsPageState extends State<SettingsPage> {
                         right: 0,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.black,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.onSurface,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.edit,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             size: 14,
                           ),
                         ),
@@ -226,17 +265,18 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     Text(
                       _profileName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _profileUsername,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -246,10 +286,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 32),
 
-              const Text(
+              Text(
                 "Account Settings",
                 style: TextStyle(
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -274,10 +314,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 24),
 
-              const Text(
+              Text(
                 "App Settings",
                 style: TextStyle(
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -297,10 +337,19 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildSettingsTile(
                 icon: Icons.lightbulb_outline,
                 title: "Appearance",
-                trailing: const Text(
-                  "Light",
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ThemeSubPage(),
+                    ),
+                  );
+                  await _loadCurrentTheme();
+                },
+                trailing: Text(
+                  _themeLabel,
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 13,
                   ),
                 ),
@@ -329,20 +378,21 @@ class _SettingsPageState extends State<SettingsPage> {
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         icon,
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.onSurface,
         size: 20,
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 14,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
       trailing: trailing ??
-          const Icon(
+          Icon(
             Icons.chevron_right,
-            color: Colors.grey,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             size: 20,
           ),
     );
@@ -355,8 +405,8 @@ class _SettingsPageState extends State<SettingsPage> {
       child: OutlinedButton(
         onPressed: _isLoggingOut ? null : _confirmLogout,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(
-            color: Color(0xFFF0F0F0),
+          side: BorderSide(
+            color: Theme.of(context).dividerColor,
             width: 1.5,
           ),
           shape: RoundedRectangleBorder(
@@ -402,8 +452,8 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setBottomSheetState) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: Theme.of(context).dialogTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(20),
             ),
@@ -425,7 +475,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: Theme.of(context).colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -467,13 +517,13 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                             child: Container(
                               padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.onSurface,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.edit,
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.surface,
                                 size: 12,
                               ),
                             ),
@@ -487,14 +537,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 24),
 
-              _buildInputLabel("Name"),
+              _buildInputLabel(context, "Name"),
               _buildValidatedTextField(
                 draftNameController,
                 "Enter your name",
                 onChanged: (_) => setBottomSheetState(() {}),
               ),
 
-              _buildInputLabel("Username"),
+              _buildInputLabel(context, "Username"),
               _buildUsernameField(
                 draftUsernameController,
                 "Enter username",
@@ -507,7 +557,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(context);
                     final trimmedName = draftNameController.text.trim();
                     final rawUsername = draftUsernameController.text.trim();
                     final usernameCore =
@@ -523,7 +575,41 @@ class _SettingsPageState extends State<SettingsPage> {
                           backgroundColor: Colors.redAccent,
                         ),
                       );
-                    } else {
+                      return;
+                    }
+
+                    try {
+                      var result = await AuthService.updateProfile(
+                        name: trimmedName,
+                        username: usernameCore,
+                      );
+
+                      if (!mounted) return;
+
+                      if ((result['message'] ?? '').toString().toLowerCase().contains('success') == false &&
+                          (result['message'] ?? '').toString().toLowerCase().contains('updated') == false) {
+                        try {
+                          result = await FirebaseSettingsService.updateProfile(
+                            name: trimmedName,
+                            photoUrl: null,
+                          );
+                        } catch (_) {
+                          result = {'success': false, 'message': 'Unable to update profile.'};
+                        }
+                      } else {
+                        result = {'success': true, 'message': result['message'] ?? 'Profile updated successfully.'};
+                      }
+
+                      if (result['success'] != true) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(result['message'].toString()),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                        return;
+                      }
+
                       setState(() {
                         _avatarBytes = draftAvatarBytes;
                         _selectedIcon = draftSelectedIcon;
@@ -531,14 +617,29 @@ class _SettingsPageState extends State<SettingsPage> {
                         _profileUsername = '@$usernameCore';
                       });
 
-                      ProfileService.instance.updateProfile(
+                      await ProfileService.instance.updateProfile(
                         bytes: _avatarBytes,
                         icon: _selectedIcon,
                         newName: _profileName,
                         newUsername: _profileUsername,
                       );
 
-                      Navigator.pop(context);
+                      navigator.pop();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Profile updated successfully.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Profile update failed: $e'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -581,7 +682,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (activeAvatarBytes != null) {
       return CircleAvatar(
         radius: radius,
-        backgroundColor: const Color(0xFFE0E0E0),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         backgroundImage: MemoryImage(activeAvatarBytes),
       );
     }
@@ -589,22 +690,22 @@ class _SettingsPageState extends State<SettingsPage> {
     if (activeSelectedIcon != null) {
       return CircleAvatar(
         radius: radius,
-        backgroundColor: const Color(0xFFE0E0E0),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Icon(
           activeSelectedIcon,
           size: radius * 0.8,
-          color: Colors.black87,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       );
     }
 
     return CircleAvatar(
       radius: radius,
-      backgroundColor: const Color(0xFFE0E0E0),
-      child: const Icon(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Icon(
         Icons.person,
         size: 40,
-        color: Colors.grey,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }
@@ -618,7 +719,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(16),
@@ -644,7 +745,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _selectedIcon = null;
                   });
 
-                  ProfileService.instance.updateProfile(bytes: pickedBytes);
+                  await ProfileService.instance.uploadAndPersistAvatar(pickedBytes);
                 }
               },
             ),
@@ -664,7 +765,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _selectedIcon = null;
                   });
 
-                  ProfileService.instance.updateProfile(bytes: pickedBytes);
+                  await ProfileService.instance.uploadAndPersistAvatar(pickedBytes);
                 }
               },
             ),
@@ -683,7 +784,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _selectedIcon = selected;
                   });
 
-                  ProfileService.instance.updateProfile(icon: selected);
+                  await ProfileService.instance.updateProfile(icon: selected);
                 }
               },
             ),
@@ -719,7 +820,7 @@ class _SettingsPageState extends State<SettingsPage> {
       leading: Icon(
         icon,
         size: 20,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       title: Text(
         title,
@@ -790,7 +891,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return showModalBottomSheet<IconData>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(16),
@@ -825,11 +926,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 return GestureDetector(
                   onTap: () => Navigator.pop(ctx, icon),
                   child: CircleAvatar(
-                    backgroundColor: const Color(0xFFF5F5F5),
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: Icon(
                       icon,
                       size: 24,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 );
@@ -850,15 +951,18 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14),
+      style: TextStyle(
+        fontSize: 14,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
-          color: Colors.grey.shade400,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 13,
         ),
         filled: true,
-        fillColor: const Color(0xFFF9F9F9),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -879,21 +983,24 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14),
+      style: TextStyle(
+        fontSize: 14,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
       decoration: InputDecoration(
         prefixText: '@',
-        prefixStyle: const TextStyle(
-          color: Colors.black87,
+        prefixStyle: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
         hintText: hint,
         hintStyle: TextStyle(
-          color: Colors.grey.shade400,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 13,
         ),
         filled: true,
-        fillColor: const Color(0xFFF9F9F9),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -901,6 +1008,116 @@ class _SettingsPageState extends State<SettingsPage> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+}
+
+class ThemeSubPage extends StatefulWidget {
+  const ThemeSubPage({super.key});
+
+  @override
+  State<ThemeSubPage> createState() => _ThemeSubPageState();
+}
+
+class _ThemeSubPageState extends State<ThemeSubPage> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final themeProvider = context.read<ThemeProvider>();
+    if (!mounted) return;
+
+    setState(() => _themeMode = themeProvider.themeMode);
+  }
+
+  Future<void> _setTheme(ThemeMode mode) async {
+    final themeProvider = context.read<ThemeProvider>();
+    await themeProvider.setTheme(mode);
+    if (!mounted) return;
+
+    setState(() => _themeMode = mode);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _buildAppBar(context, 'Appearance'),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Choose how the app looks while you use it.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildThemeOption(
+              'Light Mode',
+              'Use the bright interface for daytime use.',
+              ThemeMode.light,
+            ),
+            const SizedBox(height: 12),
+            _buildThemeOption(
+              'Dark Mode',
+              'Use the darker interface for low-light use.',
+              ThemeMode.dark,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeOption(String title, String subtitle, ThemeMode mode) {
+    final selected = _themeMode == mode;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: selected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.35)
+            : colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected ? const Color(0xFFE8B653) : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          onTap: () => _setTheme(mode),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
+          ),
+          trailing: selected
+              ? const Icon(Icons.check_circle, color: Color(0xFFE8B653), size: 18)
+              : Icon(Icons.circle_outlined, color: colorScheme.outline, size: 18),
         ),
       ),
     );
@@ -922,6 +1139,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
       TextEditingController();
 
   bool _confirmPasswordValidationRequested = false;
+  bool _showPasswordMismatchError = false;
   bool _currentPasswordVisible = false;
   bool _newPasswordVisible = false;
   bool _confirmPasswordVisible = false;
@@ -944,6 +1162,16 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
   bool get _allPasswordCriteriaValid =>
       _hasLength && _hasLetterAndNumber && _hasSpecial;
 
+  String get _passwordRequirementMessage {
+    final parts = <String>[];
+    if (!_hasLength) parts.add('8 characters (20 max)');
+    if (!_hasLetterAndNumber) parts.add('1 letter and 1 number');
+    if (!_hasSpecial) parts.add('1 special character');
+    return parts.isEmpty
+        ? 'Password requirements are met.'
+        : 'Password must contain ${parts.join(', ')}.';
+  }
+
   @override
   void dispose() {
     currentPasswordController.dispose();
@@ -952,13 +1180,15 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
     super.dispose();
   }
 
-  void _changePassword() {
+  Future<void> _changePassword() async {
     setState(() {
       _confirmPasswordValidationRequested = true;
       _currentPasswordError = null;
     });
 
     final currentPassword = currentPasswordController.text.trim();
+    final newPassword = newPasswordController.text;
+    final confirmPassword = confirmPasswordController.text;
 
     if (currentPassword.isEmpty) {
       setState(() {
@@ -967,18 +1197,51 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
       return;
     }
 
-    if (!_allPasswordCriteriaValid || !_passwordsMatch) return;
-
-    if (currentPassword != "correctpassword") {
+    if (!_allPasswordCriteriaValid || !_passwordsMatch) {
       setState(() {
-        _currentPasswordError = "Current password is incorrect";
+        _showPasswordMismatchError = !_passwordsMatch;
       });
+      _showSnackBar(
+        _passwordRequirementMessage,
+        Colors.orange,
+      );
       return;
     }
 
-    Navigator.pop(context);
+    setState(() {
+      _showPasswordMismatchError = false;
+    });
 
-    _showSnackBar("Password changed successfully! 🌹", Colors.green);
+    try {
+      final result = await AuthService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+
+      if (!mounted) return;
+
+      final success = (result['message'] ?? '').toString().toLowerCase().contains('success') ||
+          (result['message'] ?? '').toString().toLowerCase().contains('updated');
+
+      if (success) {
+        Navigator.pop(context);
+        _showSnackBar(result['message'].toString(), Colors.green);
+        return;
+      }
+
+      if (result['message'].toString().toLowerCase().contains('current password')) {
+        setState(() {
+          _currentPasswordError = result['message'].toString();
+        });
+      } else {
+        _showSnackBar(result['message'].toString(), Colors.redAccent);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      _showSnackBar('Password change failed: $e', Colors.redAccent);
+    }
   }
 
   void _showSnackBar(String message, Color color) {
@@ -996,7 +1259,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(context, "Security"),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -1019,8 +1282,9 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildInputLabel("Current Password"),
+            _buildInputLabel(context, "Current Password"),
             _buildProfileTextField(
+              context,
               currentPasswordController,
               "••••••••",
               isPassword: true,
@@ -1047,13 +1311,19 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
                   ),
                 ),
               ),
-            _buildInputLabel("New Password"),
+            _buildInputLabel(context, "New Password"),
             _buildProfileTextField(
+              context,
               newPasswordController,
               "Enter new password",
               isPassword: true,
               obscureText: !_newPasswordVisible,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                setState(() {
+                  _showPasswordMismatchError = false;
+                  _confirmPasswordValidationRequested = false;
+                });
+              },
               onToggle: () {
                 setState(() {
                   _newPasswordVisible = !_newPasswordVisible;
@@ -1062,7 +1332,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
             ),
             const SizedBox(height: 12),
             const Text(
-              "Password must have atleast:",
+              "Password must have at least:",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
@@ -1071,13 +1341,19 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
             const SizedBox(height: 8),
             _buildPasswordCriteria(),
             const SizedBox(height: 16),
-            _buildInputLabel("Confirm New Password"),
+            _buildInputLabel(context, "Confirm New Password"),
             _buildProfileTextField(
+              context,
               confirmPasswordController,
               "Confirm new password",
               isPassword: true,
               obscureText: !_confirmPasswordVisible,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                setState(() {
+                  _showPasswordMismatchError = false;
+                  _confirmPasswordValidationRequested = false;
+                });
+              },
               onToggle: () {
                 setState(() {
                   _confirmPasswordVisible = !_confirmPasswordVisible;
@@ -1085,8 +1361,8 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
               },
             ),
             const SizedBox(height: 6),
-            if (_confirmPasswordValidationRequested && !_passwordsMatch)
-              _buildPasswordMatchValidationRow(false),
+            if ((_confirmPasswordValidationRequested || _showPasswordMismatchError) && !_passwordsMatch)
+              _buildPasswordMatchValidationRow(),
             const SizedBox(height: 32),
             _buildActionButton("Change Password", _changePassword),
           ],
@@ -1134,8 +1410,8 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
     );
   }
 
-  Widget _buildPasswordMatchValidationRow(bool match) {
-    return const Row(
+  Widget _buildPasswordMatchValidationRow() {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
@@ -1146,8 +1422,10 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            "Password does not match",
-            style: TextStyle(
+            !_allPasswordCriteriaValid
+                ? _passwordRequirementMessage
+                : 'Password does not match.',
+            style: const TextStyle(
               color: Colors.red,
               fontSize: 11,
             ),
@@ -1173,7 +1451,7 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(context, "Notifications"),
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -1259,20 +1537,20 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
 
 PreferredSizeWidget _buildAppBar(BuildContext context, String title) {
   return AppBar(
-    backgroundColor: Colors.white,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     elevation: 0,
     leadingWidth: 80,
     leading: TextButton.icon(
       onPressed: () => Navigator.pop(context),
-      icon: const Icon(
+      icon: Icon(
         Icons.arrow_back_ios,
         size: 14,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
-      label: const Text(
+      label: Text(
         'Back',
         style: TextStyle(
-          color: Colors.black87,
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 13,
         ),
       ),
@@ -1282,8 +1560,8 @@ PreferredSizeWidget _buildAppBar(BuildContext context, String title) {
     ),
     title: Text(
       title,
-      style: const TextStyle(
-        color: Colors.black,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
         fontWeight: FontWeight.bold,
         fontSize: 16,
       ),
@@ -1292,7 +1570,7 @@ PreferredSizeWidget _buildAppBar(BuildContext context, String title) {
   );
 }
 
-Widget _buildInputLabel(String label) {
+Widget _buildInputLabel(BuildContext context, String label) {
   return Padding(
     padding: const EdgeInsets.only(
       bottom: 6,
@@ -1300,16 +1578,17 @@ Widget _buildInputLabel(String label) {
     ),
     child: Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 13,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     ),
   );
 }
 
 Widget _buildProfileTextField(
+  BuildContext context,
   TextEditingController controller,
   String hint, {
   bool isPassword = false,
@@ -1321,11 +1600,14 @@ Widget _buildProfileTextField(
     controller: controller,
     obscureText: isPassword ? obscureText : false,
     onChanged: onChanged,
-    style: const TextStyle(fontSize: 14),
+    style: TextStyle(
+      fontSize: 14,
+      color: Theme.of(context).colorScheme.onSurface,
+    ),
     decoration: InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        color: Colors.grey.shade400,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         fontSize: 13,
       ),
       contentPadding: const EdgeInsets.symmetric(
@@ -1340,12 +1622,12 @@ Widget _buildProfileTextField(
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
                 size: 18,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             )
           : null,
       filled: true,
-      fillColor: const Color(0xFFF9F9F9),
+      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,

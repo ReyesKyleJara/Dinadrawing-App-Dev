@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../navigation/main_wrapper.dart';
-import '../settings/settings.dart';
+import '../../services/profile_service.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -11,12 +11,23 @@ class ActivityScreen extends StatefulWidget {
 
 class _ActivityScreenState extends State<ActivityScreen> {
   // 0 = Notifications, 1 = Pending Tasks
-  int _selectedTabIndex = 0; 
+  int _selectedTabIndex = 0;
+
+  TextStyle get _cardTextStyle => TextStyle(
+        fontSize: 14,
+        color: Theme.of(context).colorScheme.onSurface,
+        height: 1.4,
+      );
+
+  TextStyle get _mutedTextStyle => TextStyle(
+        fontSize: 12,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -45,12 +56,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
+        Text(
           'Activity',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         // Shared clickable avatar (reflects ProfileService)
@@ -70,13 +81,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   return CircleAvatar(radius: 19, backgroundImage: MemoryImage(bytes));
                 }
                 if (icon != null) {
-                  return CircleAvatar(radius: 19, backgroundColor: Colors.grey[300], child: Icon(icon, size: 16, color: Colors.black));
+                  return CircleAvatar(radius: 19, backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurface));
                 }
 
-                return const CircleAvatar(
+                return CircleAvatar(
                   radius: 19,
-                  backgroundColor: Color(0xFFE0E0E0),
-                  child: Icon(Icons.person, color: Colors.grey, size: 16),
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.person,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 16,
+                  ),
                 );
               },
             ),
@@ -90,7 +105,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Container(
       height: 42,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -109,7 +124,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   style: TextStyle(
                     fontWeight: _selectedTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
                     fontSize: 13,
-                    color: _selectedTabIndex == 0 ? Colors.black : Colors.grey.shade600,
+                    color: _selectedTabIndex == 0 ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -129,7 +144,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   style: TextStyle(
                     fontWeight: _selectedTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
                     fontSize: 13,
-                    color: _selectedTabIndex == 1 ? Colors.black : Colors.grey.shade600,
+                    color: _selectedTabIndex == 1 ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -144,16 +159,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Today', style: TextStyle(fontSize: 16, color: Colors.black87)),
+        Text('Today', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         _buildNotificationCard(
           avatarPath: 'images/avatar_female.png', 
           isUnread: true,
           time: '10 minutes ago',
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
-              children: [
+            text: TextSpan(
+              style: _cardTextStyle,
+              children: const [
                 TextSpan(text: 'Jara ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'voted '),
                 TextSpan(text: 'Yes ', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -173,8 +188,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
           showAvatarStack: true,
           avatarStackText: '4/6 votes',
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: 'Janril ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'voted for the poll you posted in '),
@@ -185,7 +200,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         ),
         
         const SizedBox(height: 24),
-        const Text('Yesterday', style: TextStyle(fontSize: 16, color: Colors.black87)),
+        Text('Yesterday', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         
         _buildNotificationCard(
@@ -193,8 +208,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
           isUnread: false,
           time: '1d ago',
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: 'You ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'joined the '),
@@ -209,8 +224,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
           isUnread: false,
           time: '1d ago',
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: 'Venice ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'assigned you to '),
@@ -233,13 +248,13 @@ class _ActivityScreenState extends State<ActivityScreen> {
           actionText: 'Settle Up',
           actionColor: const Color(0xFFF2B73F),
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: 'Settle Up ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'Contributions for '),
                 TextSpan(text: 'Capstone Planning.\n', style: TextStyle(fontWeight: FontWeight.bold)),
-                TextSpan(text: 'Josh requests 350 PHP for Contributions.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                TextSpan(text: 'Josh requests 350 PHP for Contributions.', style: _mutedTextStyle),
               ],
             ),
           ),
@@ -252,8 +267,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
           showAvatarStack: true,
           avatarStackText: '4/8 votes',
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: '[4/8] ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'Vote on '),
@@ -272,8 +287,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
           showAvatarStack: true,
           avatarStackText: '3/8 votes',
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: '[3/8] ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'Vote on '),
@@ -290,13 +305,13 @@ class _ActivityScreenState extends State<ActivityScreen> {
           actionText: 'Settle Up',
           actionColor: const Color(0xFFF2B73F),
           content: RichText(
-            text: const TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.black, height: 1.4),
+            text: TextSpan(
+              style: _cardTextStyle,
               children: [
                 TextSpan(text: 'Settle Up ', style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: 'Contributions for '),
                 TextSpan(text: 'Capstone Planning.\n', style: TextStyle(fontWeight: FontWeight.bold)),
-                TextSpan(text: 'Josh requests 10,350 PHP for Contributions.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                TextSpan(text: 'Josh requests 10,350 PHP for Contributions.', style: _mutedTextStyle),
               ],
             ),
           ),
@@ -316,8 +331,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isUnread ? const Color(0xFFFFF7E6) : Colors.white, // Light yellow if unread
-        border: Border.all(color: isUnread ? const Color(0xFFF2B73F) : Colors.grey.shade200),
+        color: isUnread
+            ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.35)
+            : Theme.of(context).cardColor,
+        border: Border.all(
+          color: isUnread
+              ? const Color(0xFFF2B73F)
+              : Theme.of(context).dividerColor,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -325,7 +346,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.grey.shade300,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             backgroundImage: AssetImage(avatarPath),
             // Fallback icon
             onBackgroundImageError: (_, _) {},
@@ -343,12 +364,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     children: [
                       _buildAvatarStack(4), // Display 4 tiny avatars
                       const SizedBox(width: 8),
-                      Text(avatarStackText ?? '', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                      Text(avatarStackText ?? '', style: _mutedTextStyle),
                     ],
                   ),
                 ],
                 const SizedBox(height: 8),
-                Text(time, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(time, style: _mutedTextStyle),
               ],
             ),
           ),
@@ -368,12 +389,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade200),
+        color: Theme.of(context).cardColor,
+        border: Border.all(color: Theme.of(context).dividerColor),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.06),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -384,7 +405,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.grey.shade300,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             backgroundImage: AssetImage(avatarPath),
             onBackgroundImageError: (_, _) {},
             child: const Icon(Icons.person, color: Colors.grey),
@@ -404,7 +425,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                         children: [
                           _buildAvatarStack(3),
                           const SizedBox(width: 8),
-                          Text(avatarStackText ?? '', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                          Text(avatarStackText ?? '', style: _mutedTextStyle),
                         ],
                       )
                     else 
@@ -448,7 +469,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2), // White border for separation
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 2,
+                ),
               ),
               child: const CircleAvatar(
                 radius: 10,

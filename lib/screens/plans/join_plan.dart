@@ -1,7 +1,6 @@
 import 'package:dinadrawing/screens/plans/plan_dashboard/plan_dashboard.dart';
 import 'package:flutter/material.dart';
 import '../../services/plan_service.dart';
-import '../../navigation/main_wrapper.dart';
 
 class JoinPlanPage extends StatefulWidget {
   const JoinPlanPage({super.key});
@@ -75,18 +74,20 @@ class _JoinPlanPageState extends State<JoinPlanPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 18),
+          icon: Icon(Icons.arrow_back_ios, color: colorScheme.onSurface, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Join Plan',
-          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -95,37 +96,37 @@ class _JoinPlanPageState extends State<JoinPlanPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Have an invite code?',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: colorScheme.onSurface),
             ),
             const SizedBox(height: 8),
             Text(
               'Enter the 6-character code given by the plan admin to join their plan.',
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.4),
+              style: TextStyle(fontSize: 14, color: colorScheme.onSurfaceVariant, height: 1.4),
             ),
             const SizedBox(height: 32),
             TextField(
               controller: _codeController,
               textCapitalization: TextCapitalization.characters, // Auto-caps ang input
-              style: const TextStyle(fontSize: 18, letterSpacing: 2.0, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, letterSpacing: 2.0, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'e.g. A1B2C3',
-                hintStyle: TextStyle(color: Colors.grey.shade400, letterSpacing: 0),
+                hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, letterSpacing: 0),
                 filled: true,
-                fillColor: Colors.grey.shade50,
+                fillColor: colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFF2B73F), width: 2),
+                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
                 ),
               ),
             ),

@@ -13,19 +13,21 @@ class QuickDecisionPage extends StatefulWidget {
 class _QuickDecisionPageState extends State<QuickDecisionPage> {
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Quick Decision',
           style: TextStyle(
-            color: Colors.black,
+            color: colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -42,7 +44,7 @@ class _QuickDecisionPageState extends State<QuickDecisionPage> {
               Text(
                 'Decide in seconds',
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: colorScheme.onSurfaceVariant,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                 ),
@@ -83,20 +85,22 @@ class _QuickDecisionPageState extends State<QuickDecisionPage> {
     required Widget icon,
     required VoidCallback onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.grey[200]!,
+            color: colorScheme.outlineVariant,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -118,10 +122,10 @@ class _QuickDecisionPageState extends State<QuickDecisionPage> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -130,7 +134,7 @@ class _QuickDecisionPageState extends State<QuickDecisionPage> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
-                      color: Colors.grey[600],
+                      color: colorScheme.onSurfaceVariant,
                       height: 1.4,
                     ),
                   ),

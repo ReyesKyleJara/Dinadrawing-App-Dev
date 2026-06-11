@@ -4,7 +4,7 @@ import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
 import '../../services/plan_service.dart';
 import '../plans/plan_dashboard/plan_dashboard.dart';
-import '../settings/settings.dart';
+import '../../services/profile_service.dart';
 import 'archived_plans.dart';
 import 'deleted_plans.dart';
 import 'plan_model.dart';
@@ -124,30 +124,30 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         content: Text(
           content,
-          style: const TextStyle(
-            color: Colors.black87,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             height: 1.35,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
           ElevatedButton(
@@ -161,8 +161,8 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             ),
             child: Text(
               confirmText,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -285,8 +285,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         color: const Color(0xFFF2B73F),
         onRefresh: _loadPlans,
@@ -305,12 +307,12 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Active Plans',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: Colors.black,
+                        color: colorScheme.onSurface,
                         height: 1.1,
                       ),
                     ),
@@ -352,11 +354,13 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   }
 
   Widget _buildHeader() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -365,17 +369,17 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black,
+                  color: colorScheme.onSurface,
                   height: 1.05,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 'Manage, view, and edit your plans easily.',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF7A7F8F),
+                  color: colorScheme.onSurfaceVariant,
                   height: 1.2,
                 ),
               ),
@@ -409,21 +413,21 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                 if (icon != null) {
                   return CircleAvatar(
                     radius: 19,
-                    backgroundColor: Colors.grey[300],
+                    backgroundColor: colorScheme.surfaceContainerHighest,
                     child: Icon(
                       icon,
                       size: 16,
-                      color: Colors.black,
+                      color: colorScheme.onSurface,
                     ),
                   );
                 }
 
-                return const CircleAvatar(
+                return CircleAvatar(
                   radius: 19,
-                  backgroundColor: Color(0xFFE0E0E0),
+                  backgroundColor: colorScheme.surfaceContainerHighest,
                   child: Icon(
                     Icons.person,
-                    color: Colors.grey,
+                    color: colorScheme.onSurfaceVariant,
                     size: 16,
                   ),
                 );
@@ -436,6 +440,8 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   }
 
   Widget _buildFilterBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Row(
       children: [
         GestureDetector(
@@ -445,12 +451,16 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             height: 28,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: !_isDetailedView ? Colors.grey.shade200 : Colors.transparent,
+              color: !_isDetailedView
+                  ? colorScheme.surfaceContainerHighest
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Image.asset(
               'images/list.png',
-              color: !_isDetailedView ? Colors.black : Colors.grey[600],
+              color: !_isDetailedView
+                  ? colorScheme.onSurface
+                  : colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -462,27 +472,31 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             height: 28,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _isDetailedView ? Colors.grey.shade200 : Colors.transparent,
+              color: _isDetailedView
+                  ? colorScheme.surfaceContainerHighest
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Image.asset(
               'images/grid.png',
-              color: _isDetailedView ? Colors.black : Colors.grey[600],
+              color: _isDetailedView
+                  ? colorScheme.onSurface
+                  : colorScheme.onSurfaceVariant,
             ),
           ),
         ),
         const SizedBox(width: 8),
         PopupMenuButton<String>(
-          icon: const Icon(
+          icon: Icon(
             Icons.more_vert,
             size: 22,
-            color: Colors.black,
+            color: colorScheme.onSurface,
           ),
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           offset: const Offset(0, 40),
           elevation: 4,
           onSelected: (value) {
@@ -507,21 +521,21 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                     height: 18,
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Archived Plans',
-                    style: TextStyle(fontSize: 13, color: Colors.black),
+                    style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
                   ),
                 ],
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               enabled: false,
               height: 1,
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Divider(
                 height: 1,
                 thickness: 1,
-                color: Color(0xFFEEEEEE),
+                color: Theme.of(context).dividerColor,
               ),
             ),
             PopupMenuItem(
@@ -538,9 +552,9 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                     height: 18,
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Deleted Plans',
-                    style: TextStyle(fontSize: 13, color: Colors.black),
+                    style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
                   ),
                 ],
               ),
@@ -557,6 +571,8 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     bool isExpanded,
     String sectionId,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         GestureDetector(
@@ -565,16 +581,16 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             children: [
               Icon(
                 isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                color: Colors.black,
+                color: colorScheme.onSurface,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black,
+                  color: colorScheme.onSurface,
                   height: 1.1,
                 ),
               ),
@@ -606,14 +622,15 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
   Widget _buildSmallEmptySection(String title) {
     final bool isPlansByMe = title == 'Plans by Me';
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
@@ -633,10 +650,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
           const SizedBox(height: 12),
           Text(
             isPlansByMe ? 'No plans created yet' : 'No joined plans yet',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: Colors.black87,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 5),
@@ -647,7 +664,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12.5,
-              color: Colors.grey[600],
+              color: colorScheme.onSurfaceVariant,
               height: 1.35,
               fontWeight: FontWeight.w500,
             ),
@@ -665,16 +682,16 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     }
 
     return PopupMenuButton<String>(
-      icon: const Icon(
+      icon: Icon(
         Icons.more_vert,
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.onSurface,
         size: 18,
       ),
       padding: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       elevation: 4,
       enabled: !_isProcessingAction,
       onSelected: (value) {
@@ -701,19 +718,19 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               const SizedBox(width: 10),
               const Text(
                 'Archive Plan',
-                style: TextStyle(fontSize: 13, color: Colors.black),
+                style: TextStyle(fontSize: 13),
               ),
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           enabled: false,
           height: 1,
-          padding: EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Divider(
             height: 1,
             thickness: 1,
-            color: Color(0xFFEEEEEE),
+            color: Theme.of(context).dividerColor,
           ),
         ),
         PopupMenuItem(
@@ -732,7 +749,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               const SizedBox(width: 10),
               const Text(
                 'Delete Plan',
-                style: TextStyle(fontSize: 13, color: Colors.black),
+                style: TextStyle(fontSize: 13),
               ),
             ],
           ),
@@ -742,20 +759,22 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   }
 
   Widget _buildDetailedPlanCard(Plan plan) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: () => _openPlanDashboard(plan),
       child: Container(
         height: 112,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFE6E8EE),
+            color: Theme.of(context).dividerColor,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -780,10 +799,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                               plan.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.black,
+                                color: colorScheme.onSurface,
                                 height: 1.1,
                               ),
                             ),
@@ -800,10 +819,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                         _getPlanDateLocationText(plan),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
-                          color: Colors.black87,
+                          color: colorScheme.onSurfaceVariant,
                           height: 1.1,
                         ),
                       ),
@@ -827,21 +846,23 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
   }
 
   Widget _buildListPlanCard(Plan plan) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: () => _openPlanDashboard(plan),
       child: Container(
         height: 74,
         padding: const EdgeInsets.fromLTRB(18, 12, 16, 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFE6E8EE),
+            color: Theme.of(context).dividerColor,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.045),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -860,10 +881,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                       plan.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w800,
-                        color: Colors.black,
+                        color: colorScheme.onSurface,
                         height: 1.1,
                       ),
                     ),
@@ -909,6 +930,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
   Widget _buildRolePill(Plan plan) {
     final isAdmin = _isAdmin(plan);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -916,15 +938,17 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color: isAdmin ? const Color(0xFFFFF3D2) : const Color(0xFFF1F3F6),
+        color: isAdmin
+            ? colorScheme.primaryContainer.withValues(alpha: 0.45)
+            : colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         isAdmin ? 'Admin' : 'Member',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: Colors.black87,
+          color: colorScheme.onSurface,
         ),
       ),
     );
@@ -932,6 +956,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
   Widget _buildStatusPill(String status) {
     final bgColor = Plan.getStatusColor(status);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       constraints: const BoxConstraints(
@@ -949,10 +974,10 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
       child: Text(
         status,
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: Colors.black,
+          color: colorScheme.onSurface,
         ),
       ),
     );

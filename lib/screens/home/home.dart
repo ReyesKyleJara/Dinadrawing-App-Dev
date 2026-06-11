@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../navigation/main_wrapper.dart';
 import '../../tab/quick_decision.dart';
-import '../settings/settings.dart';
-import '../../services/auth_service.dart';
+import '../../services/profile_service.dart';
 import '../../services/plan_service.dart';
 import '../myplans/plan_model.dart';
 import '../plans/plan_dashboard/plan_dashboard.dart';
@@ -19,7 +18,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _showWheel = true;
   Timer? _switchTimer;
-  String _userName = 'User';
 
   bool _isLoadingPlans = true;
   List<Plan> _upcomingPlans = [];
@@ -28,28 +26,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    _loadCurrentUser();
     _loadUpcomingPlans();
 
     _switchTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (mounted) setState(() => _showWheel = !_showWheel);
     });
-  }
-
-  Future<void> _loadCurrentUser() async {
-    try {
-      final user = await AuthService.getCurrentUser();
-
-      if (!mounted) return;
-
-      if (user != null && user['name'] != null) {
-        setState(() {
-          _userName = user['name'];
-        });
-      }
-    } catch (e) {
-      print('HOME USER LOAD ERROR: $e');
-    }
   }
 
   Future<void> _loadUpcomingPlans() async {
@@ -142,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         color: const Color(0xFFF2B73F),
         onRefresh: _loadUpcomingPlans,
@@ -206,22 +187,27 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Hello, $_userName!',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  height: 1.05,
-                ),
+              ValueListenableBuilder<String>(
+                valueListenable: ProfileService.instance.name,
+                builder: (context, userName, _) {
+                  return Text(
+                    'Hello, $userName!',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      height: 1.05,
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'What are we planning today?',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
                 ),
               ),
             ],
@@ -239,10 +225,12 @@ class _HomeScreenState extends State<HomeScreen> {
               animation: Listenable.merge([
                 ProfileService.instance.avatarBytes,
                 ProfileService.instance.avatarIcon,
+                ProfileService.instance.photoUrl,
               ]),
               builder: (context, _) {
                 final bytes = ProfileService.instance.avatarBytes.value;
                 final icon = ProfileService.instance.avatarIcon.value;
+                final photoUrl = ProfileService.instance.photoUrl.value;
 
                 if (bytes != null) {
                   return CircleAvatar(
@@ -251,24 +239,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
+                if (photoUrl != null && photoUrl.isNotEmpty) {
+                  return CircleAvatar(
+                    radius: 19,
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundImage: NetworkImage(photoUrl),
+                  );
+                }
+
                 if (icon != null) {
                   return CircleAvatar(
                     radius: 19,
-                    backgroundColor: Colors.grey[300],
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: Icon(
                       icon,
                       size: 16,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   );
                 }
 
-                return const CircleAvatar(
+                return CircleAvatar(
                   radius: 19,
-                  backgroundColor: Color(0xFFE0E0E0),
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Icon(
                     Icons.person,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 16,
                   ),
                 );
@@ -284,11 +280,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -300,19 +296,21 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Can\'t decide where to go?',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Use spin the wheel or blitz poll for quick decisions',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -390,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           child: Text(
             'View all >',
-            style: TextStyle(color: Colors.grey[600]),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ),
       ],
@@ -398,14 +396,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyPlansState() {
+  final colorScheme = Theme.of(context).colorScheme;
+
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFFAEF),
+      color: colorScheme.primaryContainer.withValues(alpha: 0.25),
       borderRadius: BorderRadius.circular(18),
       border: Border.all(
-        color: const Color(0xFFFFE4AD),
+        color: colorScheme.primary.withValues(alpha: 0.35),
         width: 1,
       ),
     ),
@@ -427,23 +427,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 14),
 
-        const Text(
+        Text(
           'No plans yet',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w900,
-            color: Colors.black,
+            color: colorScheme.onSurface,
           ),
         ),
 
         const SizedBox(height: 6),
 
-        const Text(
+        Text(
           'Create your first plan or join one using an invite code.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.black54,
+            color: colorScheme.onSurfaceVariant,
             height: 1.4,
             fontWeight: FontWeight.w500,
           ),
@@ -495,7 +495,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black,
+                  foregroundColor: colorScheme.onSurface,
                   minimumSize: const Size(0, 44),
                   side: const BorderSide(
                     color: Color(0xFFF2B73F),
@@ -536,6 +536,7 @@ class HomePlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final bannerColor = Plan.parseColor(plan.bannerColor);
 
     return GestureDetector(
@@ -543,12 +544,12 @@ class HomePlanCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey.shade200),
+          color: Theme.of(context).cardColor,
+          border: Border.all(color: Theme.of(context).dividerColor),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.035),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -576,10 +577,10 @@ class HomePlanCard extends StatelessWidget {
                         plan.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: Colors.black,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -588,7 +589,7 @@ class HomePlanCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.grey[700],
+                          color: colorScheme.onSurfaceVariant,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -597,29 +598,29 @@ class HomePlanCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const SizedBox(
+                          SizedBox(
                             width: 72,
                             height: 24,
                             child: Stack(
                               children: [
                                 CircleAvatar(
                                   radius: 12,
-                                  backgroundColor: Color(0xFFE0E0E0),
+                                  backgroundColor: colorScheme.surfaceContainerHighest,
                                   child: Icon(
                                     Icons.person,
                                     size: 13,
-                                    color: Colors.black54,
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                                 Positioned(
                                   left: 15,
                                   child: CircleAvatar(
                                     radius: 12,
-                                    backgroundColor: Color(0xFFD8D8D8),
+                                    backgroundColor: colorScheme.surfaceContainerHigh,
                                     child: Icon(
                                       Icons.person,
                                       size: 13,
-                                      color: Colors.black54,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -627,11 +628,11 @@ class HomePlanCard extends StatelessWidget {
                                   left: 30,
                                   child: CircleAvatar(
                                     radius: 12,
-                                    backgroundColor: Color(0xFFCFCFCF),
+                                    backgroundColor: colorScheme.surfaceContainer,
                                     child: Icon(
                                       Icons.person,
                                       size: 13,
-                                      color: Colors.black54,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -649,10 +650,10 @@ class HomePlanCard extends StatelessWidget {
                             ),
                             child: Text(
                               plan.status,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.black87,
+                                color: colorScheme.onSurface,
                               ),
                             ),
                           ),

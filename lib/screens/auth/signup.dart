@@ -20,20 +20,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  bool get _hasMinLength => _passwordController.text.length >= 8;
-  bool get _hasNumber => RegExp(r'\d').hasMatch(_passwordController.text);
+  bool get _hasLength =>
+      _passwordController.text.length >= 8 && _passwordController.text.length <= 20;
+  bool get _hasLetterAndNumber =>
+      RegExp(r'(?=.*[A-Za-z])(?=.*\d)').hasMatch(_passwordController.text);
   bool get _hasSpecial => RegExp(r'[^A-Za-z0-9]').hasMatch(_passwordController.text);
-  bool get _passwordRequirementsMet => _hasMinLength && _hasNumber && _hasSpecial;
+  bool get _passwordRequirementsMet =>
+      _hasLength && _hasLetterAndNumber && _hasSpecial;
 
   String get _passwordRequirementMessage {
     if (_passwordRequirementsMet) {
-      return 'Password looks good.';
+      return 'Password requirements are met.';
     }
 
     final parts = <String>[];
-    if (!_hasMinLength) parts.add('at least 8 characters');
-    if (!_hasNumber) parts.add('at least 1 number');
-    if (!_hasSpecial) parts.add('at least 1 special character');
+    if (!_hasLength) parts.add('8 characters (20 max)');
+    if (!_hasLetterAndNumber) parts.add('1 letter and 1 number');
+    if (!_hasSpecial) parts.add('1 special character (# ? ! \$ & @)');
     return 'Password must contain ${parts.join(', ')}.';
   }
 
@@ -244,16 +247,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               const SizedBox(height: 8),
 
-              Text(
-                _passwordRequirementMessage,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _passwordRequirementsMet
-                      ? Colors.green.shade700
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              _buildPasswordRuleList(),
 
               const SizedBox(height: 32),
 
@@ -410,6 +404,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Widget _buildPasswordRuleList() {
+    final ruleItems = [
+      _buildPasswordRuleRow('8 characters (20 max)', _hasLength),
+      _buildPasswordRuleRow('1 letter and 1 number', _hasLetterAndNumber),
+      _buildPasswordRuleRow('1 special character (# ? ! \$ & @)', _hasSpecial),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        ...ruleItems,
+      ],
+    );
+  }
+
+  Widget _buildPasswordRuleRow(String label, bool isValid) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isValid ? Icons.check_circle : Icons.close,
+            size: 14,
+            color: isValid ? Colors.green : Colors.grey,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isValid ? Colors.green.shade700 : Colors.grey.shade600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLabeledField({
     required String label,
     required String hint,
@@ -433,6 +469,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword ? _obscurePassword : false,
+          onChanged: isPassword ? (_) => setState(() {}) : null,
           style: TextStyle(
             fontSize: 14,
             color: Theme.of(context).colorScheme.onSurface,

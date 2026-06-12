@@ -239,12 +239,16 @@ class ProfileService {
     String? newName,
     String? newUsername,
     String? newPhotoUrl,
+    bool clearAvatar = false,
   }) async {
-    if (bytes != null) {
+    if (clearAvatar) {
+      avatarBytes.value = null;
+      avatarIcon.value = null;
+      photoUrl.value = null;
+    } else if (bytes != null) {
       avatarBytes.value = bytes;
       avatarIcon.value = null;
-    }
-    if (icon != null) {
+    } else if (icon != null) {
       avatarIcon.value = icon;
       avatarBytes.value = null;
       photoUrl.value = null;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import '../../navigation/main_wrapper.dart';
@@ -221,52 +222,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (_) => const MainWrapper(initialIndex: 3),
               ),
             ),
-            child: AnimatedBuilder(
-              animation: Listenable.merge([
-                ProfileService.instance.avatarBytes,
-                ProfileService.instance.avatarIcon,
-                ProfileService.instance.photoUrl,
-              ]),
-              builder: (context, _) {
-                final bytes = ProfileService.instance.avatarBytes.value;
-                final icon = ProfileService.instance.avatarIcon.value;
-                final photoUrl = ProfileService.instance.photoUrl.value;
+            child: ValueListenableBuilder<Uint8List?>(
+              valueListenable: ProfileService.instance.avatarBytes,
+              builder: (context, bytes, _) {
+                return ValueListenableBuilder<IconData?>(
+                  valueListenable: ProfileService.instance.avatarIcon,
+                  builder: (context, icon, _) {
+                    return ValueListenableBuilder<String?>(
+                      valueListenable: ProfileService.instance.photoUrl,
+                      builder: (context, photoUrl, _) {
+                        if (bytes != null) {
+                          return CircleAvatar(
+                            radius: 19,
+                            backgroundImage: MemoryImage(bytes),
+                          );
+                        }
 
-                if (bytes != null) {
-                  return CircleAvatar(
-                    radius: 19,
-                    backgroundImage: MemoryImage(bytes),
-                  );
-                }
+                        if (photoUrl != null && photoUrl.isNotEmpty) {
+                          return CircleAvatar(
+                            radius: 19,
+                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            backgroundImage: NetworkImage(photoUrl),
+                          );
+                        }
 
-                if (photoUrl != null && photoUrl.isNotEmpty) {
-                  return CircleAvatar(
-                    radius: 19,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    backgroundImage: NetworkImage(photoUrl),
-                  );
-                }
+                        if (icon != null) {
+                          return CircleAvatar(
+                            radius: 19,
+                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              icon,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          );
+                        }
 
-                if (icon != null) {
-                  return CircleAvatar(
-                    radius: 19,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: Icon(
-                      icon,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  );
-                }
-
-                return CircleAvatar(
-                  radius: 19,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.person,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    size: 16,
-                  ),
+                        return CircleAvatar(
+                          radius: 19,
+                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.person,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 16,
+                          ),
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),

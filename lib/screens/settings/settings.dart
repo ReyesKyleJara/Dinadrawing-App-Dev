@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,18 @@ import '../../services/auth_service.dart';
 import '../../services/firebase_settings_service.dart';
 import '../../services/profile_service.dart';
 
+class _SelectedImageFile {
+  const _SelectedImageFile({
+    required this.bytes,
+    required this.fileName,
+    required this.mimeType,
+  });
+
+  final Uint8List bytes;
+  final String fileName;
+  final String? mimeType;
+}
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -21,10 +34,22 @@ class _SettingsPageState extends State<SettingsPage> {
   Uint8List? _avatarBytes;
   IconData? _selectedIcon;
   String _profileName = 'User';
+  TextEditingController? _draftNameController;
+  TextEditingController? _draftUsernameController;
   String _profileUsername = '@user';
   String _themeLabel = 'Light';
 
   bool _isLoggingOut = false;
+
+  bool _isSuccessfulProfileResponse(Map<String, dynamic>? response) {
+    if (response == null) return false;
+
+    final message = (response['message'] ?? '').toString().toLowerCase();
+    return response['success'] == true ||
+        message.contains('success') ||
+        message.contains('updated') ||
+        message.contains('saved');
+  }
 
   final List<IconData> _iconOptions = [
     Icons.face,
@@ -110,6 +135,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
+    _draftNameController?.dispose();
+    _draftUsernameController?.dispose();
     super.dispose();
   }
 
@@ -435,16 +462,28 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _showProfileBottomSheet(BuildContext context) async {
+    if (!mounted) return;
+
     Uint8List? draftAvatarBytes = _avatarBytes;
     IconData? draftSelectedIcon = _selectedIcon;
+    String? draftFileName;
+    String? draftMimeType;
+    bool isSavingProfile = false;
 
-    final TextEditingController draftNameController =
-        TextEditingController(text: _profileName);
+    _draftNameController ??= TextEditingController();
+    _draftUsernameController ??= TextEditingController();
 
-    final TextEditingController draftUsernameController =
-        TextEditingController(
-      text: _profileUsername.replaceAll('@', '').trim(),
-    );
+    final currentUser = await AuthService.getCurrentUser();
+    if (!mounted) return;
+
+    _draftNameController!.text = (currentUser?['name'] ?? _profileName).toString().trim();
+    _draftUsernameController!.text = (currentUser?['username'] ?? _profileUsername)
+        .toString()
+        .replaceAll('@', '')
+        .trim();
+
+    final TextEditingController nameController = _draftNameController!;
+    final TextEditingController usernameController = _draftUsernameController!;
 
     await showModalBottomSheet(
       context: context,
@@ -487,10 +526,12 @@ class _SettingsPageState extends State<SettingsPage> {
                             context,
                             currentAvatarBytes: draftAvatarBytes,
                             currentSelectedIcon: draftSelectedIcon,
-                            onChanged: (newBytes, newIcon) {
+                            onChanged: (newBytes, newIcon, {fileName, mimeType}) {
                               setBottomSheetState(() {
                                 draftAvatarBytes = newBytes;
                                 draftSelectedIcon = newIcon;
+                                draftFileName = fileName;
+                                draftMimeType = mimeType;
                               });
                             },
                           ),
@@ -508,10 +549,12 @@ class _SettingsPageState extends State<SettingsPage> {
                               context,
                               currentAvatarBytes: draftAvatarBytes,
                               currentSelectedIcon: draftSelectedIcon,
-                              onChanged: (newBytes, newIcon) {
+                              onChanged: (newBytes, newIcon, {fileName, mimeType}) {
                                 setBottomSheetState(() {
                                   draftAvatarBytes = newBytes;
                                   draftSelectedIcon = newIcon;
+                                  draftFileName = fileName;
+                                  draftMimeType = mimeType;
                                 });
                               },
                             ),
@@ -539,14 +582,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
               _buildInputLabel(context, "Name"),
               _buildValidatedTextField(
-                draftNameController,
+                nameController,
                 "Enter your name",
                 onChanged: (_) => setBottomSheetState(() {}),
               ),
 
               _buildInputLabel(context, "Username"),
               _buildUsernameField(
-                draftUsernameController,
+                usernameController,
                 "Enter username",
                 onChanged: (_) => setBottomSheetState(() {}),
               ),
@@ -557,91 +600,119 @@ class _SettingsPageState extends State<SettingsPage> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final navigator = Navigator.of(context);
-                    final trimmedName = draftNameController.text.trim();
-                    final rawUsername = draftUsernameController.text.trim();
-                    final usernameCore =
-                        rawUsername.replaceAll('@', '').trim();
+                  onPressed: isSavingProfile
+                      ? null
+                      : () async {
+                          print('Save Profile started');
+                          print('Sending request...');
 
-                    if (trimmedName.isEmpty || usernameCore.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "Please fill in all fields",
-                            style: TextStyle(fontSize: 13),
-                          ),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
-                    }
+                          if (!mounted) return;
 
-                    try {
-                      var result = await AuthService.updateProfile(
-                        name: trimmedName,
-                        username: usernameCore,
-                      );
+                          final messenger = ScaffoldMessenger.maybeOf(context);
+                          final navigator = Navigator.of(context);
+                          if (messenger == null || !navigator.mounted) return;
 
-                      if (!mounted) return;
+                          final trimmedName = nameController.text.trim();
+                          final rawUsername = usernameController.text.trim();
+                          final usernameCore = rawUsername.replaceAll('@', '').trim();
 
-                      if ((result['message'] ?? '').toString().toLowerCase().contains('success') == false &&
-                          (result['message'] ?? '').toString().toLowerCase().contains('updated') == false) {
-                        try {
-                          result = await FirebaseSettingsService.updateProfile(
-                            name: trimmedName,
-                            photoUrl: null,
-                          );
-                        } catch (_) {
-                          result = {'success': false, 'message': 'Unable to update profile.'};
-                        }
-                      } else {
-                        result = {'success': true, 'message': result['message'] ?? 'Profile updated successfully.'};
-                      }
+                          print('NAME=${nameController.text}');
+                          print('USERNAME=${usernameController.text}');
+                          print('NAME TEXT = ${nameController.text}');
+                          print('USERNAME TEXT = ${usernameController.text}');
+                          print('NAME = $trimmedName');
+                          print('USERNAME = $usernameCore');
+                          print('REQUEST PAYLOAD = {"name":"$trimmedName","username":"$usernameCore"}');
 
-                      if (result['success'] != true) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(result['message'].toString()),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                        return;
-                      }
+                          if (trimmedName.isEmpty || usernameCore.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Please fill in all fields'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
 
-                      setState(() {
-                        _avatarBytes = draftAvatarBytes;
-                        _selectedIcon = draftSelectedIcon;
-                        _profileName = trimmedName;
-                        _profileUsername = '@$usernameCore';
-                      });
+                          setBottomSheetState(() => isSavingProfile = true);
 
-                      await ProfileService.instance.updateProfile(
-                        bytes: _avatarBytes,
-                        icon: _selectedIcon,
-                        newName: _profileName,
-                        newUsername: _profileUsername,
-                      );
+                          try {
+                            final avatarChanged = draftAvatarBytes != _avatarBytes ||
+                                draftSelectedIcon != _selectedIcon;
 
-                      navigator.pop();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Profile updated successfully.'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
+                            print('STEP 1');
+                            print('Sending profile update');
 
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Profile update failed: $e'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                    }
-                  },
+                            final result = await AuthService.updateProfile(
+                              name: trimmedName,
+                              username: usernameCore,
+                              imageBytes: avatarChanged ? draftAvatarBytes : null,
+                              fileName: draftFileName,
+                              mimeType: draftMimeType,
+                            );
+
+                            print('STEP 2');
+                            print('Profile update result: $result');
+
+                            if (!_isSuccessfulProfileResponse(result)) {
+                              throw Exception(result['message'] ?? 'Unable to save profile.');
+                            }
+
+                            if (!mounted) return;
+
+                            final returnedUser = result['user'] is Map<String, dynamic>
+                                ? Map<String, dynamic>.from(result['user'] as Map)
+                                : null;
+                            final returnedPhotoUrl = (returnedUser?['photo_url'] ?? returnedUser?['photoUrl'] ?? '').toString().trim();
+
+                            await ProfileService.instance.updateProfile(
+                              bytes: avatarChanged ? draftAvatarBytes : null,
+                              icon: draftSelectedIcon,
+                              newName: trimmedName,
+                              newUsername: '@$usernameCore',
+                              newPhotoUrl: returnedPhotoUrl.isNotEmpty ? returnedPhotoUrl : null,
+                              clearAvatar: draftAvatarBytes == null && draftSelectedIcon == null,
+                            );
+
+                            if (!mounted) return;
+
+                            setState(() {
+                              _avatarBytes = draftAvatarBytes;
+                              _selectedIcon = draftSelectedIcon;
+                              _profileName = trimmedName;
+                              _profileUsername = '@$usernameCore';
+                            });
+
+                            if (!mounted) return;
+
+                            await ProfileService.instance.loadForCurrentUser();
+
+                            if (!mounted) return;
+
+                            navigator.pop();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text((result['message'] ?? 'Profile updated successfully.').toString()),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } catch (e, stackTrace) {
+                            print('Save Profile failed: $e');
+                            print('Save Profile stacktrace: $stackTrace');
+                            if (!mounted) return;
+
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Profile update failed: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setBottomSheetState(() => isSavingProfile = false);
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE8B653),
                     elevation: 0,
@@ -649,14 +720,23 @@ class _SettingsPageState extends State<SettingsPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    "Save Profile",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: isSavingProfile
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Text(
+                          "Save Profile",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
 
@@ -667,8 +747,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
 
-    draftNameController.dispose();
-    draftUsernameController.dispose();
   }
 
   Widget _buildAvatarWidget({
@@ -714,8 +792,12 @@ class _SettingsPageState extends State<SettingsPage> {
     BuildContext context, {
     required Uint8List? currentAvatarBytes,
     required IconData? currentSelectedIcon,
-    required void Function(Uint8List? avatarBytes, IconData? selectedIcon)
-        onChanged,
+    required void Function(
+      Uint8List? avatarBytes,
+      IconData? selectedIcon, {
+      String? fileName,
+      String? mimeType,
+    }) onChanged,
   }) {
     showModalBottomSheet(
       context: context,
@@ -735,17 +817,15 @@ class _SettingsPageState extends State<SettingsPage> {
               onTap: () async {
                 Navigator.pop(ctx);
 
-                final Uint8List? pickedBytes = await _takePhotoBytes();
+                final _SelectedImageFile? pickedImage = await _takePhotoFile();
 
-                if (pickedBytes != null) {
-                  onChanged(pickedBytes, null);
-
-                  setState(() {
-                    _avatarBytes = pickedBytes;
-                    _selectedIcon = null;
-                  });
-
-                  await ProfileService.instance.uploadAndPersistAvatar(pickedBytes);
+                if (pickedImage != null) {
+                  onChanged(
+                    pickedImage.bytes,
+                    null,
+                    fileName: pickedImage.fileName,
+                    mimeType: pickedImage.mimeType,
+                  );
                 }
               },
             ),
@@ -755,17 +835,15 @@ class _SettingsPageState extends State<SettingsPage> {
               onTap: () async {
                 Navigator.pop(ctx);
 
-                final Uint8List? pickedBytes = await _pickImageBytes();
+                final _SelectedImageFile? pickedImage = await _pickImageFile();
 
-                if (pickedBytes != null) {
-                  onChanged(pickedBytes, null);
-
-                  setState(() {
-                    _avatarBytes = pickedBytes;
-                    _selectedIcon = null;
-                  });
-
-                  await ProfileService.instance.uploadAndPersistAvatar(pickedBytes);
+                if (pickedImage != null) {
+                  onChanged(
+                    pickedImage.bytes,
+                    null,
+                    fileName: pickedImage.fileName,
+                    mimeType: pickedImage.mimeType,
+                  );
                 }
               },
             ),
@@ -778,13 +856,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 if (selected != null) {
                   onChanged(null, selected);
-
-                  setState(() {
-                    _avatarBytes = null;
-                    _selectedIcon = selected;
-                  });
-
-                  await ProfileService.instance.updateProfile(icon: selected);
                 }
               },
             ),
@@ -795,13 +866,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 'Reset to Default',
                 () {
                   onChanged(null, null);
-
-                  setState(() {
-                    _avatarBytes = null;
-                    _selectedIcon = null;
-                  });
-
-                  ProfileService.instance.resetProfile();
                 },
               ),
           ],
@@ -836,7 +900,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<Uint8List?> _pickImageBytes() async {
+  Future<_SelectedImageFile?> _pickImageFile() async {
     try {
       final ImagePicker picker = ImagePicker();
 
@@ -846,15 +910,19 @@ class _SettingsPageState extends State<SettingsPage> {
         imageQuality: 85,
       );
 
-      if (file != null) return await file.readAsBytes();
+      if (file == null) return null;
 
-      return null;
+      return _SelectedImageFile(
+        bytes: await file.readAsBytes(),
+        fileName: file.name,
+        mimeType: file.mimeType,
+      );
     } catch (e) {
       return null;
     }
   }
 
-  Future<Uint8List?> _takePhotoBytes() async {
+  Future<_SelectedImageFile?> _takePhotoFile() async {
     try {
       final ImagePicker picker = ImagePicker();
 
@@ -864,11 +932,13 @@ class _SettingsPageState extends State<SettingsPage> {
         imageQuality: 85,
       );
 
-      if (file != null) {
-        return await file.readAsBytes();
-      }
+      if (file == null) return null;
 
-      return null;
+      return _SelectedImageFile(
+        bytes: await file.readAsBytes(),
+        fileName: file.name,
+        mimeType: file.mimeType,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1286,7 +1356,7 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
             _buildProfileTextField(
               context,
               currentPasswordController,
-              "••••••••",
+              "Enter current password",
               isPassword: true,
               obscureText: !_currentPasswordVisible,
               onChanged: (_) {

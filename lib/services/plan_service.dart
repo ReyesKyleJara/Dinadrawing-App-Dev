@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
+
 import 'auth_service.dart';
 
 class PlanService {
@@ -422,7 +425,63 @@ class PlanService {
 
   static Future<Map<String, dynamic>> createPlanPost({
     required int planId,
-    required String content,
+    String content = '',
+    File? imageFile,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return {
+        'success': false,
+        'message': 'User is not logged in.',
+      };
+    }
+
+    if (content.trim().isEmpty && imageFile == null) {
+      return {
+        'success': false,
+        'message': 'Please add text or an image before posting.',
+      };
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/plans/$planId/posts'),
+    );
+
+    request.headers.addAll(headers);
+
+    if (content.trim().isNotEmpty) {
+      request.fields['content'] = content.trim();
+    }
+
+    if (imageFile != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          imageFile.path,
+        ),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    final data = _decodeResponse(response);
+
+    return {
+      ...data,
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+    };
+  }
+
+  static Future<Map<String, dynamic>> createPollPost({
+    required int planId,
+    required String question,
+    required List<String> options,
+    bool allowMultiple = false,
+    bool anonymous = true,
+    bool allowMembersAddOptions = false,
+    String? endsOn,
   }) async {
     final headers = await _authHeaders(hasBody: true);
 
@@ -433,11 +492,36 @@ class PlanService {
       };
     }
 
+    final cleanOptions = options
+        .map((option) => option.trim())
+        .where((option) => option.isNotEmpty)
+        .toList();
+
+    if (question.trim().isEmpty) {
+      return {
+        'success': false,
+        'message': 'Please enter a poll question.',
+      };
+    }
+
+    if (cleanOptions.length < 2) {
+      return {
+        'success': false,
+        'message': 'Please add at least two poll options.',
+      };
+    }
+
     final response = await http.post(
       Uri.parse('$baseUrl/plans/$planId/posts'),
       headers: headers,
       body: jsonEncode({
-        'content': content,
+        'post_type': 'poll',
+        'poll_question': question.trim(),
+        'poll_options': cleanOptions,
+        'allow_multiple': allowMultiple,
+        'anonymous': anonymous,
+        'allow_members_add_options': allowMembersAddOptions,
+        'ends_on': endsOn,
       }),
     );
 
@@ -448,4 +532,41 @@ class PlanService {
       'success': response.statusCode >= 200 && response.statusCode < 300,
     };
   }
+ static Future<Map<String, dynamic>> votePollPost({
+  required int postId,
+  required List<int> optionIndexes,
+}) async {
+  final headers = await _authHeaders(hasBody: true);
+
+  if (headers == null) {
+    return {
+      'success': false,
+      'message': 'User is not logged in.',
+    };
+  }
+
+  if (optionIndexes.isEmpty) {
+    return {
+      'success': false,
+      'message': 'Please select an option.',
+    };
+  }
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/plan-posts/$postId/vote'),
+    headers: headers,
+    body: jsonEncode({
+      'option_indexes': optionIndexes,
+    }),
+  );
+
+  final data = _decodeResponse(response);
+
+  return {
+    ...data,
+    'success': response.statusCode >= 200 && response.statusCode < 300,
+  };
+}
+
+
 }

@@ -375,7 +375,7 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                             itemCount: _allEntries.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final entry = _allEntries[index];
                               final plan = entry.plan;
@@ -591,7 +591,7 @@ class _DeletedPlanCard extends StatelessWidget {
               ),
               child: Icon(
                 Icons.delete_outline,
-                color: Colors.black.withOpacity(0.45),
+                color: Colors.black.withValues(alpha: 0.45),
                 size: 26,
               ),
             ),

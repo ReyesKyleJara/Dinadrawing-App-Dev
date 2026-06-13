@@ -34,11 +34,19 @@ class _CreatePollScreenState extends State<CreatePoll> {
   PollTemplateType _selectedTemplate = PollTemplateType.blank;
 
   bool _allowMultiple = false;
-  bool _anonymous = true;
+
+  // Anonymous voting is OFF by default.
+  bool _anonymous = false;
+
   bool _allowMembersAdd = false;
   bool _isSubmitting = false;
 
-  String _endsOn = '1 Week';
+  bool _scheduleVotingStart = false;
+  DateTime? _votingStartsAt;
+
+  bool _setVotingDeadline = false;
+  String _deadlineChoice = '1 Week';
+  DateTime? _customVotingEndsAt;
 
   @override
   void initState() {
@@ -175,6 +183,323 @@ class _CreatePollScreenState extends State<CreatePoll> {
     });
   }
 
+  String _formatScheduleDateTime(DateTime dateTime) {
+    return DateFormat('MMM d, yyyy • h:mm a').format(dateTime);
+  }
+
+  Future<bool> _pickVotingStartDateTime() async {
+    if (_isSubmitting) return false;
+
+    final now = DateTime.now();
+    final currentValue = _votingStartsAt ?? now.add(const Duration(minutes: 10));
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: currentValue,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+      helpText: 'Select voting start date',
+      confirmText: 'Next',
+      cancelText: 'Cancel',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF5B335),
+              onPrimary: Colors.black,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFF5B335),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate == null) return false;
+    if (!mounted) return false;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(currentValue),
+      helpText: 'Select voting start time',
+      confirmText: 'Use Time',
+      cancelText: 'Cancel',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF5B335),
+              onPrimary: Colors.black,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFF5B335),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime == null) return false;
+
+    final selectedDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    if (selectedDateTime.isBefore(DateTime.now())) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose a future start time.'),
+        ),
+      );
+
+      return false;
+    }
+
+    setState(() {
+      _votingStartsAt = selectedDateTime;
+    });
+
+    return true;
+  }
+
+  Future<bool> _pickVotingEndDateTime() async {
+    if (_isSubmitting) return false;
+
+    final now = DateTime.now();
+
+    final minimumDateTime = _scheduleVotingStart && _votingStartsAt != null
+        ? _votingStartsAt!
+        : now;
+
+    final currentValue =
+        _customVotingEndsAt ?? minimumDateTime.add(const Duration(hours: 1));
+
+    final initialDate =
+        currentValue.isBefore(minimumDateTime) ? minimumDateTime : currentValue;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: minimumDateTime,
+      lastDate: DateTime(now.year + 2),
+      helpText: 'Select voting deadline date',
+      confirmText: 'Next',
+      cancelText: 'Cancel',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF5B335),
+              onPrimary: Colors.black,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFF5B335),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate == null) return false;
+    if (!mounted) return false;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+      helpText: 'Select voting deadline time',
+      confirmText: 'Use Time',
+      cancelText: 'Cancel',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF5B335),
+              onPrimary: Colors.black,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFF5B335),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime == null) return false;
+
+    final selectedDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    if (selectedDateTime.isBefore(DateTime.now())) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose a future deadline.'),
+        ),
+      );
+
+      return false;
+    }
+
+    if (_scheduleVotingStart &&
+        _votingStartsAt != null &&
+        selectedDateTime.isBefore(_votingStartsAt!)) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deadline must be after the voting start time.'),
+        ),
+      );
+
+      return false;
+    }
+
+    setState(() {
+      _customVotingEndsAt = selectedDateTime;
+    });
+
+    return true;
+  }
+
+  Future<void> _toggleScheduleVotingStart(bool value) async {
+    if (_isSubmitting) return;
+
+    if (!value) {
+      setState(() {
+        _scheduleVotingStart = false;
+        _votingStartsAt = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _scheduleVotingStart = true;
+    });
+
+    final picked = await _pickVotingStartDateTime();
+
+    if (!mounted) return;
+
+    if (!picked) {
+      setState(() {
+        _scheduleVotingStart = false;
+        _votingStartsAt = null;
+      });
+    }
+  }
+
+  Future<void> _toggleVotingDeadline(bool value) async {
+    if (_isSubmitting) return;
+
+    if (!value) {
+      setState(() {
+        _setVotingDeadline = false;
+        _deadlineChoice = '1 Week';
+        _customVotingEndsAt = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _setVotingDeadline = true;
+      _deadlineChoice = '1 Week';
+      _customVotingEndsAt = null;
+    });
+  }
+
+  Duration _durationForDeadlineChoice(String choice) {
+    switch (choice) {
+      case '1 Day':
+        return const Duration(days: 1);
+      case '3 Days':
+        return const Duration(days: 3);
+      case '1 Week':
+        return const Duration(days: 7);
+      default:
+        return const Duration(days: 7);
+    }
+  }
+
+  DateTime? _resolvedVotingEndsAt() {
+    if (!_setVotingDeadline) return null;
+
+    if (_deadlineChoice == 'Custom') {
+      return _customVotingEndsAt;
+    }
+
+    final baseTime = _scheduleVotingStart && _votingStartsAt != null
+        ? _votingStartsAt!
+        : DateTime.now();
+
+    return baseTime.add(_durationForDeadlineChoice(_deadlineChoice));
+  }
+
+  String? _resolvedEndsOnLabel(DateTime? votingEndsAt) {
+    if (!_setVotingDeadline) return null;
+
+    if (_deadlineChoice == 'Custom') {
+      if (votingEndsAt == null) return null;
+      return _formatScheduleDateTime(votingEndsAt);
+    }
+
+    return _deadlineChoice;
+  }
+
+  Future<void> _handleDeadlineChoiceChanged(String value) async {
+    if (_isSubmitting) return;
+
+    if (value != 'Custom') {
+      setState(() {
+        _deadlineChoice = value;
+        _customVotingEndsAt = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _deadlineChoice = 'Custom';
+    });
+
+    final picked = await _pickVotingEndDateTime();
+
+    if (!mounted) return;
+
+    if (!picked && _customVotingEndsAt == null) {
+      setState(() {
+        _deadlineChoice = '1 Week';
+      });
+    }
+  }
+
   Future<void> _submitPoll() async {
     final question = _questionController.text.trim();
 
@@ -197,6 +522,36 @@ class _CreatePollScreenState extends State<CreatePoll> {
       return;
     }
 
+    if (_scheduleVotingStart && _votingStartsAt == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a voting start time.')),
+      );
+      return;
+    }
+
+    final votingEndsAt = _resolvedVotingEndsAt();
+
+    if (_setVotingDeadline && votingEndsAt == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a voting deadline.')),
+      );
+      return;
+    }
+
+    if (_scheduleVotingStart &&
+        _votingStartsAt != null &&
+        votingEndsAt != null &&
+        votingEndsAt.isBefore(_votingStartsAt!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deadline must be after the voting start time.'),
+        ),
+      );
+      return;
+    }
+
+    final endsOnLabel = _resolvedEndsOnLabel(votingEndsAt);
+
     setState(() {
       _isSubmitting = true;
     });
@@ -209,7 +564,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
         allowMultiple: _allowMultiple,
         anonymous: _anonymous,
         allowMembersAddOptions: _allowMembersAdd,
-        endsOn: _endsOn,
+        endsOn: endsOnLabel,
+        votingStartsAt: _scheduleVotingStart ? _votingStartsAt : null,
+        votingEndsAt: votingEndsAt,
       );
 
       if (!mounted) return;
@@ -280,8 +637,11 @@ class _CreatePollScreenState extends State<CreatePoll> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shadowColor: Colors.transparent,
         elevation: 0,
-        leadingWidth: 100,
+        scrolledUnderElevation: 0,
+        leadingWidth: 110,
         leading: TextButton.icon(
           onPressed: _isSubmitting ? null : () => Navigator.pop(context),
           icon: const Icon(
@@ -294,15 +654,17 @@ class _CreatePollScreenState extends State<CreatePoll> {
             style: TextStyle(
               color: Color(0xFFF5B335),
               fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
           style: TextButton.styleFrom(
-            padding: const EdgeInsets.only(left: 24),
+            padding: const EdgeInsets.only(left: 20),
+            overlayColor: Colors.transparent,
           ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -342,7 +704,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                     subtitle: 'Custom options',
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _buildTemplateCard(
                     template: PollTemplateType.date,
@@ -351,7 +713,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                     subtitle: 'Pick the best date',
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _buildTemplateCard(
                     template: PollTemplateType.location,
@@ -441,63 +803,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
               },
             ),
             const SizedBox(height: 22),
-            const Text(
-              'Ends on',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _endsOn,
-                  isExpanded: true,
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Color(0xFFF5B335),
-                  ),
-                  items: const [
-                    '1 Day',
-                    '3 Days',
-                    '1 Week',
-                    '2 Weeks',
-                  ].map((value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today_outlined,
-                            size: 18,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            value,
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: _isSubmitting
-                      ? null
-                      : (value) {
-                          if (value != null) {
-                            setState(() => _endsOn = value);
-                          }
-                        },
-                ),
-              ),
-            ),
+            _buildVotingScheduleSection(),
+            const SizedBox(height: 18),
+            _buildVotingDeadlineSection(),
             const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
@@ -546,86 +854,70 @@ class _CreatePollScreenState extends State<CreatePoll> {
 
     return GestureDetector(
       onTap: () => _selectTemplate(template),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            height: 112,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFFFF8E8)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFFF5B335)
-                    : Colors.grey.shade300,
-                width: isSelected ? 1.4 : 1,
-              ),
-              boxShadow: [
-                if (isSelected)
-                  BoxShadow(
-                    color: const Color(0xFFF5B335).withValues(alpha: 0.10),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 30,
-                  color: isSelected
-                      ? const Color(0xFFF5B335)
-                      : Colors.grey.shade500,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: isSelected ? Colors.black : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 108,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFFFF8E8) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFFF5B335) : Colors.grey.shade300,
+            width: isSelected ? 1.6 : 1,
           ),
-          if (isSelected)
-            Positioned(
-              top: -9,
-              right: -6,
-              child: Container(
-                width: 26,
-                height: 26,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF5B335),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 17,
+          boxShadow: [
+            if (isSelected)
+              BoxShadow(
+                color: const Color(0xFFF5B335).withValues(alpha: 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 28,
+              color: isSelected
+                  ? const Color(0xFFF5B335)
+                  : Colors.grey.shade500,
+            ),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: isSelected ? Colors.black : Colors.black87,
                 ),
               ),
             ),
-        ],
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -676,7 +968,8 @@ class _CreatePollScreenState extends State<CreatePoll> {
       readOnly: isDateTemplate,
       onTap: isDateTemplate ? () => _pickDateForOption(index) : null,
       decoration: InputDecoration(
-        labelText: index < 2 ? 'Option ${index + 1}' : 'Option ${index + 1} (Optional)',
+        labelText:
+            index < 2 ? 'Option ${index + 1}' : 'Option ${index + 1} (Optional)',
         hintText: _optionHint(index),
         hintStyle: TextStyle(
           color: Colors.grey.shade400,
@@ -728,17 +1021,284 @@ class _CreatePollScreenState extends State<CreatePoll> {
             child: Text(
               label,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
           ),
           Switch(
             value: value,
+            activeThumbColor: const Color(0xFFF5B335),
             onChanged: _isSubmitting ? null : onChanged,
-            activeThumbColor: Colors.white,
-            activeTrackColor: const Color(0xFFF5B335),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVotingScheduleSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Voting Schedule',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Voting starts immediately by default.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Schedule voting start',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _scheduleVotingStart,
+                activeThumbColor: const Color(0xFFF5B335),
+                onChanged: _isSubmitting ? null : _toggleScheduleVotingStart,
+              ),
+            ],
+          ),
+          if (_scheduleVotingStart) ...[
+            const SizedBox(height: 10),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _isSubmitting ? null : _pickVotingStartDateTime,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E8),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFFF5B335),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.schedule,
+                      size: 20,
+                      color: Color(0xFFF5B335),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _votingStartsAt == null
+                            ? 'Choose start time'
+                            : _formatScheduleDateTime(_votingStartsAt!),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFFF5B335),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVotingDeadlineSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Voting Deadline',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Poll stays open until manually closed by default.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Set voting deadline',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _setVotingDeadline,
+                activeThumbColor: const Color(0xFFF5B335),
+                onChanged: _isSubmitting ? null : _toggleVotingDeadline,
+              ),
+            ],
+          ),
+          if (_setVotingDeadline) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E8),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: const Color(0xFFF5B335),
+                  width: 1,
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _deadlineChoice,
+                  isExpanded: true,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFFF5B335),
+                  ),
+                  items: const [
+                    '1 Day',
+                    '3 Days',
+                    '1 Week',
+                    'Custom',
+                  ].map((value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 18,
+                            color: Color(0xFFF5B335),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            value,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _isSubmitting
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            _handleDeadlineChoiceChanged(value);
+                          }
+                        },
+                ),
+              ),
+            ),
+            if (_deadlineChoice == 'Custom') ...[
+              const SizedBox(height: 10),
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _isSubmitting ? null : _pickVotingEndDateTime,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 13,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule,
+                        size: 20,
+                        color: Color(0xFFF5B335),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _customVotingEndsAt == null
+                              ? 'Choose custom deadline'
+                              : _formatScheduleDateTime(_customVotingEndsAt!),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Color(0xFFF5B335),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );

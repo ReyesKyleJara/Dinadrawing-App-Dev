@@ -1,11 +1,13 @@
 import 'dart:io';
 
-import 'package:dinadrawing/screens/plans/plan_dashboard/create_poll.dart';
-import 'package:dinadrawing/screens/plans/plan_dashboard/create_task.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../services/auth_service.dart';
 import '../../../services/plan_service.dart';
+import 'create_poll.dart';
+import 'create_responsibility.dart';
+import 'responsibility_post.dart';
 
 class FeedTab extends StatefulWidget {
   final int planId;
@@ -22,15 +24,23 @@ class FeedTab extends StatefulWidget {
 class _FeedTabState extends State<FeedTab> {
   List<Map<String, dynamic>> posts = [];
 
+  List<Map<String, dynamic>> planMembers = [];
+  int? currentUserId;
+
   bool isLoadingPosts = true;
   bool isSubmittingPost = false;
 
   final ImagePicker _imagePicker = ImagePicker();
 
+  static const Color brandYellow = Color(0xFFF5B335);
+  static const Color brandYellowDark = Color(0xFFB87500);
+  static const Color brandCreamLight = Color(0xFFFFFCF4);
+
   @override
   void initState() {
     super.initState();
     _loadPosts();
+    _loadPlanMembers();
   }
 
   int _parseInt(dynamic value, {int fallback = 0}) {
@@ -56,6 +66,19 @@ class _FeedTabState extends State<FeedTab> {
     }
 
     return <String>[];
+  }
+
+  List<Map<String, dynamic>> _parseMapList(dynamic value) {
+    if (value is! List) {
+      return <Map<String, dynamic>>[];
+    }
+
+    return value
+        .whereType<Map>()
+        .map(
+          (item) => Map<String, dynamic>.from(item),
+        )
+        .toList();
   }
 
   List<List<Map<String, dynamic>>> _parseVoterPreviewGroups(dynamic value) {
@@ -88,23 +111,167 @@ class _FeedTabState extends State<FeedTab> {
     return text == 'true' || text == '1';
   }
 
+  int? _parseNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+
+    return int.tryParse(value.toString());
+  }
+
+  String _getMemberDisplayName(
+    Map<String, dynamic> member,
+  ) {
+    final name = member['name']?.toString();
+    final username = member['username']?.toString();
+    final email = member['email']?.toString();
+
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+
+    if (username != null && username.trim().isNotEmpty) {
+      return username.trim();
+    }
+
+    if (email != null && email.trim().isNotEmpty) {
+      return email.trim();
+    }
+
+    return 'Member';
+  }
+
+Future<void> _loadPlanMembers() async {
+  try {
+    final user = await AuthService.getCurrentUser();
+    final result = await PlanService.getPlanById(widget.planId);
+
+    if (!mounted) return;
+
+    final currentId = _parseNullableInt(user?['id']);
+    final parsedMembers = <Map<String, dynamic>>[];
+
+    void addMember(dynamic rawMember) {
+      if (rawMember is! Map) return;
+
+      final member = Map<String, dynamic>.from(rawMember);
+      final memberId = _parseNullableInt(
+        member['id'] ?? member['user_id'],
+      );
+
+      final alreadyAdded = parsedMembers.any((existing) {
+        final existingId = _parseNullableInt(
+          existing['id'] ?? existing['user_id'],
+        );
+
+        if (memberId != null && existingId != null) {
+          return memberId == existingId;
+        }
+
+        final existingUsername =
+            existing['username']?.toString().trim().toLowerCase();
+
+        final memberUsername =
+            member['username']?.toString().trim().toLowerCase();
+
+        return existingUsername != null &&
+            existingUsername.isNotEmpty &&
+            existingUsername == memberUsername;
+      });
+
+      if (alreadyAdded) return;
+
+      parsedMembers.add({
+        ...member,
+        'displayName': _getMemberDisplayName(member),
+      });
+    }
+
+    final plan = result['plan'];
+
+    if (plan is Map) {
+      final planMap = Map<String, dynamic>.from(plan);
+      final rawMembers = planMap['members'];
+
+      if (rawMembers is List) {
+        for (final member in rawMembers) {
+          addMember(member);
+        }
+      }
+
+      // Include the plan admin if returned separately.
+      addMember(planMap['admin']);
+    }
+
+    // Make sure the current user is included with the real name/username.
+    addMember(user);
+
+    parsedMembers.sort((a, b) {
+      final aId = _parseNullableInt(a['id'] ?? a['user_id']);
+      final bId = _parseNullableInt(b['id'] ?? b['user_id']);
+
+      final aIsYou = currentId != null && aId == currentId;
+      final bIsYou = currentId != null && bId == currentId;
+
+      if (aIsYou && !bIsYou) return -1;
+      if (!aIsYou && bIsYou) return 1;
+
+      return _getMemberDisplayName(a)
+          .toLowerCase()
+          .compareTo(
+            _getMemberDisplayName(b).toLowerCase(),
+          );
+    });
+
+    setState(() {
+      currentUserId = currentId;
+      planMembers = parsedMembers;
+    });
+  } catch (error) {
+    debugPrint('Failed to load plan members: $error');
+  }
+}
+
   Map<String, dynamic> _mapPostFromApi(dynamic item) {
     final post = Map<String, dynamic>.from(item as Map);
+
     final postType = post['post_type']?.toString() ?? 'text';
+
+    String mappedType = 'text';
+
+    if (postType == 'poll') {
+      mappedType = 'poll';
+    } else if (postType == 'responsibility') {
+      mappedType = 'responsibility';
+    }
+
+    final responsibilityItems = _parseMapList(
+      post['responsibility_items'] ?? post['responsibilityItems'],
+    );
 
     return {
       'id': post['id'],
-      'type': postType == 'poll' ? 'poll' : 'text',
+      'type': mappedType,
+      'rawPost': post,
+
       'name': _getUserDisplayName(post),
       'time': _formatPostTime(post['created_at']?.toString()),
       'content': post['content']?.toString() ?? '',
       'imageUrl': post['image_url']?.toString() ?? '',
+
+      'isPinned': _parseBool(
+        post['is_pinned_value'] ?? post['is_pinned'],
+      ),
+      'isPlanAdmin': _parseBool(post['is_plan_admin']),
+      'isPostOwner': _parseBool(post['is_post_owner']),
+      'canPinPost': _parseBool(post['can_pin_post']),
+      'canDeletePost': _parseBool(post['can_delete_post']),
+
       'question': post['poll_question']?.toString() ??
           post['content']?.toString() ??
           '',
       'options': _parseStringList(post['poll_options']),
       'endsOn': post['ends_on']?.toString() ?? '',
-      'anonymous': _parseBool(post['anonymous'], fallback: true),
+      'anonymous': _parseBool(post['anonymous'], fallback: false),
       'allowMultiple': _parseBool(post['allow_multiple']),
       'allowMembersAddOptions': _parseBool(
         post['allow_members_add_options'],
@@ -119,7 +286,83 @@ class _FeedTabState extends State<FeedTab> {
       'optionVoterExtraCounts': _parseIntList(
         post['option_voter_extra_counts'],
       ),
+      'canEditPoll': _parseBool(post['can_edit_poll']),
+      'canToggleVoting': _parseBool(post['can_toggle_voting']),
+      'votingStartsAt': post['voting_starts_at_value']?.toString() ??
+          post['voting_starts_at']?.toString() ??
+          '',
+      'votingEndsAt': post['voting_ends_at_value']?.toString() ??
+          post['voting_ends_at']?.toString() ??
+          '',
+      'isVotingClosed': _parseBool(
+        post['is_voting_closed_value'] ?? post['is_voting_closed'],
+      ),
+      'votingStatus': post['voting_status']?.toString() ?? 'open',
+      'canVote': _parseBool(post['can_vote'], fallback: true),
+      'votingMessage': post['voting_message']?.toString() ?? '',
+
+      'responsibilityTitle': post['responsibility_title']?.toString() ??
+          post['content']?.toString() ??
+          'Responsibilities',
+      'responsibilityMode':
+          post['responsibility_mode']?.toString() ?? 'person_based',
+      'responsibilityItems': responsibilityItems,
+      'responsibilityAllowMemberItems': _parseBool(
+        post['responsibility_allow_member_items'],
+      ),
+      'responsibilityShowProgress': _parseBool(
+        post['responsibility_show_progress'],
+        fallback: true,
+      ),
+      'responsibilityIsFinalized': _parseBool(
+        post['responsibility_is_finalized'],
+      ),
+      'responsibilityTotalCount': _parseInt(
+        post['responsibility_total_count'],
+      ),
+      'responsibilityFilledCount': _parseInt(
+        post['responsibility_filled_count'],
+      ),
+      'canManageResponsibility': _parseBool(
+        post['can_manage_responsibility'],
+      ),
+      'canFinalizeResponsibility': _parseBool(
+        post['can_finalize_responsibility'],
+      ),
+      'canAddResponsibilityItems': _parseBool(
+        post['can_add_responsibility_items'],
+      ),
     };
+  }
+
+  void _replacePostInList(Map<String, dynamic> updatedPost) {
+    final updatedPostId = _parseInt(updatedPost['id']);
+
+    setState(() {
+      final index = posts.indexWhere(
+        (item) => _parseInt(item['id']) == updatedPostId,
+      );
+
+      if (index != -1) {
+        posts[index] = updatedPost;
+      }
+
+      final pinnedPosts = posts.where((post) => post['isPinned'] == true).toList();
+
+      final regularPosts =
+          posts.where((post) => post['isPinned'] != true).toList();
+
+      posts = [
+        ...pinnedPosts,
+        ...regularPosts,
+      ];
+    });
+  }
+
+  void _removePostFromList(int postId) {
+    setState(() {
+      posts.removeWhere((post) => _parseInt(post['id']) == postId);
+    });
   }
 
   Future<void> _loadPosts() async {
@@ -210,12 +453,118 @@ class _FeedTabState extends State<FeedTab> {
     }
   }
 
+  Future<void> _addOptionToPoll(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid poll post.')),
+      );
+      return;
+    }
+
+    final TextEditingController optionCtrl = TextEditingController();
+
+    final option = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text(
+            'Add poll option',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          content: TextField(
+            controller: optionCtrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Enter new option',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(optionCtrl.text.trim());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: brandYellow,
+                foregroundColor: Colors.black,
+              ),
+              child: const Text(
+                'Add',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    optionCtrl.dispose();
+
+    if (option == null || option.trim().isEmpty) return;
+
+    try {
+      final result = await PlanService.addPollOption(
+        postId: postId,
+        option: option,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true && result['post'] != null) {
+        final updatedPost = _mapPostFromApi(result['post']);
+
+        _replacePostInList(updatedPost);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Option added.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to add option.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
   Future<void> _voteOnPoll(Map<String, dynamic> post, int optionIndex) async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid poll post.')),
+      );
+      return;
+    }
+
+    final canVote = post['canVote'] == true;
+    final votingMessage = post['votingMessage']?.toString() ?? '';
+
+    if (!canVote) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            votingMessage.isNotEmpty ? votingMessage : 'Voting is not open.',
+          ),
+        ),
       );
       return;
     }
@@ -260,15 +609,7 @@ class _FeedTabState extends State<FeedTab> {
       if (result['success'] == true && result['post'] != null) {
         final updatedPost = _mapPostFromApi(result['post']);
 
-        setState(() {
-          final postIndex = posts.indexWhere(
-            (item) => _parseInt(item['id']) == postId,
-          );
-
-          if (postIndex != -1) {
-            posts[postIndex] = updatedPost;
-          }
-        });
+        _replacePostInList(updatedPost);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -283,6 +624,856 @@ class _FeedTabState extends State<FeedTab> {
         SnackBar(content: Text('Connection error: $e')),
       );
     }
+  }
+
+  Future<void> _togglePostPin(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid post.')),
+      );
+      return;
+    }
+
+    final nextPinnedState = post['isPinned'] != true;
+
+    try {
+      final result = await PlanService.togglePostPin(
+        postId: postId,
+        isPinned: nextPinnedState,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true && result['post'] != null) {
+        final updatedPost = _mapPostFromApi(result['post']);
+
+        _replacePostInList(updatedPost);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updatedPost['isPinned'] == true
+                  ? 'Post pinned.'
+                  : 'Post unpinned.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to update pin.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
+  Future<void> _togglePollVoting(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid poll.')),
+      );
+      return;
+    }
+
+    final nextClosedState = post['isVotingClosed'] != true;
+
+    try {
+      final result = await PlanService.togglePollVoting(
+        postId: postId,
+        isVotingClosed: nextClosedState,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true && result['post'] != null) {
+        final updatedPost = _mapPostFromApi(result['post']);
+
+        _replacePostInList(updatedPost);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updatedPost['isVotingClosed'] == true
+                  ? 'Voting closed.'
+                  : 'Voting reopened.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to update voting.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleResponsibilityFinalized(
+    Map<String, dynamic> post,
+  ) async {
+    final postId = _parseInt(
+      post['id'],
+      fallback: -1,
+    );
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Invalid responsibility post.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final currentlyFinalized =
+        post['responsibilityIsFinalized'] == true;
+
+    final nextFinalizedState = !currentlyFinalized;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            nextFinalizedState
+                ? 'Finalize responsibilities?'
+                : 'Reopen responsibilities?',
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+            ),
+          ),
+          content: Text(
+            nextFinalizedState
+                ? 'Members will no longer be able to add entries, claim roles, or respond to assignments.'
+                : 'Members will be able to update entries and claim or respond to roles again.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: brandYellow,
+                foregroundColor: Colors.black,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                nextFinalizedState ? 'Finalize' : 'Reopen',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final result = await PlanService.toggleResponsibilityFinalized(
+        postId: postId,
+        isFinalized: nextFinalizedState,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true && result['post'] is Map) {
+        final updatedPost = _mapPostFromApi(
+          result['post'],
+        );
+
+        _replacePostInList(updatedPost);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ??
+                  'Failed to update responsibilities.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Connection error: $error',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deletePost(
+    Map<String, dynamic> post,
+  ) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid post.')),
+      );
+      return;
+    }
+
+    final type = post['type']?.toString() ?? 'text';
+
+    final itemName = type == 'poll'
+        ? 'poll'
+        : type == 'responsibility'
+            ? 'responsibility list'
+            : 'post';
+
+    final confirmed = await _showDeletePostConfirmation(
+      itemName: itemName,
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final result = await PlanService.deletePost(
+        postId: postId,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        _removePostFromList(postId);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to delete post.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
+  Future<bool?> _showDeletePostConfirmation({
+    required String itemName,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Delete $itemName?',
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+            ),
+          ),
+          content: Text(
+            'This action cannot be undone. Are you sure you want to delete this $itemName?',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              height: 1.35,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openEditPoll(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid poll.')),
+      );
+      return;
+    }
+
+    final totalVotes = _parseInt(post['totalVotes']);
+    final hasVotes = totalVotes > 0;
+
+    final questionController = TextEditingController(
+      text: post['question']?.toString() ?? '',
+    );
+
+    final existingOptions = post['options'] is List
+        ? List<String>.from(post['options'])
+        : <String>[];
+
+    final optionControllers = existingOptions
+        .map((option) => TextEditingController(text: option))
+        .toList();
+
+    if (optionControllers.length < 2) {
+      while (optionControllers.length < 2) {
+        optionControllers.add(TextEditingController());
+      }
+    }
+
+    final originalOptionCount = optionControllers.length;
+
+    bool allowMultiple = post['allowMultiple'] == true;
+    bool anonymous = post['anonymous'] == true;
+    bool allowMembersAddOptions = post['allowMembersAddOptions'] == true;
+    String endsOn = post['endsOn']?.toString() ?? '1 Week';
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(22),
+        ),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setModalState) {
+            void addOptionField() {
+              if (optionControllers.length >= 10) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You can only add up to 10 options.'),
+                  ),
+                );
+                return;
+              }
+
+              setModalState(() {
+                optionControllers.add(TextEditingController());
+              });
+            }
+
+            void removeOptionField(int index) {
+              if (optionControllers.length <= 2) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('At least 2 options are required.'),
+                  ),
+                );
+                return;
+              }
+
+              if (hasVotes && index < originalOptionCount) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Options cannot be edited after voting has started.',
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              final controller = optionControllers[index];
+
+              setModalState(() {
+                optionControllers.removeAt(index);
+              });
+
+              controller.dispose();
+            }
+
+            void saveChanges() {
+              final options = optionControllers
+                  .map((controller) => controller.text.trim())
+                  .where((option) => option.isNotEmpty)
+                  .toList();
+
+              if (questionController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a poll question.'),
+                  ),
+                );
+                return;
+              }
+
+              if (options.length < 2) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please add at least two poll options.'),
+                  ),
+                );
+                return;
+              }
+
+              Navigator.of(sheetContext).pop({
+                'question': questionController.text.trim(),
+                'options': options,
+                'allowMultiple': allowMultiple,
+                'anonymous': anonymous,
+                'allowMembersAddOptions': allowMembersAddOptions,
+                'endsOn': endsOn,
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                18,
+                24,
+                MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+              ),
+              child: SizedBox(
+                height: MediaQuery.of(sheetContext).size.height * 0.88,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Edit Poll',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasVotes
+                          ? 'Options cannot be edited after voting has started.'
+                          : 'You can still edit the question and options.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: hasVotes ? brandYellowDark : Colors.grey.shade600,
+                        fontWeight:
+                            hasVotes ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          TextField(
+                            controller: questionController,
+                            enabled: !hasVotes,
+                            decoration: InputDecoration(
+                              labelText: 'Poll Question',
+                              helperText: hasVotes
+                                  ? 'Question is locked because voting has started.'
+                                  : null,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: brandYellow,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'Options',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ...List.generate(optionControllers.length, (index) {
+                            final isExistingLockedOption =
+                                hasVotes && index < originalOptionCount;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: optionControllers[index],
+                                      enabled: !isExistingLockedOption,
+                                      decoration: InputDecoration(
+                                        labelText: 'Option ${index + 1}',
+                                        helperText: isExistingLockedOption
+                                            ? 'Locked'
+                                            : null,
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: brandYellow,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    onPressed: () => removeOptionField(index),
+                                    icon: Icon(
+                                      Icons.close,
+                                      color: isExistingLockedOption
+                                          ? Colors.grey.shade300
+                                          : Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                          TextButton.icon(
+                            onPressed: addOptionField,
+                            icon: const Icon(
+                              Icons.add,
+                              color: brandYellow,
+                            ),
+                            label: const Text(
+                              'Add option',
+                              style: TextStyle(
+                                color: brandYellow,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'Poll Settings',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildEditSwitchRow(
+                            label: 'Allow multiple votes',
+                            value: allowMultiple,
+                            enabled: !hasVotes,
+                            onChanged: (value) {
+                              setModalState(() {
+                                allowMultiple = value;
+                              });
+                            },
+                          ),
+                          if (hasVotes)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Text(
+                                'Multiple voting cannot be changed after voting has started.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          _buildEditSwitchRow(
+                            label: 'Anonymous voting',
+                            value: anonymous,
+                            enabled: true,
+                            onChanged: (value) {
+                              setModalState(() {
+                                anonymous = value;
+                              });
+                            },
+                          ),
+                          _buildEditSwitchRow(
+                            label: 'Allow members to add options',
+                            value: allowMembersAddOptions,
+                            enabled: true,
+                            onChanged: (value) {
+                              setModalState(() {
+                                allowMembersAddOptions = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'Ends on',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: [
+                                  '1 Day',
+                                  '3 Days',
+                                  '1 Week',
+                                  'Custom',
+                                ].contains(endsOn)
+                                    ? endsOn
+                                    : '1 Week',
+                                isExpanded: true,
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: brandYellow,
+                                ),
+                                items: const [
+                                  '1 Day',
+                                  '3 Days',
+                                  '1 Week',
+                                  'Custom',
+                                ].map((value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 18,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          value,
+                                          style: const TextStyle(fontSize: 15),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+
+                                  setModalState(() {
+                                    endsOn = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: saveChanges,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandYellow,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    questionController.dispose();
+
+    for (final controller in optionControllers) {
+      controller.dispose();
+    }
+
+    if (result == null) return;
+
+    try {
+      final updateResult = await PlanService.updatePollPost(
+        postId: postId,
+        question: result['question']?.toString(),
+        options: result['options'] is List
+            ? List<String>.from(result['options'])
+            : null,
+        allowMultiple: result['allowMultiple'] == true,
+        anonymous: result['anonymous'] == true,
+        allowMembersAddOptions: result['allowMembersAddOptions'] == true,
+        endsOn: result['endsOn']?.toString(),
+      );
+
+      if (!mounted) return;
+
+      if (updateResult['success'] == true && updateResult['post'] != null) {
+        final updatedPost = _mapPostFromApi(updateResult['post']);
+
+        _replacePostInList(updatedPost);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Poll updated.'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updateResult['message'] ?? 'Failed to update poll.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
+  Widget _buildEditSwitchRow({
+    required String label,
+    required bool value,
+    required bool enabled,
+    required Function(bool) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: enabled ? Colors.black87 : Colors.grey.shade500,
+              ),
+            ),
+          ),
+          Switch(
+  value: value,
+  activeThumbColor: brandYellow,
+  activeTrackColor: brandYellow.withValues(alpha: 0.35),
+  onChanged: enabled ? onChanged : null,
+),
+        ],
+      ),
+    );
   }
 
   void _openMainComposer() {
@@ -416,7 +1607,7 @@ class _FeedTabState extends State<FeedTab> {
                       TextButton(
                         onPressed: modalIsSubmitting ? null : submitPost,
                         style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFF5B335),
+                          foregroundColor: brandYellow,
                           padding: EdgeInsets.zero,
                         ),
                         child: modalIsSubmitting
@@ -425,7 +1616,7 @@ class _FeedTabState extends State<FeedTab> {
                                 height: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Color(0xFFF5B335),
+                                  color: brandYellow,
                                 ),
                               )
                             : const Text(
@@ -554,7 +1745,7 @@ class _FeedTabState extends State<FeedTab> {
                   ),
                   _buildComposerOption(
                     Icons.bar_chart,
-                    'Create Poll',
+                    'Decide With a Poll',
                     modalIsSubmitting
                         ? () {}
                         : () {
@@ -564,12 +1755,12 @@ class _FeedTabState extends State<FeedTab> {
                   ),
                   _buildComposerOption(
                     Icons.content_paste,
-                    'Create Task list',
+                    'Decide Who Does What',
                     modalIsSubmitting
                         ? () {}
                         : () {
                             Navigator.of(sheetContext).pop();
-                            _openCreateTask();
+                            _openCreateResponsibility();
                           },
                   ),
                 ],
@@ -612,29 +1803,67 @@ class _FeedTabState extends State<FeedTab> {
     }
   }
 
-  void _openCreateTask() async {
-    final result = await Navigator.push(
+  Future<void> _openCreateResponsibility({
+    Map<String, dynamic>? editingPost,
+  }) async {
+    if (planMembers.isEmpty || currentUserId == null) {
+      await _loadPlanMembers();
+    }
+
+    if (!mounted) return;
+
+    Map<String, dynamic>? initialData;
+
+    if (editingPost != null) {
+      final rawPost = editingPost['rawPost'];
+
+      if (rawPost is Map) {
+        initialData = Map<String, dynamic>.from(rawPost);
+      } else {
+        initialData = Map<String, dynamic>.from(editingPost);
+      }
+    }
+
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
-      MaterialPageRoute(builder: (context) => const CreateTask()),
+      MaterialPageRoute(
+        builder: (context) => CreateResponsibility(
+          planId: widget.planId,
+          planMembers: planMembers,
+          currentUserId: currentUserId,
+          initialData: initialData,
+        ),
+      ),
     );
 
-    if (result != null) {
-      setState(() {
-        posts.insert(0, {
-          'type': 'task',
-          'name': 'You',
-          'time': 'Just now',
-          ...result as Map<String, dynamic>,
-        });
-      });
+    if (!mounted || result == null) return;
+
+    final mappedPost = _mapPostFromApi(result);
+
+    if (editingPost == null) {
+  setState(() {
+    final firstUnpinnedIndex = posts.indexWhere(
+      (post) => post['isPinned'] != true,
+    );
+
+    if (firstUnpinnedIndex == -1) {
+      posts.add(mappedPost);
+    } else {
+      posts.insert(firstUnpinnedIndex, mappedPost);
     }
+  });
+
+  return;
+}
+
+    _replacePostInList(mappedPost);
   }
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: _loadPosts,
-      color: const Color(0xFFF5B335),
+      color: brandYellow,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -646,7 +1875,7 @@ class _FeedTabState extends State<FeedTab> {
               padding: EdgeInsets.only(top: 60),
               child: Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFFF5B335),
+                  color: brandYellow,
                 ),
               ),
             )
@@ -773,13 +2002,192 @@ class _FeedTabState extends State<FeedTab> {
     );
   }
 
+  bool _hasPostMenu(Map<String, dynamic> post) {
+    final type = post['type']?.toString();
+
+    final isPoll = type == 'poll';
+    final isResponsibility = type == 'responsibility';
+
+    return post['canPinPost'] == true ||
+        (isPoll && post['canEditPoll'] == true) ||
+        (isPoll && post['canToggleVoting'] == true) ||
+        (isResponsibility && post['canManageResponsibility'] == true) ||
+        (isResponsibility && post['canFinalizeResponsibility'] == true) ||
+        post['canDeletePost'] == true;
+  }
+
+  Widget _buildPostMenuButton(
+    Map<String, dynamic> post,
+  ) {
+    final type = post['type']?.toString();
+
+    final isPoll = type == 'poll';
+    final isResponsibility = type == 'responsibility';
+    final isPinned = post['isPinned'] == true;
+    final isVotingClosed = post['isVotingClosed'] == true;
+    final isResponsibilityFinalized =
+        post['responsibilityIsFinalized'] == true;
+
+    return PopupMenuButton<String>(
+      padding: EdgeInsets.zero,
+      icon: Icon(
+        Icons.more_vert,
+        color: Colors.grey.shade500,
+        size: 22,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'pin':
+            _togglePostPin(post);
+            break;
+          case 'edit_poll':
+            _openEditPoll(post);
+            break;
+          case 'toggle_voting':
+            _togglePollVoting(post);
+            break;
+          case 'edit_responsibility':
+            _openCreateResponsibility(editingPost: post);
+            break;
+          case 'toggle_responsibility':
+            _toggleResponsibilityFinalized(post);
+            break;
+          case 'delete':
+            _deletePost(post);
+            break;
+        }
+      },
+      itemBuilder: (context) {
+        return [
+          if (post['canPinPost'] == true)
+            PopupMenuItem<String>(
+              value: 'pin',
+              child: Row(
+                children: [
+                  Icon(
+                    isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                    size: 20,
+                    color: Colors.black87,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(isPinned ? 'Unpin post' : 'Pin post'),
+                ],
+              ),
+            ),
+          if (isPoll && post['canEditPoll'] == true)
+            const PopupMenuItem<String>(
+              value: 'edit_poll',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: Colors.black87,
+                  ),
+                  SizedBox(width: 12),
+                  Text('Edit poll'),
+                ],
+              ),
+            ),
+          if (isPoll && post['canToggleVoting'] == true)
+            PopupMenuItem<String>(
+              value: 'toggle_voting',
+              child: Row(
+                children: [
+                  Icon(
+                    isVotingClosed
+                        ? Icons.lock_open_outlined
+                        : Icons.lock_outline,
+                    size: 20,
+                    color: Colors.black87,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(isVotingClosed ? 'Reopen voting' : 'Close voting'),
+                ],
+              ),
+            ),
+          if (isResponsibility && post['canManageResponsibility'] == true)
+            const PopupMenuItem<String>(
+              value: 'edit_responsibility',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: Colors.black87,
+                  ),
+                  SizedBox(width: 12),
+                  Text('Edit responsibilities'),
+                ],
+              ),
+            ),
+          if (isResponsibility &&
+              post['canFinalizeResponsibility'] == true)
+            PopupMenuItem<String>(
+              value: 'toggle_responsibility',
+              child: Row(
+                children: [
+                  Icon(
+                    isResponsibilityFinalized
+                        ? Icons.lock_open_outlined
+                        : Icons.check_circle_outline_rounded,
+                    size: 20,
+                    color: Colors.black87,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    isResponsibilityFinalized
+                        ? 'Reopen responsibilities'
+                        : 'Finalize responsibilities',
+                  ),
+                ],
+              ),
+            ),
+          if (post['canDeletePost'] == true)
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: Colors.redAccent,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    isPoll
+                        ? 'Delete poll'
+                        : isResponsibility
+                            ? 'Delete responsibilities'
+                            : 'Delete post',
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ];
+      },
+    );
+  }
+
   Widget _buildPostWrapper(Map<String, dynamic> post) {
+    final isPinned = post['isPinned'] == true;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isPinned ? brandYellow : Colors.grey.shade200,
+          width: isPinned ? 1.4 : 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.025),
@@ -791,6 +2199,27 @@ class _FeedTabState extends State<FeedTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isPinned) ...[
+            Row(
+              children: [
+                const Icon(
+                  Icons.push_pin,
+                  size: 14,
+                  color: brandYellowDark,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Pinned',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -829,17 +2258,23 @@ class _FeedTabState extends State<FeedTab> {
                   ),
                 ],
               ),
-              Icon(
-                Icons.more_vert,
-                color: Colors.grey.shade500,
-                size: 22,
-              ),
+              if (_hasPostMenu(post)) _buildPostMenuButton(post),
             ],
           ),
           const SizedBox(height: 18),
           if (post['type'] == 'text') _buildTextBody(post),
           if (post['type'] == 'poll') _buildPollBody(post),
-          if (post['type'] == 'task') _buildTaskBody(post),
+          if (post['type'] == 'responsibility')
+            ResponsibilityPost(
+              post: post,
+              planMembers: planMembers,
+              currentUserId: currentUserId,
+              onPostUpdated: (updatedPost) {
+                final mappedPost = _mapPostFromApi(updatedPost);
+
+                _replacePostInList(mappedPost);
+              },
+            ),
           const SizedBox(height: 18),
           Divider(
             height: 1,
@@ -940,6 +2375,58 @@ class _FeedTabState extends State<FeedTab> {
     );
   }
 
+  Widget _buildPollStatusChip({
+    required String votingStatus,
+    required String endsOn,
+  }) {
+    String label = '';
+    Color backgroundColor = const Color(0xFFFFE8A3);
+    Color textColor = Colors.black;
+
+    if (votingStatus == 'closed') {
+      label = 'Voting Closed';
+      backgroundColor = const Color(0xFFFFE8E2);
+      textColor = const Color(0xFFB42318);
+    } else if (votingStatus == 'scheduled') {
+      label = 'Scheduled';
+      backgroundColor = const Color(0xFFFFE8A3);
+      textColor = Colors.black;
+    } else if (endsOn.trim().isNotEmpty) {
+      final isCustomDate = endsOn.contains('•') || endsOn.contains(',');
+      label = isCustomDate ? 'Ends $endsOn' : 'Ends in $endsOn';
+      backgroundColor = const Color(0xFFFFE8A3);
+      textColor = Colors.black;
+    }
+
+    if (label.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 185),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            color: textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPollBody(Map<String, dynamic> post) {
     final String question = post['question']?.toString() ?? 'Poll';
 
@@ -961,6 +2448,11 @@ class _FeedTabState extends State<FeedTab> {
     final String endsOn = post['endsOn']?.toString() ?? '';
     final bool anonymous = post['anonymous'] == true;
     final bool allowMultiple = post['allowMultiple'] == true;
+    final bool allowMembersAddOptions =
+        post['allowMembersAddOptions'] == true;
+
+    final String votingStatus = post['votingStatus']?.toString() ?? 'open';
+    final String votingMessage = post['votingMessage']?.toString() ?? '';
 
     final String pollMeta = anonymous
         ? '$totalVotes total votes • Anonymous voting'
@@ -970,18 +2462,18 @@ class _FeedTabState extends State<FeedTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F5FF),
+        color: brandCreamLight,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFE7DFFF),
+          color: const Color(0xFFF2D999),
           width: 1,
         ),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFFBF8FF),
-            Color(0xFFF3EEFF),
+            Color(0xFFFFFCF4),
+            Color(0xFFFFF6DA),
           ],
         ),
       ),
@@ -994,13 +2486,13 @@ class _FeedTabState extends State<FeedTab> {
                 width: 30,
                 height: 30,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE8DFFF),
+                  color: Color(0xFFFFE8A3),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.bar_chart_rounded,
                   size: 18,
-                  color: Color(0xFF5D3FD3),
+                  color: brandYellowDark,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1009,29 +2501,14 @@ class _FeedTabState extends State<FeedTab> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF3C2A99),
+                  color: brandYellowDark,
                 ),
               ),
               const Spacer(),
-              if (endsOn.trim().isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE8A3),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    'Ends in $endsOn',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
+              _buildPollStatusChip(
+                votingStatus: votingStatus,
+                endsOn: endsOn,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -1054,8 +2531,20 @@ class _FeedTabState extends State<FeedTab> {
               height: 1.25,
             ),
           ),
+          if (votingStatus == 'scheduled' && votingMessage.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              votingMessage,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: brandYellowDark,
+                height: 1.25,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
-          if (options.isEmpty)
+          if (options.isEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -1070,8 +2559,12 @@ class _FeedTabState extends State<FeedTab> {
                   color: Colors.grey.shade600,
                 ),
               ),
-            )
-          else
+            ),
+            if (allowMembersAddOptions && votingStatus != 'closed') ...[
+              const SizedBox(height: 10),
+              _buildAddPollOptionButton(post),
+            ],
+          ] else ...[
             ...options.asMap().entries.map((entry) {
               final index = entry.key;
               final option = entry.value;
@@ -1103,7 +2596,50 @@ class _FeedTabState extends State<FeedTab> {
                 ),
               );
             }),
+            if (allowMembersAddOptions && votingStatus != 'closed')
+              _buildAddPollOptionButton(post),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddPollOptionButton(Map<String, dynamic> post) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _addOptionToPoll(post),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFF2D999),
+            width: 1.3,
+          ),
+        ),
+        child: const Row(
+          children: [
+            Icon(
+              Icons.add_circle_outline,
+              size: 22,
+              color: brandYellowDark,
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Add an option',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: brandYellowDark,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1119,6 +2655,7 @@ class _FeedTabState extends State<FeedTab> {
     required VoidCallback onTap,
   }) {
     final progress = percentage.clamp(0, 100) / 100.0;
+    final hasVoters = voters.isNotEmpty || extraCount > 0;
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -1127,9 +2664,8 @@ class _FeedTabState extends State<FeedTab> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color:
-                isSelected ? const Color(0xFF5D3FD3) : const Color(0xFFE8E3F6),
-            width: 1.5,
+            color: isSelected ? brandYellow : const Color(0xFFF0E0B8),
+            width: isSelected ? 1.7 : 1.4,
           ),
         ),
         child: ClipRRect(
@@ -1147,8 +2683,8 @@ class _FeedTabState extends State<FeedTab> {
                     widthFactor: progress,
                     child: Container(
                       color: isSelected
-                          ? const Color(0xFFE9DFFF)
-                          : const Color(0xFFF3EEFF),
+                          ? const Color(0xFFFFE8A3)
+                          : const Color(0xFFFFF1C7),
                     ),
                   ),
                 ),
@@ -1156,71 +2692,63 @@ class _FeedTabState extends State<FeedTab> {
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
-                  vertical: 12,
+                  vertical: 13,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF5D3FD3)
-                                : Colors.transparent,
-                            shape: allowMultiple
-                                ? BoxShape.rectangle
-                                : BoxShape.circle,
-                            borderRadius:
-                                allowMultiple ? BorderRadius.circular(6) : null,
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF5D3FD3)
-                                  : Colors.grey.shade500,
-                              width: 2,
-                            ),
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 15,
-                                  color: Colors.white,
-                                )
-                              : null,
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: isSelected ? brandYellow : Colors.transparent,
+                        shape: allowMultiple
+                            ? BoxShape.rectangle
+                            : BoxShape.circle,
+                        borderRadius:
+                            allowMultiple ? BorderRadius.circular(6) : null,
+                        border: Border.all(
+                          color: isSelected ? brandYellow : Colors.grey.shade500,
+                          width: 2,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            option,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                              height: 1.25,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          '$percentage%',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF5D3FD3),
-                          ),
-                        ),
-                      ],
+                      ),
+                      child: isSelected
+                          ? const Icon(
+                              Icons.check,
+                              size: 15,
+                              color: Colors.black,
+                            )
+                          : null,
                     ),
-                    if (!anonymous && (voters.isNotEmpty || extraCount > 0)) ...[
-                      const SizedBox(height: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        option,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    if (anonymous)
+                      Text(
+                        '$percentage%',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: brandYellowDark,
+                        ),
+                      )
+                    else if (hasVoters)
                       _buildPollVoterPreview(
                         voters: voters,
                         extraCount: extraCount,
-                      ),
-                    ],
+                      )
+                    else
+                      const SizedBox(width: 24),
                   ],
                 ),
               ),
@@ -1250,8 +2778,8 @@ class _FeedTabState extends State<FeedTab> {
               left: i * 18.0,
               child: _buildSmallVoterBubble(
                 label: _getInitials(voters[i]),
-                backgroundColor: const Color(0xFFE8DFFF),
-                textColor: const Color(0xFF5D3FD3),
+                backgroundColor: const Color(0xFFFFE8A3),
+                textColor: brandYellowDark,
               ),
             ),
           if (extraCount > 0)
@@ -1259,8 +2787,8 @@ class _FeedTabState extends State<FeedTab> {
               left: visibleCount * 18.0,
               child: _buildSmallVoterBubble(
                 label: '+$extraCount',
-                backgroundColor: const Color(0xFF5D3FD3),
-                textColor: Colors.white,
+                backgroundColor: brandYellow,
+                textColor: Colors.black,
               ),
             ),
         ],
@@ -1313,72 +2841,4 @@ class _FeedTabState extends State<FeedTab> {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
-  Widget _buildTaskBody(Map<String, dynamic> post) {
-    List<String> tasks = List<String>.from(post['tasks']);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Center(
-          child: Text(
-            'TASKS',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...tasks.map((task) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(task, style: const TextStyle(fontSize: 14)),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5B335),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    '@mention',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(Icons.add, size: 14, color: Colors.grey),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Add a new task...',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5B335),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                '@mention',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 }

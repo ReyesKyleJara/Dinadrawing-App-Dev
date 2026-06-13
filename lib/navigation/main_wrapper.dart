@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../screens/home/home.dart';
 import '../screens/myplans/my_plans.dart';
@@ -5,6 +7,7 @@ import '../screens/activity/activity.dart';
 import '../screens/settings/settings.dart';
 import '../screens/plans/create_plan.dart';
 import '../screens/plans/join_plan.dart';
+import '../services/profile_service.dart';
 import '../tab/quick_decision.dart';
 
 class MainWrapper extends StatefulWidget {
@@ -25,6 +28,9 @@ class _MainWrapperState extends State<MainWrapper> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ProfileService.instance.loadForCurrentUser());
+    });
   }
 
   List<Widget> get _pages => [
@@ -124,11 +130,11 @@ class _MainWrapperState extends State<MainWrapper> {
               child: Container(
                 width: 220,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Colors.black12,
+                      color: Theme.of(context).shadowColor.withValues(alpha: 0.12),
                       blurRadius: 15,
                       offset: Offset(0, 8),
                     ),
@@ -151,7 +157,6 @@ class _MainWrapperState extends State<MainWrapper> {
                       thickness: 1,
                       indent: 14,
                       endIndent: 14,
-                      color: Color(0xFFEEEEEE),
                     ),
                     _buildMenuItem(
                       Icons.link,
@@ -165,7 +170,6 @@ class _MainWrapperState extends State<MainWrapper> {
                       thickness: 1,
                       indent: 14,
                       endIndent: 14,
-                      color: Color(0xFFEEEEEE),
                     ),
                     _buildMenuItem(
                       Icons.pie_chart_outline,
@@ -207,9 +211,9 @@ class _MainWrapperState extends State<MainWrapper> {
         currentIndex: _currentIndex,
         onTap: _changeTab,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         selectedItemColor: const Color(0xFFF2B73F),
-        unselectedItemColor: Colors.black,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
         selectedFontSize: 11,
         unselectedFontSize: 11,
         selectedLabelStyle: const TextStyle(
@@ -279,10 +283,10 @@ class _MainWrapperState extends State<MainWrapper> {
             const SizedBox(width: 12),
             Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
-                color: Colors.black,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],

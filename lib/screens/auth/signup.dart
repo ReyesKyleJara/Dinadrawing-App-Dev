@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
-import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
+import '../../services/profile_service.dart';
+import '../../navigation/main_wrapper.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,6 +20,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  bool get _hasLength =>
+      _passwordController.text.length >= 8 && _passwordController.text.length <= 20;
+  bool get _hasLetterAndNumber =>
+      RegExp(r'(?=.*[A-Za-z])(?=.*\d)').hasMatch(_passwordController.text);
+  bool get _hasSpecial => RegExp(r'[^A-Za-z0-9]').hasMatch(_passwordController.text);
+  bool get _passwordRequirementsMet =>
+      _hasLength && _hasLetterAndNumber && _hasSpecial;
+
+  String get _passwordRequirementMessage {
+    if (_passwordRequirementsMet) {
+      return 'Password requirements are met.';
+    }
+
+    final parts = <String>[];
+    if (!_hasLength) parts.add('8 characters (20 max)');
+    if (!_hasLetterAndNumber) parts.add('1 letter and 1 number');
+    if (!_hasSpecial) parts.add('1 special character (# ? ! \$ & @)');
+    return 'Password must contain ${parts.join(', ')}.';
+  }
+
   Future<void> _submitSignUp() async {
     print('BACKEND SIGNUP FUNCTION IS RUNNING');
 
@@ -27,11 +48,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (name.isEmpty || username.isEmpty || email.isEmpty || password.length < 8) {
+    if (name.isEmpty || username.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please complete all fields (Password min. 8 chars)"),
-        ),
+        const SnackBar(content: Text('Please complete all required fields.')),
+      );
+      return;
+    }
+
+    if (!_passwordRequirementsMet) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_passwordRequirementMessage)),
       );
       return;
     }
@@ -53,6 +79,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (result.containsKey('token')) {
+        await ProfileService.instance.clearInMemoryCache();
+        await ProfileService.instance.hydrateFromAuthResult(result);
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Sign Up Success!")),
         );
@@ -107,7 +138,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -119,10 +150,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: IconButton(
                   padding: EdgeInsets.zero,
                   alignment: Alignment.centerLeft,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios,
                     size: 18,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -142,12 +173,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     },
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     "DiNaDrawing",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -156,24 +187,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               const SizedBox(height: 32),
 
-              const Text(
+              Text(
                 "Sign Up",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
 
               const SizedBox(height: 12),
 
-              const Text(
+              Text(
                 "Create an account to start planning\nwith your barkada!",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.black54,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   height: 1.4,
                 ),
               ),
@@ -216,14 +247,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               const SizedBox(height: 8),
 
-              const Text(
-                "Must be at least 8 characters.",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              _buildPasswordRuleList(),
 
               const SizedBox(height: 32),
 
@@ -306,7 +330,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           );
                         },
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     side: BorderSide(
                       color: Colors.grey.shade300,
                       width: 1.5,
@@ -342,11 +366,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     "Already have an account? ",
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.black54,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   GestureDetector(
@@ -380,6 +404,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Widget _buildPasswordRuleList() {
+    final ruleItems = [
+      _buildPasswordRuleRow('8 characters (20 max)', _hasLength),
+      _buildPasswordRuleRow('1 letter and 1 number', _hasLetterAndNumber),
+      _buildPasswordRuleRow('1 special character (# ? ! \$ & @)', _hasSpecial),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        ...ruleItems,
+      ],
+    );
+  }
+
+  Widget _buildPasswordRuleRow(String label, bool isValid) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isValid ? Icons.check_circle : Icons.close,
+            size: 14,
+            color: isValid ? Colors.green : Colors.grey,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isValid ? Colors.green.shade700 : Colors.grey.shade600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLabeledField({
     required String label,
     required String hint,
@@ -403,9 +469,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword ? _obscurePassword : false,
-          style: const TextStyle(
+          onChanged: isPassword ? (_) => setState(() {}) : null,
+          style: TextStyle(
             fontSize: 14,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           decoration: InputDecoration(
             hintText: hint,
@@ -414,7 +481,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               fontSize: 14,
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).colorScheme.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,

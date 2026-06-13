@@ -46,6 +46,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -53,10 +56,21 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       lastDate: DateTime(2101),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFFB84D),
-              onPrimary: Colors.black,
+          data: theme.copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFFFFB84D),
+                    onPrimary: Colors.black,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFFFFB84D),
+                    onPrimary: Colors.black,
+                  ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
           child: child!,
@@ -70,24 +84,35 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Future<void> _selectTime(BuildContext context) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final yellow = const Color(0xFFFFB84D);
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
-        const yellow = Color(0xFFFFB84D);
-
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: yellow,
-              secondary: yellow,
-              onPrimary: Colors.black,
-            ),
-            timePickerTheme: const TimePickerThemeData(
+          data: theme.copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFFFFB84D),
+                    secondary: Color(0xFFFFB84D),
+                    onPrimary: Colors.black,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFFFFB84D),
+                    secondary: Color(0xFFFFB84D),
+                    onPrimary: Colors.black,
+                  ),
+            timePickerTheme: TimePickerThemeData(
               dayPeriodColor: yellow,
-              dayPeriodTextColor: Colors.black,
+              dayPeriodTextColor: theme.colorScheme.onSurface,
               dialHandColor: yellow,
-              dialBackgroundColor: Colors.white,
+              dialBackgroundColor: theme.colorScheme.surfaceContainerHighest,
+              backgroundColor: theme.colorScheme.surface,
+              hourMinuteTextColor: theme.colorScheme.onSurface,
+              entryModeIconColor: yellow,
             ),
           ),
           child: child!,
@@ -523,8 +548,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -575,12 +602,14 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildBackButton(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return TextButton.icon(
       onPressed: isSavingPlan ? null : () => Navigator.pop(context),
       style: TextButton.styleFrom(
         padding: EdgeInsets.zero,
         alignment: Alignment.centerLeft,
-        foregroundColor: const Color(0xFFFFB84D),
+        foregroundColor: colorScheme.primary,
       ),
       icon: const Icon(Icons.arrow_back_ios, size: 16),
       label: const Text("Back"),
@@ -588,17 +617,24 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildHeader() {
-    return const Column(
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Create Plan",
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          'Create Plan',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
-          "Fill in the details to start planning",
-          style: TextStyle(color: Colors.grey),
+          'Fill in the details to start planning',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
         ),
       ],
     );
@@ -643,13 +679,15 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildMapPlaceholder() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: const Color(0xFFF9F9F9),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        color: colorScheme.surfaceContainerLow,
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Stack(
         children: [
@@ -662,7 +700,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             top: 12,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: colorScheme.surface.withValues(alpha: 0.96),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: const [
                   BoxShadow(
@@ -692,9 +730,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                       selectedLocationLabel == null
                           ? 'Tap map to pin'
                           : 'Pin selected',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -707,11 +746,11 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             top: 12,
             child: FloatingActionButton.small(
               heroTag: 'expand-map',
-              backgroundColor: Colors.white,
+              backgroundColor: colorScheme.surface,
               onPressed: _showExpandedMap,
-              child: const Icon(
+              child: Icon(
                 Icons.open_in_full,
-                color: Colors.black87,
+                color: colorScheme.onSurface,
               ),
             ),
           ),
@@ -722,20 +761,22 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
   Widget _buildGoogleMap() {
     if (kIsWeb) {
+      final colorScheme = Theme.of(context).colorScheme;
+
       return Container(
-        color: const Color(0xFFF9F9F9),
-        child: const Center(
+        color: colorScheme.surfaceContainerLow,
+        child: Center(
           child: Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.map, size: 48, color: Colors.grey),
-                SizedBox(height: 12),
+                Icon(Icons.map, size: 48, color: colorScheme.onSurfaceVariant),
+                const SizedBox(height: 12),
                 Text(
                   'Map unavailable on Web.\nAdd the Google Maps JS API key to web/index.html or run on a device.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -805,13 +846,16 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildFieldLabel(String label) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 14,
+          color: colorScheme.onSurface,
         ),
       ),
     );
@@ -824,23 +868,27 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     ValueChanged<String>? onSubmitted,
     ValueChanged<String>? onChanged,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return TextField(
       controller: controller,
+      style: TextStyle(color: colorScheme.onSurface),
       textInputAction:
           icon != null ? TextInputAction.search : TextInputAction.done,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
         prefixIcon: icon != null
             ? Icon(
                 icon,
-                color: Colors.grey,
+                color: colorScheme.onSurfaceVariant,
                 size: 20,
               )
             : null,
         filled: true,
-        fillColor: const Color(0xFFF9F9F9),
+        fillColor: colorScheme.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
@@ -854,11 +902,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildSuggestionList() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
@@ -885,6 +935,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
               suggestion.label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colorScheme.onSurface),
             ),
             onTap: () => _selectSuggestion(suggestion),
           );
@@ -894,7 +945,8 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildPickerBox(String text, IconData icon, VoidCallback onTap) {
-    final bool isSelected = !text.contains("Select");
+    final colorScheme = Theme.of(context).colorScheme;
+    final bool isSelected = !text.contains('Select');
 
     return InkWell(
       onTap: isSavingPlan ? null : onTap,
@@ -905,7 +957,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
           vertical: 15,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9F9F9),
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -913,13 +965,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? const Color(0xFFFFB84D) : Colors.grey,
+              color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 10),
             Text(
               text,
               style: TextStyle(
-                color: isSelected ? Colors.black : Colors.grey,
+                color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                 fontSize: 14,
               ),
             ),

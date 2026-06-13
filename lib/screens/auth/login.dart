@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'signup.dart';
-import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
+import '../../services/profile_service.dart';
+import '../../navigation/main_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,6 +47,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (result.containsKey('token')) {
+        await ProfileService.instance.clearInMemoryCache();
+        await ProfileService.instance.hydrateFromAuthResult(result);
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Login Success")),
         );
@@ -98,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -110,10 +116,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: IconButton(
                   padding: EdgeInsets.zero,
                   alignment: Alignment.centerLeft,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios,
                     size: 18,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -133,12 +139,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     "DiNaDrawing",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -147,24 +153,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 32),
 
-              const Text(
+              Text(
                 "Log In",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
 
               const SizedBox(height: 12),
 
-              const Text(
+              Text(
                 "Welcome Back!\nLet's log in to your account.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.black54,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   height: 1.4,
                 ),
               ),
@@ -305,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     side: BorderSide(
                       color: Colors.grey.shade300,
                       width: 1.5,
@@ -341,11 +347,11 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     "Don't have an account? ",
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.black54,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   GestureDetector(
@@ -402,9 +408,9 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword ? _obscureLogin : false,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           decoration: InputDecoration(
             hintText: hint,
@@ -413,7 +419,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontSize: 14,
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).colorScheme.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,

@@ -41,9 +41,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       final pivot = _asMap(member['pivot']);
       final role = pivot?['role']?.toString().toLowerCase();
 
-      return memberId != null &&
-          memberId != _currentUserId &&
-          role != 'admin';
+      return memberId != null && memberId != _currentUserId && role != 'admin';
     }).toList();
   }
 
@@ -133,20 +131,17 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
 
       setState(() {
         _currentUserId = _parseInt(currentUser?['id']);
-        _adminId = _parseInt(
-          plan['admin_id'] ?? admin?['id'],
-        );
+        _adminId = _parseInt(plan['admin_id'] ?? admin?['id']);
 
         _members = rawMembers is List
             ? rawMembers
-                .whereType<Map>()
-                .map((member) => Map<String, dynamic>.from(member))
-                .toList()
+                  .whereType<Map>()
+                  .map((member) => Map<String, dynamic>.from(member))
+                  .toList()
             : <Map<String, dynamic>>[];
 
         _planNameController.text = plan['title']?.toString() ?? '';
-        _planDescriptionController.text =
-            plan['description']?.toString() ?? '';
+        _planDescriptionController.text = plan['description']?.toString() ?? '';
         _planDateController.text = plan['plan_date']?.toString() ?? '';
         _planLocationController.text = plan['location']?.toString() ?? '';
         _selectedStatus = plan['status']?.toString() ?? 'Plan Ongoing';
@@ -167,9 +162,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       if (mounted) {
         setState(() => _isLoading = false);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading plan: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading plan: $e')));
       }
     }
   }
@@ -191,10 +186,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         backgroundColor: Colors.white,
         title: const Text(
           'Delete Plan?',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
         content: const Text(
           'This will move the plan to Deleted Plans. You can restore it later from the Deleted Plans page.',
@@ -202,19 +194,13 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'Delete',
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -232,7 +218,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
 
       if (result['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Failed to delete plan.')),
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to delete plan.'),
+          ),
         );
         return;
       }
@@ -246,9 +234,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       Navigator.pop(context, 'deleted');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) {
@@ -270,10 +258,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         backgroundColor: Colors.white,
         title: const Text(
           'Leave Plan?',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
         content: const Text(
           'You will lose access to this plan and it will be removed from your Plans with Me.',
@@ -281,19 +266,13 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'Leave',
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -325,9 +304,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       Navigator.pop(context, 'left');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) {
@@ -354,9 +333,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
         return SafeArea(
@@ -402,13 +379,12 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: Colors.grey.shade200,
-                          ),
+                          side: BorderSide(color: Colors.grey.shade200),
                         ),
                         leading: CircleAvatar(
-                          backgroundColor:
-                              const Color(0xFFF2B73F).withValues(alpha: 0.18),
+                          backgroundColor: const Color(
+                            0xFFF2B73F,
+                          ).withValues(alpha: 0.18),
                           child: Text(
                             displayName[0].toUpperCase(),
                             style: const TextStyle(
@@ -466,10 +442,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         backgroundColor: Colors.white,
         title: const Text(
           'Transfer Admin & Leave?',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
         content: Text(
           '$selectedName will become the new Plan Admin. You will lose access to this plan after leaving.',
@@ -477,19 +450,13 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'Transfer & Leave',
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -532,9 +499,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLeaving = false);
@@ -544,9 +511,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
 
   Future<void> _saveChanges() async {
     if (_planNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Plan Name is required!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Plan Name is required!')));
       return;
     }
 
@@ -560,7 +527,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
     setState(() => _isSaving = true);
 
     String hexColor =
-        '#${_bannerColor!.value.toRadixString(16).substring(2).toUpperCase()}';
+        '#${_bannerColor!.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
     try {
       final result = await PlanService.updatePlan(
@@ -583,9 +550,9 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       debugPrint('Error saving plan: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving plan: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving plan: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -671,10 +638,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
       backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24.0,
-            vertical: 20.0,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -729,7 +693,11 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
                       color: Colors.black.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
                 ),
               ),
@@ -914,9 +882,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  _isAdmin
-                      ? Icons.admin_panel_settings_outlined
-                      : Icons.logout,
+                  _isAdmin ? Icons.admin_panel_settings_outlined : Icons.logout,
                   color: _isAdmin
                       ? Colors.red.shade400
                       : const Color(0xFFF2B73F),
@@ -1053,13 +1019,13 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
   }
 
   Widget _buildFieldLabel(String label) => Text(
-        label,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          color: Colors.black,
-        ),
-      );
+    label,
+    style: const TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 13,
+      color: Colors.black,
+    ),
+  );
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -1091,10 +1057,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Color(0xFFF2B73F),
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Color(0xFFF2B73F), width: 1.5),
         ),
       ),
     );

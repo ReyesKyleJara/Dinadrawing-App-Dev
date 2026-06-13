@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'signup.dart';
 import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
+import '../../services/google_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,19 +37,16 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await AuthService.login(
-        login: login,
-        password: password,
-      );
+      final result = await AuthService.login(login: login, password: password);
 
       print('LOGIN RESULT: $result');
 
       if (!mounted) return;
 
       if (result.containsKey('token')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login Success")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Login Success")));
 
         Navigator.pushReplacement(
           context,
@@ -57,7 +55,8 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         String errorMessage = result['message'] ?? "Login failed";
 
-        if (result['errors'] != null && result['errors'] is Map<String, dynamic>) {
+        if (result['errors'] != null &&
+            result['errors'] is Map<String, dynamic>) {
           final errors = result['errors'] as Map<String, dynamic>;
 
           if (errors.isNotEmpty) {
@@ -69,15 +68,74 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
 
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Connection error: $e")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userCredential = await GoogleAuthService().signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (userCredential != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
+          const SnackBar(
+            content: Text("Google Sign-In Successful!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainWrapper()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Google Sign-In was cancelled"),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
+      String errorMessage = "Google Sign-In failed";
+
+      if (e.toString().contains("network")) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (e.toString().contains("cancel")) {
+        errorMessage = "Sign-in cancelled by user";
+      } else {
+        errorMessage = "Google Sign-In failed: $e";
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Connection error: $e")),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
       );
     } finally {
       if (mounted) {
@@ -200,10 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      side: BorderSide(
-                        color: Colors.grey.shade400,
-                        width: 1.5,
-                      ),
+                      side: BorderSide(color: Colors.grey.shade400, width: 1.5),
                       onChanged: _isLoading
                           ? null
                           : (value) {
@@ -216,10 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(width: 8),
                   const Text(
                     "Remember Me",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.black87,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.black87),
                   ),
                 ],
               ),
@@ -264,10 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: Divider(
-                      color: Colors.grey.shade300,
-                      thickness: 1,
-                    ),
+                    child: Divider(color: Colors.grey.shade300, thickness: 1),
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
@@ -281,10 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   Expanded(
-                    child: Divider(
-                      color: Colors.grey.shade300,
-                      thickness: 1,
-                    ),
+                    child: Divider(color: Colors.grey.shade300, thickness: 1),
                   ),
                 ],
               ),
@@ -295,35 +341,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Google Sign-In coming soon!"),
-                            ),
-                          );
-                        },
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    side: BorderSide(
-                      color: Colors.grey.shade300,
-                      width: 1.5,
-                    ),
+                    side: BorderSide(color: Colors.grey.shade300, width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.g_mobiledata,
-                        color: Colors.black,
-                        size: 28,
+                      Image.asset(
+                        'images/googlelogo.png',
+                        height: 24,
+                        width: 24,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.g_mobiledata,
+                            color: Colors.black,
+                            size: 24,
+                          );
+                        },
                       ),
-                      SizedBox(width: 8),
-                      Text(
+                      const SizedBox(width: 12),
+                      const Text(
                         "Continue with Google",
                         style: TextStyle(
                           color: Colors.black,
@@ -343,10 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Text(
                     "Don't have an account? ",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   GestureDetector(
                     onTap: _isLoading
@@ -402,16 +441,10 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword ? _obscureLogin : false,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-          ),
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
@@ -420,15 +453,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Colors.grey.shade300,
-              ),
+              borderSide: BorderSide(color: Colors.grey.shade300),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Colors.grey.shade300,
-              ),
+              borderSide: BorderSide(color: Colors.grey.shade300),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -440,9 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
             suffixIcon: isPassword
                 ? IconButton(
                     icon: Icon(
-                      _obscureLogin
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      _obscureLogin ? Icons.visibility_off : Icons.visibility,
                       color: Colors.grey,
                     ),
                     onPressed: () {

@@ -23,19 +23,13 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
   final Set<int> _selectedPlanIds = <int>{};
 
   List<_PlanEntry> get _allEntries => [
-        ..._plansByMe.map(
-          (plan) => _PlanEntry(
-            plan: plan,
-            sectionLabel: 'Plans by Me',
-          ),
-        ),
-        ..._plansWithMe.map(
-          (plan) => _PlanEntry(
-            plan: plan,
-            sectionLabel: 'Plans with Me',
-          ),
-        ),
-      ];
+    ..._plansByMe.map(
+      (plan) => _PlanEntry(plan: plan, sectionLabel: 'Plans by Me'),
+    ),
+    ..._plansWithMe.map(
+      (plan) => _PlanEntry(plan: plan, sectionLabel: 'Plans with Me'),
+    ),
+  ];
 
   @override
   void initState() {
@@ -103,9 +97,9 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
   void _showSnackBar(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _toggleSelection(Plan plan) {
@@ -129,9 +123,7 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
     setState(() {
       _selectedPlanIds
         ..clear()
-        ..addAll(
-          _allEntries.map((entry) => entry.plan.id).whereType<int>(),
-        );
+        ..addAll(_allEntries.map((entry) => entry.plan.id).whereType<int>());
     });
   }
 
@@ -158,9 +150,7 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           title,
           style: const TextStyle(
@@ -170,18 +160,12 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
         ),
         content: Text(
           content,
-          style: const TextStyle(
-            color: Colors.black87,
-            height: 1.35,
-          ),
+          style: const TextStyle(color: Colors.black87, height: 1.35),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -356,44 +340,46 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
                         ),
                       )
                     : _allEntries.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 180),
-                              Center(
-                                child: Text(
-                                  'No archived plans yet.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black54,
-                                  ),
-                                ),
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 180),
+                          Center(
+                            child: Text(
+                              'No archived plans yet.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black54,
                               ),
-                            ],
-                          )
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                            itemCount: _allEntries.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final entry = _allEntries[index];
-                              final plan = entry.plan;
-
-                              return _ArchivedPlanCard(
-                                plan: plan,
-                                sectionLabel: entry.sectionLabel,
-                                dateLocation: _dateLocation(plan),
-                                isSelected: _isSelected(plan),
-                                isAdmin: _isAdmin(plan),
-                                onTap: () => _toggleSelection(plan),
-                                onRestore: _isProcessing ? null : () => _restoreSingle(plan),
-                                onDelete: !_isAdmin(plan) || _isProcessing
-                                    ? null
-                                    : () => _deleteSingle(plan),
-                              );
-                            },
+                            ),
                           ),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        itemCount: _allEntries.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final entry = _allEntries[index];
+                          final plan = entry.plan;
+
+                          return _ArchivedPlanCard(
+                            plan: plan,
+                            sectionLabel: entry.sectionLabel,
+                            dateLocation: _dateLocation(plan),
+                            isSelected: _isSelected(plan),
+                            isAdmin: _isAdmin(plan),
+                            onTap: () => _toggleSelection(plan),
+                            onRestore: _isProcessing
+                                ? null
+                                : () => _restoreSingle(plan),
+                            onDelete: !_isAdmin(plan) || _isProcessing
+                                ? null
+                                : () => _deleteSingle(plan),
+                          );
+                        },
+                      ),
               ),
             ),
             if (hasSelection) _buildBottomActions(),
@@ -418,10 +404,7 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
           const SizedBox(width: 6),
           const Text(
             'Back',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.black54,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.black54),
           ),
           const Spacer(),
           IconButton(
@@ -445,10 +428,7 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
               children: [
                 Text(
                   'Archived Plans',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -473,14 +453,8 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
                 }
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'selectAll',
-                  child: Text('Select All'),
-                ),
-                PopupMenuItem(
-                  value: 'clear',
-                  child: Text('Clear Selection'),
-                ),
+                PopupMenuItem(value: 'selectAll', child: Text('Select All')),
+                PopupMenuItem(value: 'clear', child: Text('Clear Selection')),
               ],
             ),
         ],
@@ -590,7 +564,7 @@ class _ArchivedPlanCard extends StatelessWidget {
               ),
               child: Icon(
                 Icons.archive_outlined,
-                color: Colors.black.withOpacity(0.45),
+                color: Colors.black.withValues(alpha: 0.45),
                 size: 26,
               ),
             ),
@@ -614,10 +588,7 @@ class _ArchivedPlanCard extends StatelessWidget {
                       dateLocation,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -648,18 +619,12 @@ class _ArchivedPlanCard extends StatelessWidget {
               },
               itemBuilder: (_) {
                 final items = <PopupMenuEntry<String>>[
-                  const PopupMenuItem(
-                    value: 'restore',
-                    child: Text('Restore'),
-                  ),
+                  const PopupMenuItem(value: 'restore', child: Text('Restore')),
                 ];
 
                 if (isAdmin) {
                   items.add(
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
+                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
                   );
                 }
 
@@ -674,10 +639,7 @@ class _ArchivedPlanCard extends StatelessWidget {
 }
 
 class _PlanEntry {
-  _PlanEntry({
-    required this.plan,
-    required this.sectionLabel,
-  });
+  _PlanEntry({required this.plan, required this.sectionLabel});
 
   final Plan plan;
   final String sectionLabel;

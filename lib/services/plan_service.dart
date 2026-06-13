@@ -16,9 +16,7 @@ class PlanService {
       return decoded;
     }
 
-    return <String, dynamic>{
-      'data': decoded,
-    };
+    return <String, dynamic>{'data': decoded};
   }
 
   static Future<Map<String, String>?> _authHeaders({
@@ -50,10 +48,7 @@ class PlanService {
     final headers = await _authHeaders(hasBody: true);
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
@@ -134,18 +129,13 @@ class PlanService {
     final headers = await _authHeaders(hasBody: true);
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
       Uri.parse('$baseUrl/plans/join'),
       headers: headers,
-      body: jsonEncode({
-        'invite_code': inviteCode,
-      }),
+      body: jsonEncode({'invite_code': inviteCode}),
     );
 
     final data = _decodeResponse(response);
@@ -163,19 +153,14 @@ class PlanService {
     final headers = await _authHeaders(hasBody: newAdminId != null);
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
       Uri.parse('$baseUrl/plans/$planId/leave'),
       headers: headers,
       body: newAdminId != null
-          ? jsonEncode({
-              'new_admin_id': newAdminId,
-            })
+          ? jsonEncode({'new_admin_id': newAdminId})
           : null,
     );
 
@@ -199,10 +184,7 @@ class PlanService {
     final headers = await _authHeaders(hasBody: true);
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.patch(
@@ -214,7 +196,7 @@ class PlanService {
         'plan_date': planDate,
         'location': location,
         'status': status,
-        if (bannerColor != null) 'banner_color': bannerColor,
+        'banner_color': ?bannerColor,
       }),
     );
 
@@ -230,10 +212,7 @@ class PlanService {
     final headers = await _authHeaders();
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.delete(
@@ -279,10 +258,7 @@ class PlanService {
     final headers = await _authHeaders();
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
@@ -303,10 +279,7 @@ class PlanService {
     final headers = await _authHeaders();
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
@@ -352,10 +325,7 @@ class PlanService {
     final headers = await _authHeaders();
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
@@ -376,10 +346,7 @@ class PlanService {
     final headers = await _authHeaders();
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.delete(
@@ -427,18 +394,13 @@ class PlanService {
     final headers = await _authHeaders(hasBody: true);
 
     if (headers == null) {
-      return {
-        'success': false,
-        'message': 'User is not logged in.',
-      };
+      return {'success': false, 'message': 'User is not logged in.'};
     }
 
     final response = await http.post(
       Uri.parse('$baseUrl/plans/$planId/posts'),
       headers: headers,
-      body: jsonEncode({
-        'content': content,
-      }),
+      body: jsonEncode({'content': content}),
     );
 
     final data = _decodeResponse(response);

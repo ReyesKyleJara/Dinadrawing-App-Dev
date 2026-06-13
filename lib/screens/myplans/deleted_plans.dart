@@ -23,19 +23,13 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
   final Set<int> _selectedPlanIds = <int>{};
 
   List<_PlanEntry> get _allEntries => [
-        ..._plansByMe.map(
-          (plan) => _PlanEntry(
-            plan: plan,
-            sectionLabel: 'Plans by Me',
-          ),
-        ),
-        ..._plansWithMe.map(
-          (plan) => _PlanEntry(
-            plan: plan,
-            sectionLabel: 'Plans with Me',
-          ),
-        ),
-      ];
+    ..._plansByMe.map(
+      (plan) => _PlanEntry(plan: plan, sectionLabel: 'Plans by Me'),
+    ),
+    ..._plansWithMe.map(
+      (plan) => _PlanEntry(plan: plan, sectionLabel: 'Plans with Me'),
+    ),
+  ];
 
   @override
   void initState() {
@@ -103,9 +97,9 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
   void _showSnackBar(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _toggleSelection(Plan plan) {
@@ -129,9 +123,7 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
     setState(() {
       _selectedPlanIds
         ..clear()
-        ..addAll(
-          _allEntries.map((entry) => entry.plan.id).whereType<int>(),
-        );
+        ..addAll(_allEntries.map((entry) => entry.plan.id).whereType<int>());
     });
   }
 
@@ -158,9 +150,7 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           title,
           style: const TextStyle(
@@ -170,18 +160,12 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
         ),
         content: Text(
           content,
-          style: const TextStyle(
-            color: Colors.black87,
-            height: 1.35,
-          ),
+          style: const TextStyle(color: Colors.black87, height: 1.35),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -356,44 +340,46 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
                         ),
                       )
                     : _allEntries.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 180),
-                              Center(
-                                child: Text(
-                                  'No deleted plans yet.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black54,
-                                  ),
-                                ),
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 180),
+                          Center(
+                            child: Text(
+                              'No deleted plans yet.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black54,
                               ),
-                            ],
-                          )
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                            itemCount: _allEntries.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final entry = _allEntries[index];
-                              final plan = entry.plan;
-
-                              return _DeletedPlanCard(
-                                plan: plan,
-                                sectionLabel: entry.sectionLabel,
-                                dateLocation: _dateLocation(plan),
-                                isSelected: _isSelected(plan),
-                                isAdmin: _isAdmin(plan),
-                                onTap: () => _toggleSelection(plan),
-                                onRestore: _isProcessing ? null : () => _restoreSingle(plan),
-                                onDelete: !_isAdmin(plan) || _isProcessing
-                                    ? null
-                                    : () => _deleteSinglePermanently(plan),
-                              );
-                            },
+                            ),
                           ),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        itemCount: _allEntries.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final entry = _allEntries[index];
+                          final plan = entry.plan;
+
+                          return _DeletedPlanCard(
+                            plan: plan,
+                            sectionLabel: entry.sectionLabel,
+                            dateLocation: _dateLocation(plan),
+                            isSelected: _isSelected(plan),
+                            isAdmin: _isAdmin(plan),
+                            onTap: () => _toggleSelection(plan),
+                            onRestore: _isProcessing
+                                ? null
+                                : () => _restoreSingle(plan),
+                            onDelete: !_isAdmin(plan) || _isProcessing
+                                ? null
+                                : () => _deleteSinglePermanently(plan),
+                          );
+                        },
+                      ),
               ),
             ),
             if (hasSelection) _buildBottomActions(),
@@ -418,10 +404,7 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
           const SizedBox(width: 6),
           const Text(
             'Back',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.black54,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.black54),
           ),
           const Spacer(),
           IconButton(
@@ -445,10 +428,7 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
               children: [
                 Text(
                   'Deleted Plans',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -473,14 +453,8 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
                 }
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'selectAll',
-                  child: Text('Select All'),
-                ),
-                PopupMenuItem(
-                  value: 'clear',
-                  child: Text('Clear Selection'),
-                ),
+                PopupMenuItem(value: 'selectAll', child: Text('Select All')),
+                PopupMenuItem(value: 'clear', child: Text('Clear Selection')),
               ],
             ),
         ],
@@ -516,8 +490,9 @@ class _DeletedPlansPageState extends State<DeletedPlansPage> {
           const SizedBox(width: 12),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed:
-                  _isProcessing || !canDelete ? null : _deleteSelectedPermanently,
+              onPressed: _isProcessing || !canDelete
+                  ? null
+                  : _deleteSelectedPermanently,
               icon: const Icon(Icons.delete_outline),
               label: const Text('Delete'),
               style: OutlinedButton.styleFrom(
@@ -591,7 +566,7 @@ class _DeletedPlanCard extends StatelessWidget {
               ),
               child: Icon(
                 Icons.delete_outline,
-                color: Colors.black.withOpacity(0.45),
+                color: Colors.black.withValues(alpha: 0.45),
                 size: 26,
               ),
             ),
@@ -615,10 +590,7 @@ class _DeletedPlanCard extends StatelessWidget {
                       dateLocation,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -649,10 +621,7 @@ class _DeletedPlanCard extends StatelessWidget {
               },
               itemBuilder: (_) {
                 final items = <PopupMenuEntry<String>>[
-                  const PopupMenuItem(
-                    value: 'restore',
-                    child: Text('Restore'),
-                  ),
+                  const PopupMenuItem(value: 'restore', child: Text('Restore')),
                 ];
 
                 if (isAdmin) {
@@ -675,10 +644,7 @@ class _DeletedPlanCard extends StatelessWidget {
 }
 
 class _PlanEntry {
-  _PlanEntry({
-    required this.plan,
-    required this.sectionLabel,
-  });
+  _PlanEntry({required this.plan, required this.sectionLabel});
 
   final Plan plan;
   final String sectionLabel;

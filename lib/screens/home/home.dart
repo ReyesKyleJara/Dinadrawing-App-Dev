@@ -65,14 +65,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final plansByMe = plansByMeData is List
           ? plansByMeData
-              .map((item) => Plan.fromJson(item as Map<String, dynamic>))
-              .toList()
+                .map((item) => Plan.fromJson(item as Map<String, dynamic>))
+                .toList()
           : <Plan>[];
 
       final plansWithMe = plansWithMeData is List
           ? plansWithMeData
-              .map((item) => Plan.fromJson(item as Map<String, dynamic>))
-              .toList()
+                .map((item) => Plan.fromJson(item as Map<String, dynamic>))
+                .toList()
           : <Plan>[];
 
       final combinedPlans = [...plansByMe, ...plansWithMe];
@@ -97,20 +97,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openPlanDashboard(Plan plan) {
     if (plan.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to open plan. Missing plan ID.'),
-        ),
+        const SnackBar(content: Text('Unable to open plan. Missing plan ID.')),
       );
       return;
     }
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => PlanDashboardScreen(
-          planId: plan.id!,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => PlanDashboardScreen(planId: plan.id!)),
     );
   }
 
@@ -255,22 +249,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   return CircleAvatar(
                     radius: 19,
                     backgroundColor: Colors.grey[300],
-                    child: Icon(
-                      icon,
-                      size: 16,
-                      color: Colors.black,
-                    ),
+                    child: Icon(icon, size: 16, color: Colors.black),
                   );
                 }
 
                 return const CircleAvatar(
                   radius: 19,
                   backgroundColor: Color(0xFFE0E0E0),
-                  child: Icon(
-                    Icons.person,
-                    color: Colors.grey,
-                    size: 16,
-                  ),
+                  child: Icon(Icons.person, color: Colors.grey, size: 16),
                 );
               },
             ),
@@ -302,18 +288,12 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Text(
                   'Can\'t decide where to go?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 4),
                 const Text(
                   'Use spin the wheel or blitz poll for quick decisions',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
@@ -344,10 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 500),
             transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
+              return FadeTransition(opacity: animation, child: child);
             },
             child: _showWheel
                 ? Image.asset(
@@ -374,10 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         const Text(
           'Upcoming Plans',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         TextButton(
           onPressed: () {
@@ -388,138 +362,126 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             );
           },
-          child: Text(
-            'View all >',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
+          child: Text('View all >', style: TextStyle(color: Colors.grey[600])),
         ),
       ],
     );
   }
 
   Widget _buildEmptyPlansState() {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFFAEF),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(
-        color: const Color(0xFFFFE4AD),
-        width: 1,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFAEF),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFFE4AD), width: 1),
       ),
-    ),
-    child: Column(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2B73F).withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(18),
+      child: Column(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2B73F).withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.event_note_outlined,
+              size: 34,
+              color: Color(0xFFF2B73F),
+            ),
           ),
-          child: const Icon(
-            Icons.event_note_outlined,
-            size: 34,
-            color: Color(0xFFF2B73F),
+
+          const SizedBox(height: 14),
+
+          const Text(
+            'No plans yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+            ),
           ),
-        ),
 
-        const SizedBox(height: 14),
+          const SizedBox(height: 6),
 
-        const Text(
-          'No plans yet',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: Colors.black,
+          const Text(
+            'Create your first plan or join one using an invite code.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.black54,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
 
-        const SizedBox(height: 6),
+          const SizedBox(height: 18),
 
-        const Text(
-          'Create your first plan or join one using an invite code.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.black54,
-            height: 1.4,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-
-        const SizedBox(height: 18),
-
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MainWrapper(initialIndex: 2),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MainWrapper(initialIndex: 2),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF2B73F),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF2B73F),
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                child: const Text(
-                  'Create Plan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                  child: const Text(
+                    'Create Plan',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(width: 10),
+              const SizedBox(width: 10),
 
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MainWrapper(initialIndex: 1),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MainWrapper(initialIndex: 1),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.black,
+                    minimumSize: const Size(0, 44),
+                    side: const BorderSide(
+                      color: Color(0xFFF2B73F),
+                      width: 1.4,
                     ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black,
-                  minimumSize: const Size(0, 44),
-                  side: const BorderSide(
-                    color: Color(0xFFF2B73F),
-                    width: 1.4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Join Plan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                  child: const Text(
+                    'Join Plan',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class HomePlanCard extends StatelessWidget {

@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../services/plan_service.dart';
 
-enum ResponsibilityMode {
-  personBased,
-  roleTaskBased,
-}
+enum ResponsibilityMode { personBased, roleTaskBased }
 
 class ResponsibilityPersonDraft {
   final int? itemId;
@@ -98,9 +95,9 @@ class ResponsibilityRoleTaskDraft {
     this.reservedOutsidePreassignments = 0,
     List<ResponsibilitySelectedPerson>? preAssignedPeople,
     List<ResponsibilitySelectedPerson>? originalPreAssignedPeople,
-  })  : titleController = TextEditingController(text: title),
-        preAssignedPeople = preAssignedPeople ?? [],
-        originalPreAssignedPeople = originalPreAssignedPeople ?? [];
+  }) : titleController = TextEditingController(text: title),
+       preAssignedPeople = preAssignedPeople ?? [],
+       originalPreAssignedPeople = originalPreAssignedPeople ?? [];
 
   void dispose() {
     titleController.dispose();
@@ -122,8 +119,7 @@ class CreateResponsibility extends StatefulWidget {
   });
 
   @override
-  State<CreateResponsibility> createState() =>
-      _CreateResponsibilityState();
+  State<CreateResponsibility> createState() => _CreateResponsibilityState();
 }
 
 class _CreateResponsibilityState extends State<CreateResponsibility> {
@@ -150,12 +146,6 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     return _selectedMode == ResponsibilityMode.personBased
         ? 'person_based'
         : 'role_task_based';
-  }
-
-  String get _modeLabel {
-    return _selectedMode == ResponsibilityMode.personBased
-        ? 'Start with people'
-        : 'Start with roles or tasks';
   }
 
   String get _titleHint {
@@ -201,16 +191,10 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     _roleTasks
       ..clear()
-      ..addAll([
-        ResponsibilityRoleTaskDraft(),
-        ResponsibilityRoleTaskDraft(),
-      ]);
+      ..addAll([ResponsibilityRoleTaskDraft(), ResponsibilityRoleTaskDraft()]);
   }
 
-  int _parseInt(
-    dynamic value, {
-    int fallback = 0,
-  }) {
+  int _parseInt(dynamic value, {int fallback = 0}) {
     if (value == null) return fallback;
     if (value is int) return value;
 
@@ -224,10 +208,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     return int.tryParse(value.toString());
   }
 
-  bool _parseBool(
-    dynamic value, {
-    bool fallback = false,
-  }) {
+  bool _parseBool(dynamic value, {bool fallback = false}) {
     if (value == null) return fallback;
     if (value is bool) return value;
     if (value is int) return value == 1;
@@ -278,8 +259,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     if (nestedUser is Map) {
       final nestedMap = Map<String, dynamic>.from(nestedUser);
-      final nestedUsername =
-          nestedMap['username']?.toString().trim();
+      final nestedUsername = nestedMap['username']?.toString().trim();
 
       if (nestedUsername != null && nestedUsername.isNotEmpty) {
         return nestedUsername;
@@ -307,9 +287,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       }
     }
 
-    return _parseNullableInt(
-      member['id'] ?? member['user_id'],
-    );
+    return _parseNullableInt(member['id'] ?? member['user_id']);
   }
 
   String _formatUsername(String username) {
@@ -409,16 +387,15 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         return 1;
       }
 
-      return first.name.toLowerCase().compareTo(
-            second.name.toLowerCase(),
-          );
+      return first.name.toLowerCase().compareTo(second.name.toLowerCase());
     });
 
     return people;
   }
 
   List<dynamic> _extractItems(Map<String, dynamic> data) {
-    final value = data['responsibility_items'] ??
+    final value =
+        data['responsibility_items'] ??
         data['responsibilityItems'] ??
         data['taskDetails'] ??
         data['items'];
@@ -427,15 +404,15 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
   }
 
   List<dynamic> _extractAssignments(Map<String, dynamic> item) {
-    final value = item['assignments'] ??
-        item['claimedBy'] ??
-        item['claimed_by'];
+    final value =
+        item['assignments'] ?? item['claimedBy'] ?? item['claimed_by'];
 
     return value is List ? value : <dynamic>[];
   }
 
   void _loadInitialData(Map<String, dynamic> data) {
-    final mode = data['responsibility_mode']?.toString() ??
+    final mode =
+        data['responsibility_mode']?.toString() ??
         data['responsibilityMode']?.toString() ??
         data['taskMode']?.toString() ??
         'person_based';
@@ -446,19 +423,17 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     _titleController.text =
         data['responsibility_title']?.toString() ??
-            data['responsibilityTitle']?.toString() ??
-            data['title']?.toString() ??
-            data['content']?.toString() ??
-            '';
+        data['responsibilityTitle']?.toString() ??
+        data['title']?.toString() ??
+        data['content']?.toString() ??
+        '';
 
     _allowMembersAddItems = _parseBool(
-      data['responsibility_allow_member_items'] ??
-          data['allowMembersAddItems'],
+      data['responsibility_allow_member_items'] ?? data['allowMembersAddItems'],
     );
 
     _showProgress = _parseBool(
-      data['responsibility_show_progress'] ??
-          data['showProgress'],
+      data['responsibility_show_progress'] ?? data['showProgress'],
       fallback: true,
     );
 
@@ -484,13 +459,13 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
         final name =
             item['member_display_name']?.toString().trim() ??
-                item['title']?.toString().trim() ??
-                member['name']?.toString().trim() ??
-                '';
+            item['title']?.toString().trim() ??
+            member['name']?.toString().trim() ??
+            '';
 
         final username =
             item['member_username']?.toString().trim() ??
-                member['username']?.toString().trim();
+            member['username']?.toString().trim();
 
         if (name.isEmpty) continue;
 
@@ -504,8 +479,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               item['is_manual'] ?? item['isManual'],
               fallback: userId == null,
             ),
-            contribution:
-                item['contribution']?.toString() ?? '',
+            contribution: item['contribution']?.toString() ?? '',
           ),
         );
       }
@@ -528,25 +502,20 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       final item = Map<String, dynamic>.from(rawItem);
       final assignments = _extractAssignments(item);
 
-      final preAssignedPeople =
-          <ResponsibilitySelectedPerson>[];
+      final preAssignedPeople = <ResponsibilitySelectedPerson>[];
 
       int reservedOutsidePreassignments = 0;
 
       for (final rawAssignment in assignments) {
         if (rawAssignment is! Map) continue;
 
-        final assignment =
-            Map<String, dynamic>.from(rawAssignment);
+        final assignment = Map<String, dynamic>.from(rawAssignment);
 
-        final source =
-            assignment['source']?.toString() ?? 'claimed';
+        final source = assignment['source']?.toString() ?? 'claimed';
 
-        final status =
-            assignment['status']?.toString() ?? 'accepted';
+        final status = assignment['status']?.toString() ?? 'accepted';
 
-        final isActive =
-            status == 'pending' || status == 'accepted';
+        final isActive = status == 'pending' || status == 'accepted';
 
         if (!isActive) {
           continue;
@@ -564,22 +533,20 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             : <String, dynamic>{};
 
         final userId = _parseNullableInt(
-          assignment['user_id'] ??
-              assignment['userId'] ??
-              user['id'],
+          assignment['user_id'] ?? assignment['userId'] ?? user['id'],
         );
 
         final name =
             assignment['display_name']?.toString().trim() ??
-                assignment['name']?.toString().trim() ??
-                assignment['manual_name']?.toString().trim() ??
-                user['name']?.toString().trim() ??
-                '';
+            assignment['name']?.toString().trim() ??
+            assignment['manual_name']?.toString().trim() ??
+            user['name']?.toString().trim() ??
+            '';
 
         final username =
             assignment['username_value']?.toString().trim() ??
-                assignment['username']?.toString().trim() ??
-                user['username']?.toString().trim();
+            assignment['username']?.toString().trim() ??
+            user['username']?.toString().trim();
 
         if (name.isEmpty) {
           continue;
@@ -587,8 +554,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
         preAssignedPeople.add(
           ResponsibilitySelectedPerson(
-            assignmentId:
-                _parseNullableInt(assignment['id']),
+            assignmentId: _parseNullableInt(assignment['id']),
             userId: userId,
             name: name,
             username: username?.isEmpty == true ? null : username,
@@ -607,12 +573,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         ResponsibilityRoleTaskDraft(
           itemId: _parseNullableInt(item['id']),
           title: item['title']?.toString() ?? '',
-          slots: _parseInt(
-            item['slots'],
-            fallback: 1,
-          ),
-          reservedOutsidePreassignments:
-              reservedOutsidePreassignments,
+          slots: _parseInt(item['slots'], fallback: 1),
+          reservedOutsidePreassignments: reservedOutsidePreassignments,
           preAssignedPeople: preAssignedPeople,
           originalPreAssignedPeople: originalPeople,
         ),
@@ -632,11 +594,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _selectMode(ResponsibilityMode mode) {
@@ -647,8 +607,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     setState(() {
       _selectedMode = mode;
 
-      if (_selectedMode == ResponsibilityMode.personBased &&
-          _people.isEmpty) {
+      if (_selectedMode == ResponsibilityMode.personBased && _people.isEmpty) {
         _people.addAll(_buildDefaultPeople());
       }
 
@@ -662,32 +621,22 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     });
   }
 
-  bool _personAlreadyIncluded({
-    int? userId,
-    required String name,
-  }) {
+  bool _personAlreadyIncluded({int? userId, required String name}) {
     return _people.any((person) {
       if (userId != null && person.userId != null) {
         return userId == person.userId;
       }
 
-      return person.name.trim().toLowerCase() ==
-          name.trim().toLowerCase();
+      return person.name.trim().toLowerCase() == name.trim().toLowerCase();
     });
   }
 
   Set<String> _personListIdentityKeys() {
-    return _people
-        .map((person) => person.identityKey)
-        .toSet();
+    return _people.map((person) => person.identityKey).toSet();
   }
 
-  Set<String> _preAssignedIdentityKeys(
-    ResponsibilityRoleTaskDraft item,
-  ) {
-    return item.preAssignedPeople
-        .map((person) => person.identityKey)
-        .toSet();
+  Set<String> _preAssignedIdentityKeys(ResponsibilityRoleTaskDraft item) {
+    return item.preAssignedPeople.map((person) => person.identityKey).toSet();
   }
 
   List<Map<String, dynamic>> _availableMembers({
@@ -726,15 +675,12 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     final searchController = TextEditingController();
     String query = '';
 
-    final selected =
-        await showModalBottomSheet<ResponsibilitySelectedPerson>(
+    final selected = await showModalBottomSheet<ResponsibilitySelectedPerson>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
         return StatefulBuilder(
@@ -745,10 +691,10 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             );
 
             final cleanQuery = query.trim();
-            final manualKey =
-                'manual:${cleanQuery.toLowerCase()}';
+            final manualKey = 'manual:${cleanQuery.toLowerCase()}';
 
-            final canAddManual = allowManualName &&
+            final canAddManual =
+                allowManualName &&
                 cleanQuery.isNotEmpty &&
                 !excludedKeys.contains(manualKey);
 
@@ -760,8 +706,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 MediaQuery.of(sheetContext).viewInsets.bottom + 24,
               ),
               child: SizedBox(
-                height:
-                    MediaQuery.of(sheetContext).size.height * 0.72,
+                height: MediaQuery.of(sheetContext).size.height * 0.72,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -771,8 +716,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                         height: 4,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade300,
-                          borderRadius:
-                              BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                     ),
@@ -790,8 +734,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(),
+                          onPressed: () => Navigator.of(sheetContext).pop(),
                           icon: const Icon(Icons.close),
                         ),
                       ],
@@ -800,16 +743,14 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                     TextField(
                       controller: searchController,
                       autofocus: true,
-                      textCapitalization:
-                          TextCapitalization.words,
+                      textCapitalization: TextCapitalization.words,
                       onChanged: (value) {
                         setSheetState(() {
                           query = value;
                         });
                       },
                       decoration: InputDecoration(
-                        hintText:
-                            'Search a member or type a name',
+                        hintText: 'Search a member or type a name',
                         prefixIcon: const Icon(
                           Icons.search_rounded,
                           color: Colors.grey,
@@ -817,23 +758,15 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                         filled: true,
                         fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300,
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300,
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
-                        focusedBorder:
-                            OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(
                             color: brandYellow,
                             width: 1.5,
@@ -847,8 +780,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                         children: [
                           if (suggestions.isNotEmpty) ...[
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.only(bottom: 8),
                               child: Text(
                                 'Plan members',
                                 style: TextStyle(
@@ -861,10 +793,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                             ...suggestions.map((member) {
                               final id = _memberId(member);
                               final name = _memberName(member);
-                              final username =
-                                  _memberUsername(member);
-                              final isYou =
-                                  _isCurrentUser(id);
+                              final username = _memberUsername(member);
+                              final isYou = _isCurrentUser(id);
 
                               return _buildPickerMemberTile(
                                 name: name,
@@ -887,8 +817,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                             if (suggestions.isNotEmpty)
                               const SizedBox(height: 10),
                             InkWell(
-                              borderRadius:
-                                  BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14),
                               onTap: () {
                                 Navigator.of(sheetContext).pop(
                                   ResponsibilitySelectedPerson(
@@ -899,25 +828,19 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                               },
                               child: Container(
                                 width: double.infinity,
-                                padding:
-                                    const EdgeInsets.all(14),
+                                padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: brandCream,
-                                  borderRadius:
-                                      BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: softBorder,
-                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: softBorder),
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
                                       width: 38,
                                       height: 38,
-                                      alignment:
-                                          Alignment.center,
-                                      decoration:
-                                          const BoxDecoration(
+                                      alignment: Alignment.center,
+                                      decoration: const BoxDecoration(
                                         color: Color(0xFFFFE8A3),
                                         shape: BoxShape.circle,
                                       ),
@@ -933,8 +856,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                         'Add “$cleanQuery”',
                                         style: const TextStyle(
                                           fontSize: 14,
-                                          fontWeight:
-                                              FontWeight.w800,
+                                          fontWeight: FontWeight.w800,
                                           color: Colors.black87,
                                         ),
                                       ),
@@ -944,11 +866,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                               ),
                             ),
                           ],
-                          if (suggestions.isEmpty &&
-                              !canAddManual)
+                          if (suggestions.isEmpty && !canAddManual)
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 50),
+                              padding: const EdgeInsets.only(top: 50),
                               child: Column(
                                 children: [
                                   Icon(
@@ -964,8 +884,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color:
-                                          Colors.grey.shade600,
+                                      color: Colors.grey.shade600,
                                     ),
                                   ),
                                 ],
@@ -1000,16 +919,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 11,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.grey.shade300,
-            ),
+            border: Border.all(color: Colors.grey.shade300),
           ),
           child: Row(
             children: [
@@ -1038,10 +952,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                   isYou: isYou,
                 ),
               ),
-              const Icon(
-                Icons.add_circle_outline_rounded,
-                color: brandYellow,
-              ),
+              const Icon(Icons.add_circle_outline_rounded, color: brandYellow),
             ],
           ),
         ),
@@ -1062,10 +973,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       return;
     }
 
-    if (_personAlreadyIncluded(
-      userId: selected.userId,
-      name: selected.name,
-    )) {
+    if (_personAlreadyIncluded(userId: selected.userId, name: selected.name)) {
       _showMessage('This person is already included.');
       return;
     }
@@ -1087,11 +995,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     final person = _people[index];
 
-    if (_isEditing &&
-        person.contribution.trim().isNotEmpty) {
-      _showMessage(
-        'This person already has an entry and cannot be removed.',
-      );
+    if (_isEditing && person.contribution.trim().isNotEmpty) {
+      _showMessage('This person already has an entry and cannot be removed.');
       return;
     }
 
@@ -1104,16 +1009,12 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     if (_isSubmitting) return;
 
     if (_roleTasks.length >= 30) {
-      _showMessage(
-        'You can only add up to 30 roles or tasks.',
-      );
+      _showMessage('You can only add up to 30 roles or tasks.');
       return;
     }
 
     setState(() {
-      _roleTasks.add(
-        ResponsibilityRoleTaskDraft(),
-      );
+      _roleTasks.add(ResponsibilityRoleTaskDraft());
     });
   }
 
@@ -1124,12 +1025,10 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     final activeAssignments =
         item.reservedOutsidePreassignments +
-            item.originalPreAssignedPeople.length;
+        item.originalPreAssignedPeople.length;
 
     if (_isEditing && activeAssignments > 0) {
-      _showMessage(
-        'Roles or tasks with assigned people cannot be removed.',
-      );
+      _showMessage('Roles or tasks with assigned people cannot be removed.');
       return;
     }
 
@@ -1139,12 +1038,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     });
   }
 
-  int _minimumSlots(
-    ResponsibilityRoleTaskDraft item,
-  ) {
+  int _minimumSlots(ResponsibilityRoleTaskDraft item) {
     final minimum =
-        item.reservedOutsidePreassignments +
-            item.preAssignedPeople.length;
+        item.reservedOutsidePreassignments + item.preAssignedPeople.length;
 
     return minimum < 1 ? 1 : minimum;
   }
@@ -1176,9 +1072,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     final item = _roleTasks[index];
 
     if (item.slots >= 50) {
-      _showMessage(
-        'A role or task can have up to 50 slots.',
-      );
+      _showMessage('A role or task can have up to 50 slots.');
       return;
     }
 
@@ -1203,14 +1097,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     }
 
     final alreadyIncluded = item.preAssignedPeople.any(
-      (person) =>
-          person.identityKey == selected.identityKey,
+      (person) => person.identityKey == selected.identityKey,
     );
 
     if (alreadyIncluded) {
-      _showMessage(
-        'This person is already pre-assigned.',
-      );
+      _showMessage('This person is already pre-assigned.');
       return;
     }
 
@@ -1232,18 +1123,13 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     if (_isSubmitting) return;
 
     setState(() {
-      _roleTasks[itemIndex]
-          .preAssignedPeople
-          .removeWhere(
-            (item) =>
-                item.identityKey == person.identityKey,
-          );
+      _roleTasks[itemIndex].preAssignedPeople.removeWhere(
+        (item) => item.identityKey == person.identityKey,
+      );
     });
   }
 
-  Map<String, dynamic> _personItemPayload(
-    ResponsibilityPersonDraft person,
-  ) {
+  Map<String, dynamic> _personItemPayload(ResponsibilityPersonDraft person) {
     return {
       if (person.itemId != null) 'id': person.itemId,
       'title': person.name,
@@ -1275,11 +1161,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       'slots': item.slots,
       'is_manual': false,
       'contribution': '',
-      if (includePreAssignments &&
-          userIds.isNotEmpty)
+      if (includePreAssignments && userIds.isNotEmpty)
         'preassigned_user_ids': userIds,
-      if (includePreAssignments &&
-          manualNames.isNotEmpty)
+      if (includePreAssignments && manualNames.isNotEmpty)
         'manual_preassigned_names': manualNames,
     };
   }
@@ -1288,8 +1172,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     final seen = <String>{};
 
     for (final item in _roleTasks) {
-      final title =
-          item.titleController.text.trim().toLowerCase();
+      final title = item.titleController.text.trim().toLowerCase();
 
       if (title.isEmpty) {
         continue;
@@ -1323,21 +1206,16 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     }
 
     final validItems = _roleTasks.where(
-      (item) =>
-          item.titleController.text.trim().isNotEmpty,
+      (item) => item.titleController.text.trim().isNotEmpty,
     );
 
     if (validItems.isEmpty) {
-      _showMessage(
-        'Please add at least one role or task.',
-      );
+      _showMessage('Please add at least one role or task.');
       return false;
     }
 
     if (_hasDuplicateRoleTaskTitles()) {
-      _showMessage(
-        'Role or task names must be different.',
-      );
+      _showMessage('Role or task names must be different.');
       return false;
     }
 
@@ -1355,10 +1233,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     return true;
   }
 
-  List<Map<String, dynamic>> _serverItems(
-    Map<String, dynamic> post,
-  ) {
-    final value = post['responsibility_items'] ??
+  List<Map<String, dynamic>> _serverItems(Map<String, dynamic> post) {
+    final value =
+        post['responsibility_items'] ??
         post['responsibilityItems'] ??
         post['items'];
 
@@ -1368,9 +1245,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     return value
         .whereType<Map>()
-        .map(
-          (item) => Map<String, dynamic>.from(item),
-        )
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
@@ -1381,8 +1256,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
   }) {
     if (draft.itemId != null) {
       for (final serverItem in serverItems) {
-        final serverId =
-            _parseNullableInt(serverItem['id']);
+        final serverId = _parseNullableInt(serverItem['id']);
 
         if (serverId == draft.itemId) {
           usedItemIds.add(serverId!);
@@ -1391,16 +1265,13 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       }
     }
 
-    final cleanTitle =
-        draft.titleController.text.trim().toLowerCase();
+    final cleanTitle = draft.titleController.text.trim().toLowerCase();
 
     for (final serverItem in serverItems) {
-      final serverId =
-          _parseNullableInt(serverItem['id']);
+      final serverId = _parseNullableInt(serverItem['id']);
 
       final serverTitle =
-          serverItem['title']?.toString().trim().toLowerCase() ??
-              '';
+          serverItem['title']?.toString().trim().toLowerCase() ?? '';
 
       if (serverId != null &&
           !usedItemIds.contains(serverId) &&
@@ -1413,8 +1284,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     return null;
   }
 
-  Future<Map<String, dynamic>>
-      _synchronizeEditedPreAssignments(
+  Future<Map<String, dynamic>> _synchronizeEditedPreAssignments(
     Map<String, dynamic> updatedPost,
   ) async {
     var latestPost = updatedPost;
@@ -1433,20 +1303,17 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         usedItemIds: usedItemIds,
       );
 
-      final itemId =
-          _parseNullableInt(serverItem?['id']);
+      final itemId = _parseNullableInt(serverItem?['id']);
 
       if (itemId == null) {
         return {
           'success': false,
-          'message':
-              'A saved role or task could not be matched.',
+          'message': 'A saved role or task could not be matched.',
         };
       }
 
       final originalByKey = {
-        for (final person
-            in draft.originalPreAssignedPeople)
+        for (final person in draft.originalPreAssignedPeople)
           person.identityKey: person,
       };
 
@@ -1456,22 +1323,18 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       };
 
       final removedKeys = originalByKey.keys
-          .where(
-            (key) => !currentByKey.containsKey(key),
-          )
+          .where((key) => !currentByKey.containsKey(key))
           .toList();
 
       for (final key in removedKeys) {
         final originalPerson = originalByKey[key];
-        final assignmentId =
-            originalPerson?.assignmentId;
+        final assignmentId = originalPerson?.assignmentId;
 
         if (assignmentId == null) {
           continue;
         }
 
-        final result =
-            await PlanService.removeResponsibilityPreassignment(
+        final result = await PlanService.removeResponsibilityPreassignment(
           itemId: itemId,
           assignmentId: assignmentId,
         );
@@ -1479,23 +1342,20 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         if (result['success'] != true) {
           return {
             'success': false,
-            'message': result['message'] ??
-                'Failed to remove a pre-assignment.',
+            'message':
+                result['message'] ?? 'Failed to remove a pre-assignment.',
           };
         }
 
         final returnedPost = result['post'];
 
         if (returnedPost is Map) {
-          latestPost =
-              Map<String, dynamic>.from(returnedPost);
+          latestPost = Map<String, dynamic>.from(returnedPost);
         }
       }
 
       final addedKeys = currentByKey.keys
-          .where(
-            (key) => !originalByKey.containsKey(key),
-          )
+          .where((key) => !originalByKey.containsKey(key))
           .toList();
 
       for (final key in addedKeys) {
@@ -1505,35 +1365,28 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           continue;
         }
 
-        final result =
-            await PlanService.preassignResponsibilityPerson(
+        final result = await PlanService.preassignResponsibilityPerson(
           itemId: itemId,
           userId: person.userId,
-          manualName:
-              person.userId == null ? person.name : null,
+          manualName: person.userId == null ? person.name : null,
         );
 
         if (result['success'] != true) {
           return {
             'success': false,
-            'message': result['message'] ??
-                'Failed to add a pre-assignment.',
+            'message': result['message'] ?? 'Failed to add a pre-assignment.',
           };
         }
 
         final returnedPost = result['post'];
 
         if (returnedPost is Map) {
-          latestPost =
-              Map<String, dynamic>.from(returnedPost);
+          latestPost = Map<String, dynamic>.from(returnedPost);
         }
       }
     }
 
-    return {
-      'success': true,
-      'post': latestPost,
-    };
+    return {'success': true, 'post': latestPost};
   }
 
   Future<void> _submitResponsibility() async {
@@ -1550,86 +1403,58 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     try {
       final title = _titleController.text.trim();
 
-      final items =
-          _selectedMode == ResponsibilityMode.personBased
-              ? _people
-                  .map(_personItemPayload)
-                  .toList()
-              : _roleTasks
-                  .where(
-                    (item) =>
-                        item.titleController.text
-                            .trim()
-                            .isNotEmpty,
-                  )
-                  .map(
-                    (item) => _roleTaskItemPayload(
-                      item,
-                      includePreAssignments: !_isEditing,
-                    ),
-                  )
-                  .toList();
+      final items = _selectedMode == ResponsibilityMode.personBased
+          ? _people.map(_personItemPayload).toList()
+          : _roleTasks
+                .where((item) => item.titleController.text.trim().isNotEmpty)
+                .map(
+                  (item) => _roleTaskItemPayload(
+                    item,
+                    includePreAssignments: !_isEditing,
+                  ),
+                )
+                .toList();
 
       Map<String, dynamic> result;
 
       if (_isEditing) {
-        final postId = _parseInt(
-          widget.initialData?['id'],
-          fallback: -1,
-        );
+        final postId = _parseInt(widget.initialData?['id'], fallback: -1);
 
         if (postId <= 0) {
-          _showMessage(
-            'This responsibility post is invalid.',
-          );
+          _showMessage('This responsibility post is invalid.');
           return;
         }
 
-        result =
-            await PlanService.updateResponsibilityPost(
+        result = await PlanService.updateResponsibilityPost(
           postId: postId,
           title: title,
           mode: _backendMode,
           items: items,
-          allowMembersAddItems:
-              _allowMembersAddItems,
+          allowMembersAddItems: _allowMembersAddItems,
           showProgress: _showProgress,
         );
       } else {
-        result =
-            await PlanService.createResponsibilityPost(
+        result = await PlanService.createResponsibilityPost(
           planId: widget.planId,
           title: title,
           mode: _backendMode,
           items: items,
-          allowMembersAddItems:
-              _allowMembersAddItems,
+          allowMembersAddItems: _allowMembersAddItems,
           showProgress: _showProgress,
         );
       }
 
       if (!mounted) return;
 
-      if (result['success'] != true ||
-          result['post'] == null) {
-        _showMessage(
-          result['message'] ??
-              'Failed to save responsibilities.',
-        );
+      if (result['success'] != true || result['post'] == null) {
+        _showMessage(result['message'] ?? 'Failed to save responsibilities.');
         return;
       }
 
-      var savedPost = Map<String, dynamic>.from(
-        result['post'] as Map,
-      );
+      var savedPost = Map<String, dynamic>.from(result['post'] as Map);
 
-      if (_isEditing &&
-          _selectedMode ==
-              ResponsibilityMode.roleTaskBased) {
-        final syncResult =
-            await _synchronizeEditedPreAssignments(
-          savedPost,
-        );
+      if (_isEditing && _selectedMode == ResponsibilityMode.roleTaskBased) {
+        final syncResult = await _synchronizeEditedPreAssignments(savedPost);
 
         if (!mounted) return;
 
@@ -1644,8 +1469,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         final syncedPost = syncResult['post'];
 
         if (syncedPost is Map) {
-          savedPost =
-              Map<String, dynamic>.from(syncedPost);
+          savedPost = Map<String, dynamic>.from(syncedPost);
         }
       }
 
@@ -1653,16 +1477,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
       if (!mounted) return;
 
-      Navigator.pop(
-        context,
-        savedPost,
-      );
+      Navigator.pop(context, savedPost);
     } catch (error) {
       if (!mounted) return;
 
-      _showMessage(
-        'Connection error: $error',
-      );
+      _showMessage('Connection error: $error');
     } finally {
       if (mounted && !completed) {
         setState(() {
@@ -1674,8 +1493,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
   @override
   Widget build(BuildContext context) {
-    final isPersonBased =
-        _selectedMode == ResponsibilityMode.personBased;
+    final isPersonBased = _selectedMode == ResponsibilityMode.personBased;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1687,20 +1505,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         scrolledUnderElevation: 0,
         leadingWidth: 100,
         leading: TextButton.icon(
-          onPressed: _isSubmitting
-              ? null
-              : () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            size: 14,
-            color: brandYellow,
-          ),
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios, size: 14, color: brandYellow),
           label: const Text(
             'Back',
-            style: TextStyle(
-              color: brandYellow,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: brandYellow, fontSize: 14),
           ),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.only(left: 24),
@@ -1709,15 +1518,12 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         ),
       ),
       body: SingleChildScrollView(
-        padding:
-            const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _isEditing
-                  ? 'Edit Responsibilities'
-                  : 'Set Up Who Does What',
+              _isEditing ? 'Edit Responsibilities' : 'Set Up Who Does What',
               style: const TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
@@ -1727,11 +1533,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             const SizedBox(height: 6),
             const Text(
               'Organize people, roles, tasks, and shared responsibilities.',
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey,
-                height: 1.25,
-              ),
+              style: TextStyle(fontSize: 15, color: Colors.grey, height: 1.25),
             ),
             const SizedBox(height: 28),
             const Text(
@@ -1748,10 +1550,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               const SizedBox(height: 10),
               Text(
                 'The setup type cannot be changed after posting.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
             ],
             const SizedBox(height: 24),
@@ -1760,8 +1559,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             _buildTitleField(),
             const SizedBox(height: 24),
             _buildSectionHeading(
-              title:
-                  isPersonBased ? 'People' : 'Roles or Tasks',
+              title: isPersonBased ? 'People' : 'Roles or Tasks',
               countLabel: isPersonBased
                   ? '${_people.length} people'
                   : '${_roleTasks.where((item) => item.titleController.text.trim().isNotEmpty).length} items',
@@ -1788,18 +1586,14 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSubmitting
-                    ? null
-                    : _submitResponsibility,
+                onPressed: _isSubmitting ? null : _submitResponsibility,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: brandYellow,
                   foregroundColor: Colors.black,
                   elevation: 0,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: _isSubmitting
@@ -1834,9 +1628,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade300,
-        ),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         children: [
@@ -1848,12 +1640,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 'List people first, then add what each person will bring, share, or do.',
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12),
-            child: Divider(
-              height: 1,
-              color: Colors.grey.shade200,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Divider(height: 1, color: Colors.grey.shade200),
           ),
           _buildModeOption(
             mode: ResponsibilityMode.roleTaskBased,
@@ -1878,8 +1666,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(13),
-      onTap:
-          isDisabled ? null : () => _selectMode(mode),
+      onTap: isDisabled ? null : () => _selectMode(mode),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: double.infinity,
@@ -1888,9 +1675,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           color: isSelected ? brandCream : Colors.white,
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: isSelected
-                ? brandYellow
-                : Colors.transparent,
+            color: isSelected ? brandYellow : Colors.transparent,
             width: 1.3,
           ),
         ),
@@ -1910,16 +1695,13 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               child: Icon(
                 icon,
                 size: 21,
-                color: isSelected
-                    ? brandYellowDark
-                    : Colors.grey.shade600,
+                color: isSelected ? brandYellowDark : Colors.grey.shade600,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
@@ -1943,13 +1725,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             ),
             const SizedBox(width: 10),
             Icon(
-              isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off,
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
               size: 21,
-              color: isSelected
-                  ? brandYellow
-                  : Colors.grey.shade400,
+              color: isSelected ? brandYellow : Colors.grey.shade400,
             ),
           ],
         ),
@@ -1965,37 +1743,21 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       decoration: InputDecoration(
         labelText: 'Title',
         hintText: _titleHint,
-        labelStyle: TextStyle(
-          color: Colors.grey.shade600,
-          fontSize: 14,
-        ),
-        hintStyle: TextStyle(
-          color: Colors.grey.shade400,
-          fontSize: 14,
-        ),
-        prefixIcon: const Icon(
-          Icons.title_rounded,
-          color: Colors.grey,
-        ),
+        labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        prefixIcon: const Icon(Icons.title_rounded, color: Colors.grey),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.grey.shade300,
-          ),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: brandYellow,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: brandYellow, width: 1.5),
         ),
       ),
     );
@@ -2018,16 +1780,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 5,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: brandCream,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: softBorder,
-            ),
+            border: Border.all(color: softBorder),
           ),
           child: Text(
             countLabel,
@@ -2048,8 +1805,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         if (_people.isEmpty)
           _buildEmptySection(
             icon: Icons.group_off_outlined,
-            message:
-                'No one is included yet. Add a person below.',
+            message: 'No one is included yet. Add a person below.',
           )
         else
           ...List.generate(_people.length, (index) {
@@ -2076,10 +1832,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               ),
             ),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 0,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
             ),
           ),
         ),
@@ -2093,16 +1846,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 13,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.grey.shade300,
-        ),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
@@ -2121,9 +1869,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: person.isManual
-                    ? Colors.grey.shade700
-                    : brandYellowDark,
+                color: person.isManual ? Colors.grey.shade700 : brandYellowDark,
               ),
             ),
           ),
@@ -2131,21 +1877,14 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           Expanded(
             child: _buildPersonIdentity(
               name: person.name,
-              username:
-                  person.isManual ? null : person.username,
+              username: person.isManual ? null : person.username,
               isYou: isYou,
             ),
           ),
           IconButton(
-            onPressed: _isSubmitting
-                ? null
-                : () => _removePerson(index),
+            onPressed: _isSubmitting ? null : () => _removePerson(index),
             tooltip: 'Remove',
-            icon: const Icon(
-              Icons.close,
-              size: 21,
-              color: Colors.redAccent,
-            ),
+            icon: const Icon(Icons.close, size: 21, color: Colors.redAccent),
           ),
         ],
       ),
@@ -2183,8 +1922,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               ),
           ],
         ),
-        if (username != null &&
-            username.trim().isNotEmpty) ...[
+        if (username != null && username.trim().isNotEmpty) ...[
           const SizedBox(height: 2),
           Text(
             _formatUsername(username),
@@ -2205,8 +1943,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         if (_roleTasks.isEmpty)
           _buildEmptySection(
             icon: Icons.assignment_outlined,
-            message:
-                'No roles or tasks yet. Add one below.',
+            message: 'No roles or tasks yet. Add one below.',
           )
         else
           ...List.generate(_roleTasks.length, (index) {
@@ -2218,13 +1955,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed:
-                _isSubmitting ? null : _addRoleTask,
-            icon: const Icon(
-              Icons.add_rounded,
-              size: 20,
-              color: brandYellow,
-            ),
+            onPressed: _isSubmitting ? null : _addRoleTask,
+            icon: const Icon(Icons.add_rounded, size: 20, color: brandYellow),
             label: const Text(
               'Add role or task',
               style: TextStyle(
@@ -2234,10 +1966,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               ),
             ),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 0,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
             ),
           ),
         ),
@@ -2254,9 +1983,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       decoration: BoxDecoration(
         color: brandCreamLight,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: softBorder,
-        ),
+        border: Border.all(color: softBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2292,9 +2019,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 ),
               ),
               IconButton(
-                onPressed: _isSubmitting
-                    ? null
-                    : () => _removeRoleTask(index),
+                onPressed: _isSubmitting ? null : () => _removeRoleTask(index),
                 tooltip: 'Remove',
                 icon: const Icon(
                   Icons.close,
@@ -2308,15 +2033,13 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           TextField(
             controller: item.titleController,
             enabled: !_isSubmitting,
-            textCapitalization:
-                TextCapitalization.sentences,
+            textCapitalization: TextCapitalization.sentences,
             onChanged: (_) {
               setState(() {});
             },
             decoration: InputDecoration(
               labelText: 'Role or task',
-              hintText:
-                  'e.g., Presenter, Buy materials',
+              hintText: 'e.g., Presenter, Buy materials',
               prefixIcon: const Icon(
                 Icons.assignment_ind_outlined,
                 color: Colors.grey,
@@ -2328,16 +2051,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.grey.shade300,
-                ),
+                borderSide: BorderSide(color: Colors.grey.shade300),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: brandYellow,
-                  width: 1.5,
-                ),
+                borderSide: const BorderSide(color: brandYellow, width: 1.5),
               ),
             ),
           ),
@@ -2355,29 +2073,19 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.shade300,
-        ),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.groups_rounded,
-            size: 20,
-            color: brandYellowDark,
-          ),
+          const Icon(Icons.groups_rounded, size: 20, color: brandYellowDark),
           const SizedBox(width: 10),
           const Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Available slots',
@@ -2390,21 +2098,14 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 SizedBox(height: 2),
                 Text(
                   'How many people can take this?',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.black45,
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.black45),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: _isSubmitting
-                ? null
-                : () => _decreaseSlots(index),
-            icon: const Icon(
-              Icons.remove_circle_outline_rounded,
-            ),
+            onPressed: _isSubmitting ? null : () => _decreaseSlots(index),
+            icon: const Icon(Icons.remove_circle_outline_rounded),
             color: brandYellowDark,
           ),
           Text(
@@ -2416,12 +2117,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             ),
           ),
           IconButton(
-            onPressed: _isSubmitting
-                ? null
-                : () => _increaseSlots(index),
-            icon: const Icon(
-              Icons.add_circle_outline_rounded,
-            ),
+            onPressed: _isSubmitting ? null : () => _increaseSlots(index),
+            icon: const Icon(Icons.add_circle_outline_rounded),
             color: brandYellowDark,
           ),
         ],
@@ -2438,9 +2135,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.shade300,
-        ),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2466,8 +2161,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             const SizedBox(height: 10),
             ...item.preAssignedPeople.map((person) {
               return Padding(
-                padding:
-                    const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: _buildPreAssignedPersonRow(
                   itemIndex: index,
                   person: person,
@@ -2478,8 +2172,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           TextButton.icon(
             onPressed: _isSubmitting
                 ? null
-                : () =>
-                    _addPreAssignedPerson(index),
+                : () => _addPreAssignedPerson(index),
             icon: const Icon(
               Icons.person_add_alt_1_rounded,
               size: 18,
@@ -2493,9 +2186,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-            ),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
           ),
         ],
       ),
@@ -2510,16 +2201,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: brandCreamLight,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: softBorder,
-        ),
+        border: Border.all(color: softBorder),
       ),
       child: Row(
         children: [
@@ -2538,9 +2224,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
-                color: person.isManual
-                    ? Colors.grey.shade700
-                    : brandYellowDark,
+                color: person.isManual ? Colors.grey.shade700 : brandYellowDark,
               ),
             ),
           ),
@@ -2548,56 +2232,36 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           Expanded(
             child: _buildPersonIdentity(
               name: person.name,
-              username:
-                  person.isManual ? null : person.username,
+              username: person.isManual ? null : person.username,
               isYou: isYou,
             ),
           ),
           IconButton(
             onPressed: _isSubmitting
                 ? null
-                : () => _removePreAssignedPerson(
-                      itemIndex,
-                      person,
-                    ),
+                : () => _removePreAssignedPerson(itemIndex, person),
             tooltip: 'Remove',
             visualDensity: VisualDensity.compact,
-            icon: const Icon(
-              Icons.close,
-              size: 18,
-              color: Colors.redAccent,
-            ),
+            icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptySection({
-    required IconData icon,
-    required String message,
-  }) {
+  Widget _buildEmptySection({required IconData icon, required String message}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 22,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: brandCreamLight,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: softBorder,
-        ),
+        border: Border.all(color: softBorder),
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 32,
-            color: brandYellowDark,
-          ),
+          Icon(icon, size: 32, color: brandYellowDark),
           const SizedBox(height: 8),
           Text(
             message,
@@ -2614,21 +2278,15 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
   }
 
   Widget _buildSettingsSection() {
-    final isPersonBased =
-        _selectedMode == ResponsibilityMode.personBased;
+    final isPersonBased = _selectedMode == ResponsibilityMode.personBased;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.grey.shade300,
-        ),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2656,10 +2314,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               });
             },
           ),
-          Divider(
-            height: 24,
-            color: Colors.grey.shade200,
-          ),
+          Divider(height: 24, color: Colors.grey.shade200),
           _buildSwitchRow(
             label: 'Show progress',
             description: isPersonBased
@@ -2688,8 +2343,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       children: [
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
@@ -2715,10 +2369,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         Switch(
           value: value,
           activeThumbColor: brandYellow,
-          activeTrackColor:
-              brandYellow.withValues(alpha: 0.35),
-          onChanged:
-              _isSubmitting ? null : onChanged,
+          activeTrackColor: brandYellow.withValues(alpha: 0.35),
+          onChanged: _isSubmitting ? null : onChanged,
         ),
       ],
     );

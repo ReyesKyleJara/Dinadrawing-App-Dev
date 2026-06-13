@@ -1,7 +1,6 @@
 import 'package:dinadrawing/screens/plans/plan_dashboard/plan_dashboard.dart';
 import 'package:flutter/material.dart';
 import '../../services/plan_service.dart';
-import '../../navigation/main_wrapper.dart';
 
 class JoinPlanPage extends StatefulWidget {
   const JoinPlanPage({super.key});

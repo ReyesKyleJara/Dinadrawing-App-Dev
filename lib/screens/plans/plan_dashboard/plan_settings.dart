@@ -560,7 +560,7 @@ class _PlanSettingsPageState extends State<PlanSettingsPage> {
     setState(() => _isSaving = true);
 
     String hexColor =
-        '#${_bannerColor!.value.toRadixString(16).substring(2).toUpperCase()}';
+        '#${_bannerColor!.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
     try {
       final result = await PlanService.updatePlan(

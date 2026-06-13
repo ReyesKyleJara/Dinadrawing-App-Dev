@@ -9,10 +9,7 @@ import 'feed_tab.dart';
 class PlanDashboardScreen extends StatefulWidget {
   final int planId;
 
-  const PlanDashboardScreen({
-    super.key,
-    required this.planId,
-  });
+  const PlanDashboardScreen({super.key, required this.planId});
 
   @override
   State<PlanDashboardScreen> createState() => _PlanDashboardScreenState();
@@ -111,9 +108,7 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
       return const Scaffold(
         backgroundColor: Color(0xFFF8F9FA),
         body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFF2B73F),
-          ),
+          child: CircularProgressIndicator(color: Color(0xFFF2B73F)),
         ),
       );
     }
@@ -161,17 +156,10 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(
-        top: 58,
-        left: 24,
-        right: 24,
-        bottom: 28,
-      ),
+      padding: const EdgeInsets.only(top: 58, left: 24, right: 24, bottom: 28),
       decoration: BoxDecoration(
         color: bannerColor,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,10 +170,7 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.arrow_back,
-                  color: Colors.black87,
-                ),
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
                 onPressed: () => Navigator.pop(context),
               ),
               Row(
@@ -199,9 +184,8 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MembersPage(
-                            planId: widget.planId,
-                          ),
+                          builder: (context) =>
+                              MembersPage(planId: widget.planId),
                         ),
                       );
                     },
@@ -306,43 +290,6 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyFeedState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.forum_outlined,
-              size: 46,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'No posts yet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Posts from this plan will appear here once the posting feature is added.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-                height: 1.4,
               ),
             ),
           ],

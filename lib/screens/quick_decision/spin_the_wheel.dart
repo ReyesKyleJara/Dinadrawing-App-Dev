@@ -55,14 +55,14 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     );
 
     options = [
-      WheelOption(name: 'Jollibee', icon: Icons.fastfood),
-      WheelOption(name: 'McDonalds', icon: Icons.restaurant),
+      WheelOption(name: 'Jollibee', icon: Icons.local_dining),
+      WheelOption(name: 'McDonalds', icon: Icons.local_dining),
       WheelOption(name: 'Mang Inasal', icon: Icons.local_dining),
-      WheelOption(name: 'S & R', icon: Icons.shopping_bag),
-      WheelOption(name: 'Chowking', icon: Icons.rice_bowl),
-      WheelOption(name: 'KFC', icon: Icons.local_fire_department),
-      WheelOption(name: 'Pizza Hut', icon: Icons.local_pizza),
-      WheelOption(name: 'Starbucks', icon: Icons.coffee),
+      WheelOption(name: 'S&R', icon: Icons.local_dining),
+      WheelOption(name: 'Chowking', icon: Icons.local_dining),
+      WheelOption(name: 'KFC', icon: Icons.local_dining),
+      WheelOption(name: 'Pizza Hut', icon: Icons.local_dining),
+      WheelOption(name: 'Starbucks', icon: Icons.local_dining),
     ];
   }
 
@@ -135,97 +135,122 @@ class _SpinWheelPageState extends State<SpinWheelPage>
   void _showResultDialog(String result) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(50),
-                  onTap: () => Navigator.pop(context),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.close, size: 24),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Result',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: selectedColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    result,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _removeSelectedResult,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                      ),
-                      child: const Text('Remove'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      builder: (context) {
+        final dialogTheme = Theme.of(context);
+        final dialogColorScheme = dialogTheme.colorScheme;
+
+        return Dialog(
+          backgroundColor: dialogColorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-        ),
-      ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(50),
+                    onTap: () => Navigator.pop(context),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.close, size: 24),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Result',
+                    style: dialogTheme.textTheme.titleMedium?.copyWith(
+                      color: dialogColorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selectedColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      result,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: dialogColorScheme.onSurface,
+                          side: BorderSide(
+                            color: dialogColorScheme.outlineVariant,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          'Close',
+                          style: dialogTheme.textTheme.labelLarge,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _removeSelectedResult,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: dialogColorScheme.error,
+                          foregroundColor: dialogColorScheme.onError,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Remove',
+                          style: dialogTheme.textTheme.labelLarge?.copyWith(
+                            color: dialogColorScheme.onError,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   void _removeSelectedResult() {
-    if (selectedOptionIndex == null || selectedOptionIndex! < 0 || selectedOptionIndex! >= options.length) {
+    if (selectedOptionIndex == null ||
+        selectedOptionIndex! < 0 ||
+        selectedOptionIndex! >= options.length) {
       Navigator.pop(context);
       return;
     }
@@ -241,20 +266,22 @@ class _SpinWheelPageState extends State<SpinWheelPage>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FB),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F8FB),
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Spin the Wheel',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -267,9 +294,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
           children: [
             Text(
               'Let the wheel decide your next food trip.',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 28),
@@ -392,8 +418,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
               child: ElevatedButton(
                 onPressed: isSpinning ? null : _spinWheel,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF5B335),
-                  foregroundColor: Colors.black,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -402,7 +428,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                 ),
                 child: Text(
                   isSpinning ? 'Spinning...' : 'Spin Now',
-                  style: const TextStyle(
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colorScheme.onPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
@@ -416,11 +443,11 @@ class _SpinWheelPageState extends State<SpinWheelPage>
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: theme.shadowColor.withValues(alpha: 0.08),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -429,10 +456,10 @@ class _SpinWheelPageState extends State<SpinWheelPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Options',
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -444,29 +471,29 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8FB),
+                        color: colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade200, width: 1),
+                        border: Border.all(color: colorScheme.outlineVariant, width: 1),
                       ),
                       child: Row(
                         children: [
                           Expanded(
                             child: Text(
                               option.name,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurface,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.edit, size: 18, color: Color(0xFFF5B335)),
+                            icon: Icon(Icons.edit, size: 18, color: colorScheme.primary),
                             onPressed: () => _editOption(index),
                             constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
                             padding: EdgeInsets.zero,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                            icon: Icon(Icons.delete, size: 18, color: colorScheme.error),
                             onPressed: () => _deleteOption(index),
                             constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
                             padding: EdgeInsets.zero,
@@ -519,26 +546,29 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     required IconData icon,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5B335),
+          color: colorScheme.primary,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: Colors.black),
+            Icon(icon, size: 16, color: colorScheme.onPrimary),
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: theme.textTheme.labelLarge?.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Colors.black,
+                color: colorScheme.onPrimary,
               ),
             ),
           ],
@@ -553,11 +583,15 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     showDialog(
       context: context,
       builder: (context) {
+        final dialogTheme = Theme.of(context);
+        final dialogColorScheme = dialogTheme.colorScheme;
+
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text('Add Option'),
+          backgroundColor: dialogColorScheme.surface,
+          title: Text('Add Option', style: dialogTheme.textTheme.titleMedium?.copyWith(color: dialogColorScheme.onSurface)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -598,8 +632,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFA41E8E),
-                foregroundColor: Colors.white,
+                backgroundColor: dialogColorScheme.secondary,
+                foregroundColor: dialogColorScheme.onSecondary,
               ),
               child: const Text('Add'),
             ),

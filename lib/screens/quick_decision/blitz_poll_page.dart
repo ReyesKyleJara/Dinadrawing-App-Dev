@@ -25,10 +25,6 @@ class Player {
 }
 
 class _BlitzPollPageState extends State<BlitzPollPage> {
-  static const Color _accent = Color(0xFFF5B335);
-  static const Color _pageBg = Color(0xFFF6F7FB);
-  static const Color _ink = Color(0xFF1A1D23);
-
   late final List<Player> _players;
   late final List<PollOption> _options;
 
@@ -50,11 +46,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
       Player(name: 'Friend #3'),
       Player(name: 'Friend #4'),
     ];
-    _options = <PollOption>[
-      PollOption(name: 'KFC'),
-      PollOption(name: 'McDonalds'),
-      PollOption(name: 'Jollibee'),
-    ];
+    _options = <PollOption>[];
     _timeLeft = _votingDuration;
   }
 
@@ -95,7 +87,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _accent),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
             onPressed: () {
               final value = controller.text.trim();
               if (value.isEmpty) {
@@ -106,7 +100,10 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Add', style: TextStyle(color: _ink)),
+            child: Text(
+              'Add',
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            ),
           ),
         ],
       ),
@@ -135,7 +132,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _accent),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
             onPressed: () {
               final value = controller.text.trim();
               if (value.isEmpty) {
@@ -146,7 +145,10 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Save', style: TextStyle(color: _ink)),
+            child: Text(
+              'Save',
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            ),
           ),
         ],
       ),
@@ -203,7 +205,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _accent),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
             onPressed: () {
               final value = int.tryParse(controller.text.trim());
               if (value == null || value < 1 || value > 60) {
@@ -218,7 +222,10 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Save', style: TextStyle(color: _ink)),
+            child: Text(
+              'Save',
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            ),
           ),
         ],
       ),
@@ -275,7 +282,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                           }
                         : null,
                     icon: const Icon(Icons.remove),
-                    style: IconButton.styleFrom(backgroundColor: _accent),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Text(
@@ -299,7 +308,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                           }
                         : null,
                     icon: const Icon(Icons.add),
-                    style: IconButton.styleFrom(backgroundColor: _accent),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ],
               ),
@@ -311,7 +322,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _accent),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+              ),
               onPressed: () {
                 final value = int.tryParse(controller.text.trim());
                 if (value == null || value < 2 || value > 12) {
@@ -345,7 +358,10 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
 
                 Navigator.pop(context);
               },
-              child: const Text('Save', style: TextStyle(color: _ink)),
+              child: Text(
+                'Save',
+                style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+              ),
             ),
           ],
         ),
@@ -459,6 +475,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
   }
 
   void _showVotingModal() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -479,19 +498,17 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                     children: [
                       Text(
                         _players[_currentPlayerIndex].name,
-                        style: const TextStyle(
-                          fontSize: 24,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w800,
-                          color: _ink,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Player ${_currentPlayerIndex + 1} of ${_players.length}',
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF6B7280),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -503,8 +520,8 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                         ),
                         decoration: BoxDecoration(
                           color: _turnOpen
-                              ? const Color(0xFFE9F1FF)
-                              : const Color(0xFFF1F3F7),
+                              ? colorScheme.primaryContainer
+                              : colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
@@ -513,8 +530,8 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                               Icons.timer_outlined,
                               size: 22,
                               color: _turnOpen
-                                  ? const Color(0xFF2F6BDB)
-                                  : const Color(0xFF8B92A5),
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -526,8 +543,8 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: _turnOpen
-                                      ? const Color(0xFF2F6BDB)
-                                      : const Color(0xFF606A80),
+                                      ? colorScheme.primary
+                                      : colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -535,12 +552,11 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'Choose one option',
-                        style: TextStyle(
-                          fontSize: 14,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w700,
-                          color: _ink,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -567,15 +583,15 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: selected
-                                      ? const Color(0xFFFFF1CC)
+                                      ? colorScheme.tertiaryContainer
                                       : (_turnOpen
-                                          ? Colors.white
-                                          : const Color(0xFFF6F7FA)),
+                                          ? colorScheme.surface
+                                          : colorScheme.surfaceContainerLow),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: selected
-                                        ? const Color(0xFFF5B335)
-                                        : const Color(0xFFDCE1EC),
+                                        ? colorScheme.primary
+                                        : colorScheme.outlineVariant,
                                     width: selected ? 1.8 : 1.2,
                                   ),
                                 ),
@@ -584,17 +600,16 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                                     Expanded(
                                       child: Text(
                                         _options[index].name,
-                                        style: const TextStyle(
-                                          fontSize: 14,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: colorScheme.onSurface,
                                           fontWeight: FontWeight.w700,
-                                          color: _ink,
                                         ),
                                       ),
                                     ),
                                     if (selected)
-                                      const Icon(
+                                      Icon(
                                         Icons.check_circle,
-                                        color: Color(0xFFE9A500),
+                                        color: colorScheme.primary,
                                         size: 20,
                                       ),
                                   ],
@@ -610,7 +625,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                           width: double.infinity,
                           child: FilledButton(
                             style: FilledButton.styleFrom(
-                              backgroundColor: _accent,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -621,8 +636,8 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                               _currentPlayerIndex < _players.length - 1
                                   ? 'Next'
                                   : 'View Results',
-                              style: const TextStyle(
-                                color: _ink,
+                              style: TextStyle(
+                                color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 14,
                               ),
@@ -711,9 +726,14 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
         ),
         actions: [
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _accent),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
             onPressed: () => Navigator.pop(context),
-            child: const Text('Done', style: TextStyle(color: _ink)),
+            child: Text(
+              'Done',
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            ),
           ),
         ],
       ),
@@ -722,21 +742,23 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: _pageBg,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: _pageBg,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _ink),
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Blitz Poll',
-          style: TextStyle(
-            color: _ink,
-            fontSize: 19,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -748,11 +770,10 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Private turn-by-turn voting',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF5E6678),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -761,11 +782,11 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x140D1526),
+                      color: theme.shadowColor.withValues(alpha: 0.08),
                       blurRadius: 16,
                       offset: Offset(0, 8),
                     ),
@@ -775,14 +796,13 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.groups_2_outlined, color: _ink, size: 20),
+                        Icon(Icons.groups_2_outlined, color: colorScheme.onSurface, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           '${_players.length} players',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface,
                             fontWeight: FontWeight.w700,
-                            color: _ink,
                           ),
                         ),
                         const Spacer(),
@@ -798,11 +818,11 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          icon: const Icon(Icons.edit, size: 16, color: _ink),
-                          label: const Text(
+                          icon: Icon(Icons.edit, size: 16, color: colorScheme.onSurface),
+                          label: Text(
                             'Edit',
                             style: TextStyle(
-                              color: _ink,
+                              color: colorScheme.onSurface,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -820,11 +840,11 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          icon: const Icon(Icons.schedule, size: 16, color: _ink),
+                          icon: Icon(Icons.schedule, size: 16, color: colorScheme.onSurface),
                           label: Text(
                             '${_votingDuration}s',
-                            style: const TextStyle(
-                              color: _ink,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -838,17 +858,17 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                           child: FilledButton.icon(
                             onPressed: _addOption,
                             style: FilledButton.styleFrom(
-                              backgroundColor: _accent,
+                              backgroundColor: colorScheme.primary,
                               padding: const EdgeInsets.symmetric(vertical: 13),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(11),
                               ),
                             ),
-                            icon: const Icon(Icons.add, color: _ink, size: 18),
-                            label: const Text(
+                            icon: Icon(Icons.add, color: colorScheme.onPrimary, size: 18),
+                            label: Text(
                               'Add Option',
                               style: TextStyle(
-                                color: _ink,
+                                color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -861,17 +881,17 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                                 ? null
                                 : _startVotingSession,
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF1F9F63),
-                              disabledBackgroundColor: const Color(0xFFC6CFD8),
+                              backgroundColor: colorScheme.secondary,
+                              disabledBackgroundColor: colorScheme.surfaceContainerHighest,
                               padding: const EdgeInsets.symmetric(vertical: 13),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(11),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Start Session',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: colorScheme.onSecondary,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -883,12 +903,11 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Options',
-                style: TextStyle(
-                  fontSize: 16,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w800,
-                  color: _ink,
                 ),
               ),
               const SizedBox(height: 10),
@@ -902,9 +921,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(13),
-                      border: Border.all(color: const Color(0xFFDCE1EC)),
+                      border: Border.all(color: colorScheme.outlineVariant),
                     ),
                     child: Row(
                       children: [
@@ -920,10 +939,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                         Expanded(
                           child: Text(
                             option.name,
-                            style: const TextStyle(
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface,
                               fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: _ink,
                             ),
                           ),
                         ),
@@ -931,13 +949,13 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                           onPressed: () => _editOption(index),
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           splashRadius: 20,
-                          color: const Color(0xFF50607E),
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         IconButton(
                           onPressed: () => _removeOption(index),
                           icon: const Icon(Icons.delete_outline, size: 18),
                           splashRadius: 20,
-                          color: const Color(0xFFCA3A3A),
+                          color: colorScheme.error,
                         ),
                       ],
                     ),

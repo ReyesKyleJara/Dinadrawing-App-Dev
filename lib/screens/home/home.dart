@@ -6,7 +6,7 @@ import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
 import '../../services/plan_service.dart';
 import '../../services/profile_service.dart';
-import '../../tab/quick_decision.dart';
+import '../quick_decision/quick_decision.dart';
 import '../myplans/plan_model.dart';
 import '../plans/create_plan.dart';
 import '../plans/join_plan.dart';

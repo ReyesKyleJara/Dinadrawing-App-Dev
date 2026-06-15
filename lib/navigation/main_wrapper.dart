@@ -6,7 +6,7 @@ import '../screens/myplans/my_plans.dart';
 import '../screens/plans/create_plan.dart';
 import '../screens/plans/join_plan.dart';
 import '../screens/settings/settings.dart';
-import '../tab/quick_decision.dart';
+import '../screens/quick_decision/quick_decision.dart';
 
 const Color _brandYellow = Color(0xFFF2B73F);
 const Color _brandYellowDark = Color(0xFFD89B22);

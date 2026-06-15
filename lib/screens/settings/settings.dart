@@ -1484,14 +1484,6 @@ class _SecuritySubPageState extends State<SecuritySubPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _PageIntroCard(
-              icon: Icons.shield_outlined,
-              title: 'Keep your account secure',
-              description:
-                  'Use a strong password that you do not use on other accounts.',
-              backgroundColor: colorScheme.primaryContainer,
-              foregroundColor: colorScheme.onPrimaryContainer,
-            ),
             const SizedBox(height: 24),
             Text(
               'Change Password',
@@ -1846,14 +1838,6 @@ class _NotificationsSubPageState extends State<NotificationsSubPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                 children: [
-                  _PageIntroCard(
-                    icon: Icons.notifications_active_outlined,
-                    title: 'Stay updated without the noise',
-                    description:
-                        'Choose where and how you want to receive plan updates.',
-                    backgroundColor: const Color(0xFFE1F3FF),
-                    foregroundColor: const Color(0xFF357A9F),
-                  ),
                   if (_pageError != null) ...[
                     const SizedBox(height: 16),
                     _InlineStatusCard(
@@ -1996,14 +1980,6 @@ class _AppearanceSubPageState extends State<AppearanceSubPage> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             children: [
-              _PageIntroCard(
-                icon: Icons.palette_outlined,
-                title: 'Make it comfortable for you',
-                description:
-                    'Choose an appearance that feels best for your screen and environment.',
-                backgroundColor: const Color(0xFFFFE9DC),
-                foregroundColor: const Color(0xFFB86538),
-              ),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -2486,89 +2462,6 @@ class _AvatarActionTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PageIntroCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-
-  final Color backgroundColor;
-  final Color foregroundColor;
-
-  const _PageIntroCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.backgroundColor,
-    required this.foregroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: isDark
-            ? backgroundColor.withValues(alpha: 0.18)
-            : backgroundColor,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? foregroundColor.withValues(alpha: 0.22)
-                  : Colors.white.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              icon,
-              color: isDark
-                  ? foregroundColor.withValues(alpha: 0.95)
-                  : foregroundColor,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: isDark
-                        ? theme.colorScheme.onSurface
-                        : foregroundColor,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDark
-                        ? theme.colorScheme.onSurfaceVariant
-                        : foregroundColor.withValues(alpha: 0.82),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

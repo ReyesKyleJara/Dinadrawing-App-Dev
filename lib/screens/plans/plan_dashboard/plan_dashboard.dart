@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../myplans/plan_model.dart';
 import '../../../services/plan_service.dart';
-import 'budget_tab.dart';
+import 'budget/budget_tab.dart';
 import 'members_page.dart';
 import 'plan_settings.dart';
 import 'feed_tab.dart';
@@ -142,7 +142,7 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
           Expanded(
             child: isFeedActive
                 ? FeedTab(planId: widget.planId)
-                : const BudgetTab(),
+                : BudgetTab(planId: widget.planId),
           ),
         ],
       ),

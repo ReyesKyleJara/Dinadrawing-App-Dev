@@ -1570,7 +1570,7 @@ class _ResponsibilityPostState
         ),
         const SizedBox(width: 8),
         const Text(
-          'Responsibilities',
+          'Who\'s Doing What',
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w900,

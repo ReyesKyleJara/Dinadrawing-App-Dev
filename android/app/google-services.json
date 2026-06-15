@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "465293797166",
+    "project_id": "dinadrawing-app",
+    "storage_bucket": "dinadrawing-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465293797166:android:922ff884e0e927379bbcbf",
+        "android_client_info": {
+          "package_name": "com.example.dinadrawing"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "465293797166-qv09g5s93vb0jsrmarlbe4hrm9d8uhld.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.dinadrawing",
+            "certificate_hash": "5a3c7b9249d540d40772544cc2f41b60670d6b8a"
+          }
+        },
+        {
+          "client_id": "465293797166-rmpb6u8mkee9fljoog67jenmpc9kr5tq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJhgHUxloSOyjiYW1JoOy-wXdVD68cRXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "465293797166-rmpb6u8mkee9fljoog67jenmpc9kr5tq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "465293797166-3gd0a19fvlake4ovedmak2g1nniuffrr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.dinadrawing"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

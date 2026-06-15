@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
+import '../../services/google_auth_service.dart';
 import 'signup.dart';
 
 const Color _brandYellow = Color(0xFFE8B653);
@@ -143,13 +144,66 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showGoogleComingSoon() {
+  Future<void> _handleGoogleSignIn() async {
     FocusScope.of(context).unfocus();
 
     setState(() {
-      _formMessage = 'Google Sign-In is not available yet.';
-      _isInfoMessage = true;
+      _isLoading = true;
+      _formMessage = null;
+      _isInfoMessage = false;
     });
+
+    try {
+      final userCredential = await GoogleAuthService().signInWithGoogle();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (userCredential == null) {
+        setState(() {
+          _isLoading = false;
+          _formMessage = 'Google Sign-In was cancelled.';
+          _isInfoMessage = true;
+        });
+
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainWrapper()),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final errorText = error.toString().toLowerCase();
+
+      var message = 'Google Sign-In failed. Please try again.';
+
+      if (errorText.contains('network')) {
+        message =
+            'Network error. Check your internet connection and try again.';
+      } else if (errorText.contains('cancel')) {
+        message = 'Google Sign-In was cancelled.';
+      } else if (errorText.contains('developer_error') ||
+          errorText.contains('apiexception: 10')) {
+        message = 'Google Sign-In is not configured for this device yet.';
+      }
+
+      setState(() {
+        _isLoading = false;
+        _formMessage = message;
+        _isInfoMessage = errorText.contains('cancel');
+      });
+    }
   }
 
   @override
@@ -347,7 +401,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 50,
                   child: OutlinedButton(
-                    onPressed: _isLoading ? null : _showGoogleComingSoon,
+                    onPressed: _isLoading ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colors.onSurface,
                       backgroundColor: colors.surface,
@@ -362,12 +416,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.g_mobiledata_rounded,
-                          color: colors.onSurface,
-                          size: 29,
+                        Image.asset(
+                          'images/googlelogo.png',
+                          width: 22,
+                          height: 22,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.g_mobiledata_rounded,
+                              color: colors.onSurface,
+                              size: 29,
+                            );
+                          },
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Text(
                           'Continue with Google',
                           style: TextStyle(

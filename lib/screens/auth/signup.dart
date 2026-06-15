@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../navigation/main_wrapper.dart';
 import '../../services/auth_service.dart';
+import '../../services/google_auth_service.dart';
 import 'login.dart';
 
 const Color _brandYellow = Color(0xFFE8B653);
@@ -40,6 +41,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   String? _usernameMessage;
   String? _lastCheckedUsername;
+
+  bool get _hasValidPasswordLength {
+    final length = _passwordController.text.length;
+
+    return length >= 8 && length <= 20;
+  }
+
+  bool get _hasLetterAndNumber {
+    final password = _passwordController.text;
+
+    return RegExp(r'[A-Za-z]').hasMatch(password) &&
+        RegExp(r'\d').hasMatch(password);
+  }
+
+  bool get _hasSpecialCharacter {
+    return RegExp(r'[#?!\$&@]').hasMatch(_passwordController.text);
+  }
+
+  bool get _isPasswordValid {
+    return _hasValidPasswordLength &&
+        _hasLetterAndNumber &&
+        _hasSpecialCharacter;
+  }
 
   String _normalizeUsername(String value) {
     return value.trim().replaceFirst(RegExp(r'^@+'), '').toLowerCase();
@@ -269,9 +293,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    if (password.length < 8) {
+    if (!_isPasswordValid) {
       setState(() {
-        _formMessage = 'Password must contain at least 8 characters.';
+        _formMessage = 'Please make sure your password meets all requirements.';
         _isInfoMessage = false;
       });
 
@@ -351,13 +375,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  void _showGoogleComingSoon() {
+  Future<void> _handleGoogleSignIn() async {
     FocusScope.of(context).unfocus();
 
     setState(() {
-      _formMessage = 'Google Sign-In is not available yet.';
-      _isInfoMessage = true;
+      _isLoading = true;
+      _formMessage = null;
+      _isInfoMessage = false;
     });
+
+    try {
+      final userCredential = await GoogleAuthService().signInWithGoogle();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (userCredential == null) {
+        setState(() {
+          _isLoading = false;
+          _formMessage = 'Google Sign-In was cancelled.';
+          _isInfoMessage = true;
+        });
+
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainWrapper()),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final errorText = error.toString().toLowerCase();
+
+      var message = 'Google Sign-In failed. Please try again.';
+
+      if (errorText.contains('network')) {
+        message =
+            'Network error. Check your internet connection and try again.';
+      } else if (errorText.contains('cancel')) {
+        message = 'Google Sign-In was cancelled.';
+      } else if (errorText.contains('developer_error') ||
+          errorText.contains('apiexception: 10')) {
+        message = 'Google Sign-In is not configured for this device yet.';
+      }
+
+      setState(() {
+        _isLoading = false;
+        _formMessage = message;
+        _isInfoMessage = errorText.contains('cancel');
+      });
+    }
   }
 
   Color _usernameMessageColor(BuildContext context) {
@@ -530,7 +607,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   autocorrect: false,
                   enableSuggestions: false,
                   onChanged: (_) {
-                    _clearFormMessage();
+                    setState(() {
+                      _formMessage = null;
+                      _isInfoMessage = false;
+                    });
                   },
                   onSubmitted: (_) {
                     if (!_isLoading) {
@@ -539,16 +619,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   },
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-                Text(
-                  'Must contain at least 8 characters.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 12,
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                _buildPasswordRequirements(),
 
                 if (_formMessage != null) ...[
                   const SizedBox(height: 20),
@@ -604,7 +677,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   width: double.infinity,
                   height: 50,
                   child: OutlinedButton(
-                    onPressed: _isLoading ? null : _showGoogleComingSoon,
+                    onPressed: _isLoading ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colors.onSurface,
                       backgroundColor: colors.surface,
@@ -619,12 +692,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.g_mobiledata_rounded,
-                          color: colors.onSurface,
-                          size: 29,
+                        Image.asset(
+                          'images/googlelogo.png',
+                          width: 22,
+                          height: 22,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.g_mobiledata_rounded,
+                              color: colors.onSurface,
+                              size: 29,
+                            );
+                          },
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Text(
                           'Continue with Google',
                           style: TextStyle(
@@ -679,6 +759,89 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPasswordRequirements() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final hasInput = _passwordController.text.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your password must include:',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 9),
+          _buildPasswordRequirement(
+            label: '8–20 characters',
+            isMet: _hasValidPasswordLength,
+            hasInput: hasInput,
+          ),
+          const SizedBox(height: 7),
+          _buildPasswordRequirement(
+            label: 'At least 1 letter and 1 number',
+            isMet: _hasLetterAndNumber,
+            hasInput: hasInput,
+          ),
+          const SizedBox(height: 7),
+          _buildPasswordRequirement(
+            label: 'At least 1 special character (# ? ! \$ & @)',
+            isMet: _hasSpecialCharacter,
+            hasInput: hasInput,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasswordRequirement({
+    required String label,
+    required bool isMet,
+    required bool hasInput,
+  }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    final color = isMet
+        ? Colors.green.shade700
+        : hasInput
+        ? colors.error
+        : colors.onSurfaceVariant;
+
+    final icon = isMet
+        ? Icons.check_circle_rounded
+        : hasInput
+        ? Icons.cancel_rounded
+        : Icons.radio_button_unchecked_rounded;
+
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: color,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

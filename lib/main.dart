@@ -1,11 +1,16 @@
-import 'package:dinadrawing/providers/theme_provider.dart';
-import 'package:dinadrawing/screens/onboarding/onboarding.dart';
-import 'package:dinadrawing/theme/app_theme.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'firebase_options.dart';
+import 'providers/theme_provider.dart';
+import 'screens/onboarding/onboarding.dart';
+import 'theme/app_theme.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final themeProvider = ThemeProvider();
 
@@ -29,13 +34,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Dinadrawing',
-
-      // App-wide appearance
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
-
-      home: OnboardingPage(),
+      home: const OnboardingPage(),
     );
   }
 }

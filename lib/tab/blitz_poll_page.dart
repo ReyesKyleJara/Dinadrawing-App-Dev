@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/quick_decision_service.dart';
+
 class BlitzPollPage extends StatefulWidget {
   const BlitzPollPage({super.key});
 
@@ -11,8 +13,9 @@ class BlitzPollPage extends StatefulWidget {
 }
 
 class PollOption {
-  PollOption({required this.name, this.votes = 0});
+  PollOption({this.id, required this.name, this.votes = 0});
 
+  int? id;
   String name;
   int votes;
 }
@@ -37,6 +40,8 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
   int _timeLeft = 10;
   bool _sessionActive = false;
   bool _turnOpen = false;
+  bool _isLoading = true;
+  int? _currentPollId;
 
   Timer? _countdownTimer;
   StateSetter? _voteDialogSetState;
@@ -50,12 +55,9 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
       Player(name: 'Friend #3'),
       Player(name: 'Friend #4'),
     ];
-    _options = <PollOption>[
-      PollOption(name: 'KFC'),
-      PollOption(name: 'McDonalds'),
-      PollOption(name: 'Jollibee'),
-    ];
+    _options = <PollOption>[];
     _timeLeft = _votingDuration;
+    _loadPoll();
   }
 
   @override
@@ -71,6 +73,52 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
     if (dialogSetter != null) {
       dialogSetter(() {});
     }
+  }
+
+  Future<void> _loadPoll() async {
+    try {
+      final polls = await QuickDecisionService.getPolls();
+      if (!mounted) return;
+      if (polls.isNotEmpty) {
+        final poll = polls.first as Map<String, dynamic>;
+        _currentPollId = poll['id'] as int?;
+        _votingDuration = int.tryParse('${poll['duration_seconds'] ?? _votingDuration}') ?? _votingDuration;
+        _timeLeft = _votingDuration;
+        _options = (poll['options'] as List<dynamic>? ?? []).map((item) {
+          final option = item as Map<String, dynamic>;
+          return PollOption(id: option['id'] as int?, name: option['option_name']?.toString() ?? '');
+        }).toList();
+      } else {
+        final created = await QuickDecisionService.createPoll('Quick Blitz Poll', _votingDuration, [
+          {'option_name': 'KFC'},
+          {'option_name': 'McDonalds'},
+          {'option_name': 'Jollibee'},
+        ]);
+        if (!mounted) return;
+        final poll = created['poll'] as Map<String, dynamic>? ?? {};
+        _currentPollId = poll['id'] as int?;
+        _options = (poll['options'] as List<dynamic>? ?? []).map((item) {
+          final option = item as Map<String, dynamic>;
+          return PollOption(id: option['id'] as int?, name: option['option_name']?.toString() ?? '');
+        }).toList();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to load poll: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _savePoll() async {
+    if (_currentPollId == null) {
+      final created = await QuickDecisionService.createPoll('Quick Blitz Poll', _votingDuration, _options.map((item) => {'option_name': item.name}).toList());
+      if (mounted) _currentPollId = (created['poll'] as Map<String, dynamic>?)?['id'] as int?;
+      return;
+    }
+
+    await QuickDecisionService.updatePoll(_currentPollId!, 'Quick Blitz Poll', _votingDuration, _options.map((item) => {'option_name': item.name}).toList());
   }
 
   void _addOption() {
@@ -104,6 +152,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               setState(() {
                 _options.add(PollOption(name: value));
               });
+              _savePoll();
               Navigator.pop(context);
             },
             child: const Text('Add', style: TextStyle(color: _ink)),
@@ -144,6 +193,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               setState(() {
                 _options[index].name = value;
               });
+              _savePoll();
               Navigator.pop(context);
             },
             child: const Text('Save', style: TextStyle(color: _ink)),
@@ -176,6 +226,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
               setState(() {
                 _options.removeAt(index);
               });
+              _savePoll();
               Navigator.pop(context);
             },
             child: const Text('Remove', style: TextStyle(color: Colors.red)),
@@ -216,6 +267,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
                 _votingDuration = value;
                 _timeLeft = value;
               });
+              _savePoll();
               Navigator.pop(context);
             },
             child: const Text('Save', style: TextStyle(color: _ink)),
@@ -353,7 +405,7 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
     );
   }
 
-  void _startVotingSession() {
+  Future<void> _startVotingSession() async {
     _countdownTimer?.cancel();
 
     setState(() {
@@ -370,6 +422,10 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
       }
     });
 
+    await _savePoll();
+    if (_currentPollId != null) {
+      await QuickDecisionService.startPoll(_currentPollId!);
+    }
     _showVotingModal();
     _startPlayerTimer();
   }
@@ -414,13 +470,24 @@ class _BlitzPollPageState extends State<BlitzPollPage> {
     _refreshVoteDialog();
   }
 
-  void _recordVote(int optionIndex) {
+  Future<void> _recordVote(int optionIndex) async {
     if (!_turnOpen) {
       return;
     }
 
     final player = _players[_currentPlayerIndex];
     if (player.selectedOptionIndex != null) {
+      return;
+    }
+
+    try {
+      if (_currentPollId != null && _options[optionIndex].id != null) {
+        await QuickDecisionService.votePoll(_currentPollId!, _options[optionIndex].id!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote rejected: $e')));
+      }
       return;
     }
 

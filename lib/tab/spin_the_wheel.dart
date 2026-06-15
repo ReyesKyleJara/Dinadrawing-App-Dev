@@ -1,6 +1,9 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+
 import 'package:confetti/confetti.dart';
+import 'package:flutter/material.dart';
+
+import '../services/quick_decision_service.dart';
 
 class SpinWheelPage extends StatefulWidget {
   const SpinWheelPage({super.key});
@@ -10,10 +13,12 @@ class SpinWheelPage extends StatefulWidget {
 }
 
 class WheelOption {
+  final int? id;
   final String name;
   final IconData icon;
+  final String? color;
 
-  WheelOption({required this.name, required this.icon});
+  WheelOption({this.id, required this.name, required this.icon, this.color});
 }
 
 const List<Color> wheelColors = [
@@ -38,6 +43,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
   int? selectedOptionIndex;
   Color selectedColor = wheelColors[0];
   bool isSpinning = false;
+  bool isLoading = true;
+  int? currentWheelId;
 
   @override
   void initState() {
@@ -54,16 +61,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
       duration: const Duration(seconds: 2),
     );
 
-    options = [
-      WheelOption(name: 'Jollibee', icon: Icons.fastfood),
-      WheelOption(name: 'McDonalds', icon: Icons.restaurant),
-      WheelOption(name: 'Mang Inasal', icon: Icons.local_dining),
-      WheelOption(name: 'S & R', icon: Icons.shopping_bag),
-      WheelOption(name: 'Chowking', icon: Icons.rice_bowl),
-      WheelOption(name: 'KFC', icon: Icons.local_fire_department),
-      WheelOption(name: 'Pizza Hut', icon: Icons.local_pizza),
-      WheelOption(name: 'Starbucks', icon: Icons.coffee),
-    ];
+    options = [];
+    _loadWheels();
   }
 
   @override
@@ -94,267 +93,469 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     return path;
   }
 
-  void _spinWheel() {
-    if (isSpinning) return;
+  Future<void> _loadWheels() async {
+    try {
+      final wheels = await QuickDecisionService.getWheels();
+      if (!mounted) return;
+      if (wheels.isNotEmpty) {
+        final wheel = wheels.first as Map<String, dynamic>;
+        currentWheelId = wheel['id'] as int?;
+        final loadedOptions = (wheel['options'] as List<dynamic>? ?? []).map((item) {
+          final option = item as Map<String, dynamic>;
+          return WheelOption(
+            id: option['id'] as int?,
+            name: option['option_name']?.toString() ?? '',
+            icon: Icons.local_dining,
+            color: option['color']?.toString(),
+          );
+        }).toList();
+        setState(() {
+          options = loadedOptions;
+          isLoading = false;
+        });
+        return;
+      }
 
-    setState(() {
-      isSpinning = true;
-    });
-
-    final random = math.Random();
-    final targetDegrees = random.nextDouble() * 360;
-    final targetTurns = 5 + targetDegrees / 360;
-
-    final selectedIndex =
-        ((360 - targetDegrees) / (360 / options.length)).floor() %
-            options.length;
-
-    _turnsAnimation = Tween<double>(
-      begin: 0,
-      end: targetTurns,
-    ).animate(
-      CurvedAnimation(
-        parent: _wheelController,
-        curve: Curves.decelerate,
-      ),
-    );
-
-    _wheelController.forward(from: 0).then((_) {
+      final created = await QuickDecisionService.createWheel('My Wheel', [
+        {'option_name': 'Jollibee', 'color': '#0080FF'},
+        {'option_name': 'McDonalds', 'color': '#D500F9'},
+        {'option_name': 'Mang Inasal', 'color': '#FF1493'},
+      ]);
+      if (!mounted) return;
+      final wheel = created['wheel'] as Map<String, dynamic>? ?? {};
+      currentWheelId = wheel['id'] as int?;
+      final loadedOptions = (wheel['options'] as List<dynamic>? ?? []).map((item) {
+        final option = item as Map<String, dynamic>;
+        return WheelOption(id: option['id'] as int?, name: option['option_name']?.toString() ?? '', icon: Icons.local_dining, color: option['color']?.toString());
+      }).toList();
       setState(() {
-        selectedOption = options[selectedIndex].name;
-        selectedOptionIndex = selectedIndex;
-        selectedColor = wheelColors[selectedIndex % wheelColors.length];
+        options = loadedOptions;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to load wheel: $e')));
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _saveWheel() async {
+    if (currentWheelId == null) {
+      return;
+    }
+
+    try {
+      final result = await QuickDecisionService.updateWheel(
+        currentWheelId!,
+        'My Wheel',
+        options.map((option) => {
+          'id': option.id,
+          'option_name': option.name,
+          'color': option.color ?? wheelColors[options.indexOf(option) % wheelColors.length].toARGB32().toRadixString(16),
+        }).toList(),
+      );
+      if (result['success'] == true) {
+        final updatedWheel = result['wheel'] as Map<String, dynamic>? ?? {};
+        final loadedOptions = (updatedWheel['options'] as List<dynamic>? ?? []).map((item) {
+          final option = item as Map<String, dynamic>;
+          return WheelOption(id: option['id'] as int?, name: option['option_name']?.toString() ?? '', icon: Icons.local_dining, color: option['color']?.toString());
+        }).toList();
+        if (mounted) {
+          setState(() => options = loadedOptions);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to save wheel: $e')));
+      }
+    }
+  }
+
+  Future<void> _spinWheel() async {
+    if (isSpinning || currentWheelId == null || options.isEmpty) return;
+
+    try {
+      await QuickDecisionService.spinWheel(currentWheelId!);
+      if (!mounted) return;
+
+      _wheelController.stop();
+      _wheelController.reset();
+
+      final random = math.Random();
+      final targetTurns = 5 + random.nextDouble() * 3;
+      final spinAnimation = Tween<double>(begin: 0, end: targetTurns).animate(
+        CurvedAnimation(parent: _wheelController, curve: Curves.easeOutCubic),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _turnsAnimation = spinAnimation;
+        isSpinning = true;
+      });
+
+      await _wheelController.forward(from: 0);
+
+      final finalWinnerIndex = _winnerIndexFromFinalRotation(targetTurns);
+      final winner = options[finalWinnerIndex];
+
+      if (!mounted) return;
+      setState(() {
+        selectedOption = winner.name;
+        selectedOptionIndex = finalWinnerIndex;
+        selectedColor = wheelColors[finalWinnerIndex % wheelColors.length];
         isSpinning = false;
       });
 
       _confettiController.play();
-      _showResultDialog(selectedOption!);
-    });
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+      await _showWinnerDialog(winner);
+    } catch (e) {
+      if (mounted) {
+        setState(() => isSpinning = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to spin wheel: $e')));
+      }
+    }
   }
 
-  void _showResultDialog(String result) {
-    showDialog(
+  int _winnerIndexFromFinalRotation(double totalTurns) {
+    final segmentCount = options.length;
+    final totalRadians = totalTurns * 2 * math.pi;
+    final pointerAngle = _normalizeAngle(-math.pi / 2);
+
+    for (int index = 0; index < segmentCount; index++) {
+      final start = _normalizeAngle((-math.pi / 2 + (index / segmentCount) * 2 * math.pi) + totalRadians);
+      final end = _normalizeAngle(start + (2 * math.pi / segmentCount));
+
+      if (_angleInRange(pointerAngle, start, end)) {
+        return index;
+      }
+    }
+
+    return 0;
+  }
+
+  double _normalizeAngle(double angle) {
+    final normalized = angle % (2 * math.pi);
+    return normalized < 0 ? normalized + 2 * math.pi : normalized;
+  }
+
+  bool _angleInRange(double angle, double start, double end) {
+    if (start < end) {
+      return angle >= start && angle < end;
+    }
+    return angle >= start || angle < end;
+  }
+
+  Future<void> _removeWinnerOption(WheelOption winner) async {
+    if (!mounted) return;
+
+    try {
+      if (winner.id != null) {
+        final result = await QuickDecisionService.deleteWheelOption(winner.id!);
+        if (!mounted) return;
+        if (result['success'] == true) {
+          await _loadWheels();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${winner.name} was removed and saved.')));
+          return;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        options.removeWhere((option) => option.id == winner.id || option.name == winner.name);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${winner.name} was removed locally.')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to remove winner: $e')));
+      }
+    }
+  }
+
+
+  Future<void> _showWinnerDialog(WheelOption winner) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(50),
-                  onTap: () => Navigator.pop(context),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.close, size: 24),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Result',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
+      barrierDismissible: false,
+      builder: (context) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Material(
+              color: Colors.transparent,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.92, end: 1),
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutBack,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  constraints: const BoxConstraints(maxWidth: 380),
                   decoration: BoxDecoration(
-                    color: selectedColor,
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFEAEAEA)),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 24, offset: const Offset(0, 18)),
+                    ],
                   ),
-                  child: Text(
-                    result,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.workspace_premium_outlined, color: Color(0xFFB7791F), size: 28),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text('Winner', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                      const SizedBox(height: 8),
+                      Text(
+                        winner.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () async {
+                                Navigator.of(context).pop();
+                                await _removeWinnerOption(winner);
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF111827),
+                                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: const Text('Close'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () async {
+                                Navigator.of(context).pop();
+                                await _removeWinnerOption(winner);
+                                if (mounted && options.isNotEmpty) {
+                                  await _spinWheel();
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFF5B335),
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                              ),
+                              child: const Text('Spin Again'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFFFFF),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F2937)),
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFFF8FAFC),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
-                      child: const Text('Close'),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFFFFE082), width: 1),
+                        ),
+                        child: const Text(
+                          'Smart choice, made simple',
+                          style: TextStyle(
+                            color: Color(0xFFB7791F),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: const Color(0xFFEAEAEA)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 24,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Spin the Wheel',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF111827),
+                            height: 1.1,
+                          ) ?? const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Can\'t decide? Let the wheel choose for you.',
+                          style: TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _removeSelectedResult,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                      ),
-                      child: const Text('Remove'),
-                    ),
+                  const SizedBox(height: 20),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildWheelCard(),
+                      const SizedBox(height: 18),
+                      _buildWinnerCard(),
+                      const SizedBox(height: 18),
+                      _buildSpinButton(),
+                      const SizedBox(height: 18),
+                      _buildOptionsCard(),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _removeSelectedResult() {
-    if (selectedOptionIndex == null || selectedOptionIndex! < 0 || selectedOptionIndex! >= options.length) {
-      Navigator.pop(context);
-      return;
-    }
-
-    setState(() {
-      options.removeAt(selectedOptionIndex!);
-      selectedOption = null;
-      selectedOptionIndex = null;
-    });
-
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F8FB),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Spin the Wheel',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+  Widget _buildWheelCard() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 260),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFEAEAEA)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
           ),
-        ),
-        centerTitle: false,
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Let the wheel decide your next food trip.',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Wheel',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
               ),
-            ),
-            const SizedBox(height: 28),
-
-            SizedBox(
-              width: double.infinity,
-              height: 360,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    child: ConfettiWidget(
-                      confettiController: _confettiController,
-                      blastDirectionality: BlastDirectionality.explosive,
-                      emissionFrequency: 0.05,
-                      numberOfParticles: 15,
-                      minBlastForce: 6,
-                      maxBlastForce: 16,
-                      particleDrag: 0.04,
-                      gravity: 0.25,
-                      shouldLoop: false,
-                      colors: wheelColors,
-                      createParticlePath: _drawFirework,
-                      child: const SizedBox(width: 100, height: 100),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Text(
+                  options.isEmpty ? 'Ready' : '${options.length} choices',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563), fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: Center(
+              child: SizedBox(
+                height: 380,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: ConfettiWidget(
+                        confettiController: _confettiController,
+                        blastDirectionality: BlastDirectionality.explosive,
+                        emissionFrequency: 0.04,
+                        numberOfParticles: 16,
+                        minBlastForce: 8,
+                        maxBlastForce: 18,
+                        particleDrag: 0.03,
+                        gravity: 0.2,
+                        shouldLoop: false,
+                        colors: wheelColors,
+                        createParticlePath: _drawFirework,
+                        child: const SizedBox.expand(),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: ConfettiWidget(
-                      confettiController: _confettiController,
-                      blastDirectionality: BlastDirectionality.explosive,
-                      emissionFrequency: 0.05,
-                      numberOfParticles: 15,
-                      minBlastForce: 6,
-                      maxBlastForce: 16,
-                      particleDrag: 0.04,
-                      gravity: 0.25,
-                      shouldLoop: false,
-                      colors: wheelColors,
-                      createParticlePath: _drawFirework,
-                      child: const SizedBox(width: 100, height: 100),
-                    ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    bottom: 0,
-                    child: ConfettiWidget(
-                      confettiController: _confettiController,
-                      blastDirectionality: BlastDirectionality.explosive,
-                      emissionFrequency: 0.05,
-                      numberOfParticles: 15,
-                      minBlastForce: 6,
-                      maxBlastForce: 16,
-                      particleDrag: 0.04,
-                      gravity: 0.25,
-                      shouldLoop: false,
-                      colors: wheelColors,
-                      createParticlePath: _drawFirework,
-                      child: const SizedBox(width: 100, height: 100),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: ConfettiWidget(
-                      confettiController: _confettiController,
-                      blastDirectionality: BlastDirectionality.explosive,
-                      emissionFrequency: 0.05,
-                      numberOfParticles: 15,
-                      minBlastForce: 6,
-                      maxBlastForce: 16,
-                      particleDrag: 0.04,
-                      gravity: 0.25,
-                      shouldLoop: false,
-                      colors: wheelColors,
-                      createParticlePath: _drawFirework,
-                      child: const SizedBox(width: 100, height: 100),
-                    ),
-                  ),
-                  Positioned(
-                    top: 18,
-                    child: GestureDetector(
+                    GestureDetector(
                       onTap: isSpinning ? null : _spinWheel,
                       child: SizedBox(
                         width: 320,
@@ -366,150 +567,213 @@ class _SpinWheelPageState extends State<SpinWheelPage>
                               turns: _turnsAnimation,
                               child: CustomPaint(
                                 painter: WheelPainter(options: options),
-                                size: const Size(280, 280),
+                                size: const Size(300, 300),
                               ),
                             ),
-                            Positioned(
-                              top: 0,
-                              child: CustomPaint(
-                                painter: PointerPainter(),
-                                size: const Size(46, 38),
-                              ),
-                            ),
+                            Positioned(top: 0, child: CustomPaint(painter: PointerPainter(), size: const Size(50, 42))),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isSpinning ? null : _spinWheel,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF5B335),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  isSpinning ? 'Spinning...' : 'Spin Now',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  ],
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 18),
+        ],
+      ),
+    );
+  }
 
-            const SizedBox(height: 28),
+  Widget _buildWinnerCard() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFEAEAEA)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 18, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        child: selectedOption == null
+            ? Container(
+                key: const ValueKey('no-winner'),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: const Text(
+                  'No winner yet',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w700),
+                ),
+              )
+            : Container(
+                key: ValueKey('winner-$selectedOption'),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFFFE082)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.workspace_premium_outlined, color: Color(0xFFB7791F)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Winner: $selectedOption',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
 
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
+  Widget _buildSpinButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: isSpinning
+              ? [BoxShadow(color: const Color(0xFFF5B335).withValues(alpha: 0.30), blurRadius: 18, spreadRadius: 1)]
+              : [const BoxShadow(color: Colors.transparent, blurRadius: 0)],
+        ),
+        child: FilledButton(
+          onPressed: isSpinning || isLoading ? null : _spinWheel,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFF5B335),
+            foregroundColor: Colors.black,
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            elevation: 0,
+            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isSpinning)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
+                ),
+              Text(isSpinning ? 'Spinning...' : 'Spin Now'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionsCard() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFEAEAEA)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Options', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('${options.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text('Edit, remove, or reorder options in one place.', style: TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
+          const SizedBox(height: 16),
+          ...List.generate(options.length, (index) {
+            final option = options[index];
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 8)),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  const Text(
-                    'Options',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.fastfood_rounded, color: Color(0xFFB7791F), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      option.name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                     ),
                   ),
-                  const SizedBox(height: 14),
-
-                  ...List.generate(options.length, (index) {
-                    final option = options[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8FB),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade200, width: 1),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              option.name,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 18, color: Color(0xFFF5B335)),
-                            onPressed: () => _editOption(index),
-                            constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
-                            padding: EdgeInsets.zero,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                            onPressed: () => _deleteOption(index),
-                            constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildActionButton(
-                          label: 'Add',
-                          icon: Icons.add,
-                          onTap: _addImage,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildActionButton(
-                          label: 'Shuffle',
-                          icon: Icons.shuffle,
-                          onTap: _shuffleOptions,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildActionButton(
-                          label: 'Sort',
-                          icon: Icons.sort,
-                          onTap: _sortOptions,
-                        ),
-                      ),
-                    ],
+                  IconButton(
+                    onPressed: () => _editOption(index),
+                    icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFFF5B335)),
+                    style: IconButton.styleFrom(backgroundColor: const Color(0xFFFFF8E1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    onPressed: () => _deleteOption(index),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                    style: IconButton.styleFrom(backgroundColor: const Color(0xFFFFF1F2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+            );
+          }),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(width: 160, child: _buildActionButton(label: 'Add Option', icon: Icons.add_rounded, onTap: _addImage)),
+              SizedBox(width: 160, child: _buildActionButton(label: 'Shuffle', icon: Icons.shuffle_rounded, onTap: _shuffleOptions)),
+              SizedBox(width: 160, child: _buildActionButton(label: 'Sort', icon: Icons.sort_rounded, onTap: _sortOptions)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -519,29 +783,37 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     required IconData icon,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5B335),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: Colors.black),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            child: Ink(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5B335),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFFF5B335).withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 6)),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16, color: Colors.black),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -586,14 +858,9 @@ class _SpinWheelPageState extends State<SpinWheelPage>
 
                 if (name.isNotEmpty) {
                   setState(() {
-                    options.add(
-                      WheelOption(
-                        name: name,
-                        icon: Icons.local_dining,
-                      ),
-                    );
+                    options.add(WheelOption(name: name, icon: Icons.local_dining));
                   });
-
+                  _saveWheel();
                   Navigator.pop(context);
                 }
               },
@@ -609,18 +876,42 @@ class _SpinWheelPageState extends State<SpinWheelPage>
     );
   }
 
-  void _shuffleOptions() {
-    setState(() {
-      options.shuffle();
-    });
+  Future<void> _shuffleOptions() async {
+    if (currentWheelId == null) return;
+
+    try {
+      final result = await QuickDecisionService.shuffleWheel(currentWheelId!);
+      if (!mounted) return;
+      final updated = (result['options'] as List<dynamic>? ?? []).map((item) {
+        final option = item as Map<String, dynamic>;
+        return WheelOption(id: option['id'] as int?, name: option['option_name']?.toString() ?? '', icon: Icons.local_dining, color: option['color']?.toString());
+      }).toList();
+      setState(() => options = updated);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Options shuffled successfully')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to shuffle options: $e')));
+      }
+    }
   }
 
-  void _sortOptions() {
-    setState(() {
-      options.sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
-    });
+  Future<void> _sortOptions() async {
+    if (currentWheelId == null) return;
+
+    try {
+      final result = await QuickDecisionService.sortWheel(currentWheelId!);
+      if (!mounted) return;
+      final updated = (result['options'] as List<dynamic>? ?? []).map((item) {
+        final option = item as Map<String, dynamic>;
+        return WheelOption(id: option['id'] as int?, name: option['option_name']?.toString() ?? '', icon: Icons.local_dining, color: option['color']?.toString());
+      }).toList();
+      setState(() => options = updated);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Options sorted successfully')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to sort options: $e')));
+      }
+    }
   }
 
   void _editOption(int index) {
@@ -662,12 +953,9 @@ class _SpinWheelPageState extends State<SpinWheelPage>
 
                 if (name.isNotEmpty) {
                   setState(() {
-                    options[index] = WheelOption(
-                      name: name,
-                      icon: options[index].icon,
-                    );
+                    options[index] = WheelOption(id: options[index].id, name: name, icon: options[index].icon, color: options[index].color);
                   });
-
+                  _saveWheel();
                   Navigator.pop(context);
                 }
               },
@@ -684,6 +972,8 @@ class _SpinWheelPageState extends State<SpinWheelPage>
   }
 
   void _deleteOption(int index) {
+    final option = options[index];
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -701,11 +991,29 @@ class _SpinWheelPageState extends State<SpinWheelPage>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                options.removeAt(index);
-              });
-              Navigator.pop(context);
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              navigator.pop();
+              try {
+                if (option.id != null) {
+                  final result = await QuickDecisionService.deleteWheelOption(option.id!);
+                  if (!mounted) return;
+                  if (result['success'] == true) {
+                    await _loadWheels();
+                    if (!mounted) return;
+                    messenger.showSnackBar(const SnackBar(content: Text('Option deleted successfully')));
+                    return;
+                  }
+                }
+                if (!mounted) return;
+                setState(() => options.removeAt(index));
+                messenger.showSnackBar(const SnackBar(content: Text('Option deleted locally')));
+              } catch (e) {
+                if (mounted) {
+                  messenger.showSnackBar(SnackBar(content: Text('Unable to delete option: $e')));
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

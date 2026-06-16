@@ -225,7 +225,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
 
       return available;
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return false;
       }
@@ -235,6 +235,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _usernameMessage = 'Unable to check username availability.';
         _lastCheckedUsername = null;
       });
+
+      // Print the full error for debugging
+      debugPrint('Username check error: $error');
 
       return false;
     }
@@ -384,8 +387,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _isInfoMessage = false;
     });
 
+    final googleAuth = GoogleAuthService();
+
     try {
-      final userCredential = await GoogleAuthService().signInWithGoogle();
+      final userCredential = await googleAuth.signInWithGoogle();
 
       if (!mounted) {
         return;
@@ -401,15 +406,56 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
+      final idToken = await googleAuth.getFirebaseIdToken(forceRefresh: true);
+
+      if (idToken == null || idToken.trim().isEmpty) {
+        await googleAuth.signOut();
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _isLoading = false;
+          _formMessage =
+              'Firebase could not create a sign-in token. Please try again.';
+          _isInfoMessage = false;
+        });
+
+        return;
+      }
+
+      final result = await AuthService.googleLogin(idToken: idToken);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result['success'] == true && result['token'] != null) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MainWrapper()),
+          (route) => false,
+        );
+
+        return;
+      }
+
+      await googleAuth.signOut();
+
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _isLoading = false;
+        _formMessage = _extractErrorMessage(result);
+        _isInfoMessage = false;
       });
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainWrapper()),
-        (route) => false,
-      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -426,7 +472,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         message = 'Google Sign-In was cancelled.';
       } else if (errorText.contains('developer_error') ||
           errorText.contains('apiexception: 10')) {
-        message = 'Google Sign-In is not configured for this device yet.';
+        message =
+            'Google Sign-In is not configured for this Android build yet.';
       }
 
       setState(() {
@@ -884,18 +931,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image.asset(
-          'images/logo.png',
-          height: 29,
-          width: 29,
+          'images/DINADRAWING LOGO2.png',
+          height: 44,
+          fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             return const Icon(
               Icons.calendar_today_rounded,
-              size: 28,
+              size: 44,
               color: _brandYellow,
             );
           },
         ),
-        const SizedBox(width: 9),
+        const SizedBox(width: 12),
         Text(
           'DiNaDrawing',
           style: theme.textTheme.titleLarge?.copyWith(

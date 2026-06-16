@@ -106,6 +106,119 @@ class AuthService {
     }
   }
 
+
+  // ─────────────────────────────────────────────
+  // GOOGLE / FIREBASE LOGIN
+  // ─────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> googleLogin({
+    required String idToken,
+    String? username,
+  }) async {
+    final cleanIdToken = idToken.trim();
+
+    if (cleanIdToken.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Firebase did not return a valid sign-in token.',
+      };
+    }
+
+    try {
+      final body = <String, dynamic>{'id_token': cleanIdToken};
+      final cleanUsername = username?.trim() ?? '';
+
+      if (cleanUsername.isNotEmpty) {
+        body['username'] = _normalizeUsername(cleanUsername);
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/google-login'),
+        headers: const {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      _debugResponse(label: 'GOOGLE LOGIN', response: response);
+
+      final result = _decodeResponse(response);
+      final token = result['token']?.toString();
+
+      if (token != null && token.isNotEmpty) {
+        await saveToken(token);
+      }
+
+      return result;
+    } catch (error) {
+      debugPrint('GOOGLE LOGIN ERROR: $error');
+
+      return _connectionErrorResult(error);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // EMAIL VERIFICATION
+  // ─────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/verify-email'),
+        headers: const {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email.trim().toLowerCase(),
+          'code': code.trim(),
+        }),
+      );
+
+      _debugResponse(label: 'VERIFY EMAIL', response: response);
+
+      return _decodeResponse(response);
+    } catch (error) {
+      debugPrint('VERIFY EMAIL ERROR: $error');
+
+      return _connectionErrorResult(error);
+    }
+  }
+
+  static Future<Map<String, dynamic>> resendVerificationCode({
+    required String email,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/resend-verification-code'),
+        headers: const {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'email': email.trim().toLowerCase()}),
+      );
+
+      _debugResponse(label: 'RESEND VERIFICATION CODE', response: response);
+
+      return _decodeResponse(response);
+    } catch (error) {
+      debugPrint('RESEND VERIFICATION CODE ERROR: $error');
+
+      return _connectionErrorResult(error);
+    }
+  }
+
+  static Future<Map<String, dynamic>> enableEmailReminders() async {
+    return _authenticatedJsonRequest(
+      method: 'POST',
+      path: '/enable-email-reminders',
+    );
+  }
+
   // ─────────────────────────────────────────────
   // CURRENT USER
   // ─────────────────────────────────────────────

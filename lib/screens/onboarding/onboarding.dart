@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:dinadrawing/screens/auth/login.dart';
 import 'package:dinadrawing/screens/auth/signup.dart';
 import 'package:dinadrawing/services/google_auth_service.dart';
-import 'package:dinadrawing/screens/home/home.dart';
+import 'package:dinadrawing/services/auth_service.dart';
+import 'package:dinadrawing/navigation/main_wrapper.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -265,7 +266,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(width: 8),
+                  Image.asset(
+                    "images/DINADRAWING LOGO2.png",
+                    height: 44,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 12),
                   const Text(
                     "DiNaDrawing",
                     style: TextStyle(
@@ -387,22 +393,88 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 height: 48,
                 child: OutlinedButton(
                   onPressed: () async {
-                    try {
-                      final userCredential = await GoogleAuthService()
-                          .signInWithGoogle();
+                    final googleAuth = GoogleAuthService();
 
-                      if (userCredential != null && mounted) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        );
+                    try {
+                      final userCredential =
+                          await googleAuth.signInWithGoogle();
+
+                      if (userCredential == null || !mounted) {
+                        return;
                       }
-                    } catch (e) {
-                      if (mounted) {
+
+                      final idToken = await googleAuth.getFirebaseIdToken(
+                        forceRefresh: true,
+                      );
+
+                      if (idToken == null || idToken.trim().isEmpty) {
+                        await googleAuth.signOut();
+
+                        if (!mounted) {
+                          return;
+                        }
+
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Google Sign-In failed: $e')),
+                          const SnackBar(
+                            content: Text(
+                              'Firebase could not create a sign-in token.',
+                            ),
+                          ),
                         );
+
+                        return;
                       }
+
+                      final result = await AuthService.googleLogin(
+                        idToken: idToken,
+                      );
+
+                      if (!mounted) {
+                        return;
+                      }
+
+                      if (result['success'] == true &&
+                          result['token'] != null) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainWrapper(),
+                          ),
+                          (route) => false,
+                        );
+
+                        return;
+                      }
+
+                      await googleAuth.signOut();
+
+                      if (!mounted) {
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            result['message']?.toString() ??
+                                'Google Sign-In could not be completed.',
+                          ),
+                        ),
+                      );
+                    } catch (error) {
+                      if (!mounted) {
+                        return;
+                      }
+
+                      final errorText = error.toString().toLowerCase();
+                      final message =
+                          errorText.contains('developer_error') ||
+                              errorText.contains('apiexception: 10')
+                          ? 'Google Sign-In is not configured for this Android build yet.'
+                          : 'Google Sign-In failed. Please try again.';
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(message)),
+                      );
                     }
                   },
                   style: OutlinedButton.styleFrom(

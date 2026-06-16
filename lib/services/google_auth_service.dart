@@ -35,8 +35,8 @@ class GoogleAuthService {
     }
   }
 
-  Future<String?> getFirebaseIdToken() async {
-    return _firebaseAuth.currentUser?.getIdToken();
+  Future<String?> getFirebaseIdToken({bool forceRefresh = false}) async {
+    return _firebaseAuth.currentUser?.getIdToken(forceRefresh);
   }
 
   Future<void> signOut() async {

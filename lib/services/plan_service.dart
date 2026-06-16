@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class PlanService {
-  static const String baseUrl = 'http://192.168.1.190:8000/api';
+  static const String baseUrl = 'http://192.168.1.118:8000/api';
 
   static Map<String, dynamic> _decodeResponse(http.Response response) {
     if (response.body.trim().isEmpty) {
@@ -475,6 +475,46 @@ class PlanService {
     return _resultFromResponse(response);
   }
 
+  static Future<Map<String, dynamic>> updatePlanAppearance({
+    required int planId,
+    required String bannerColor,
+    required String themeColor,
+    File? bannerImageFile,
+    bool removeBannerImage = false,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/plans/$planId/appearance'),
+    );
+
+    request.headers.addAll(headers);
+    request.fields.addAll({
+      'banner_color': bannerColor,
+      'theme_color': themeColor,
+      'remove_banner_image': removeBannerImage ? '1' : '0',
+    });
+
+    if (bannerImageFile != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('banner_image', bannerImageFile.path),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to update plan appearance.',
+    );
+  }
+
   static Future<Map<String, dynamic>> deletePlan(int planId) async {
     final headers = await _authHeaders();
 
@@ -805,6 +845,7 @@ class PlanService {
     required int planId,
     required String question,
     required List<String> options,
+    String pollKind = 'general',
     bool allowMultiple = false,
     bool anonymous = false,
     bool allowMembersAddOptions = false,
@@ -839,6 +880,7 @@ class PlanService {
     final body = <String, dynamic>{
       'post_type': 'poll',
       'poll_question': cleanQuestion,
+      'poll_kind': pollKind,
       'poll_options': cleanOptions,
       'allow_multiple': allowMultiple,
       'anonymous': anonymous,
@@ -930,9 +972,53 @@ class PlanService {
     return _resultFromResponse(response);
   }
 
+  static Future<Map<String, dynamic>> finalizePoll({
+    required int postId,
+    int? optionIndex,
+  }) async {
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/plan-posts/$postId/finalize'),
+      headers: headers,
+      body: jsonEncode({if (optionIndex != null) 'option_index': optionIndex}),
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to finalize this poll.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> applyPollResult({
+    required int postId,
+  }) async {
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/plan-posts/$postId/apply-result'),
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{}),
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to apply the poll result to the plan.',
+    );
+  }
+
   static Future<Map<String, dynamic>> updatePollPost({
     required int postId,
     String? question,
+    String? pollKind,
     List<String>? options,
     bool? allowMultiple,
     bool? anonymous,
@@ -951,6 +1037,10 @@ class PlanService {
 
     if (question != null) {
       body['poll_question'] = question.trim();
+    }
+
+    if (pollKind != null) {
+      body['poll_kind'] = pollKind;
     }
 
     if (options != null) {

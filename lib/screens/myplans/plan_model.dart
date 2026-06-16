@@ -14,6 +14,8 @@ class Plan {
   final Color statusColor;
   final String? inviteCode;
   final String? bannerColor;
+  final String? bannerImageUrl;
+  final String themeColor;
 
   final bool isArchived;
   final bool isDeleted;
@@ -31,6 +33,8 @@ class Plan {
     required this.statusColor,
     this.inviteCode,
     this.bannerColor,
+    this.bannerImageUrl,
+    this.themeColor = '#F2B73F',
     this.isArchived = false,
     this.isDeleted = false,
   });
@@ -51,6 +55,8 @@ class Plan {
       statusColor: getStatusColor(status),
       inviteCode: json['invite_code']?.toString(),
       bannerColor: json['banner_color']?.toString(),
+      bannerImageUrl: json['banner_image_url']?.toString(),
+      themeColor: json['theme_color']?.toString() ?? '#F2B73F',
       isArchived: _parseBool(json['is_archived']),
       isDeleted: _parseBool(json['is_deleted']),
     );

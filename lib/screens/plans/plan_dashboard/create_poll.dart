@@ -3,11 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../services/plan_service.dart';
 
-enum PollTemplateType {
-  blank,
-  date,
-  location,
-}
+enum PollTemplateType { blank, date, location }
 
 class CreatePoll extends StatefulWidget {
   final int planId;
@@ -67,10 +63,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
     super.dispose();
   }
 
-  void _applyTemplate(
-    PollTemplateType template, {
-    bool clearOptions = false,
-  }) {
+  void _applyTemplate(PollTemplateType template, {bool clearOptions = false}) {
     if (clearOptions) {
       for (final controller in _optionControllers) {
         controller.clear();
@@ -111,6 +104,17 @@ class _CreatePollScreenState extends State<CreatePoll> {
         return 'Date Poll';
       case PollTemplateType.location:
         return 'Location Poll';
+    }
+  }
+
+  String get _pollKind {
+    switch (_selectedTemplate) {
+      case PollTemplateType.blank:
+        return 'general';
+      case PollTemplateType.date:
+        return 'date';
+      case PollTemplateType.location:
+        return 'location';
     }
   }
 
@@ -191,7 +195,8 @@ class _CreatePollScreenState extends State<CreatePoll> {
     if (_isSubmitting) return false;
 
     final now = DateTime.now();
-    final currentValue = _votingStartsAt ?? now.add(const Duration(minutes: 10));
+    final currentValue =
+        _votingStartsAt ?? now.add(const Duration(minutes: 10));
 
     final pickedDate = await showDatePicker(
       context: context,
@@ -262,9 +267,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
       if (!mounted) return false;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please choose a future start time.'),
-        ),
+        const SnackBar(content: Text('Please choose a future start time.')),
       );
 
       return false;
@@ -289,8 +292,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
     final currentValue =
         _customVotingEndsAt ?? minimumDateTime.add(const Duration(hours: 1));
 
-    final initialDate =
-        currentValue.isBefore(minimumDateTime) ? minimumDateTime : currentValue;
+    final initialDate = currentValue.isBefore(minimumDateTime)
+        ? minimumDateTime
+        : currentValue;
 
     final pickedDate = await showDatePicker(
       context: context,
@@ -361,9 +365,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
       if (!mounted) return false;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please choose a future deadline.'),
-        ),
+        const SnackBar(content: Text('Please choose a future deadline.')),
       );
 
       return false;
@@ -561,6 +563,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
         planId: widget.planId,
         question: question,
         options: options,
+        pollKind: _pollKind,
         allowMultiple: _allowMultiple,
         anonymous: _anonymous,
         allowMembersAddOptions: _allowMembersAdd,
@@ -589,9 +592,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -633,8 +636,11 @@ class _CreatePollScreenState extends State<CreatePoll> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
@@ -668,29 +674,26 @@ class _CreatePollScreenState extends State<CreatePoll> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Create Poll',
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
-                color: Colors.black,
+                color: colors.onSurface,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Start a poll and collect member feedback',
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 15, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 28),
-            const Text(
+            Text(
               'Start from a template',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: Colors.black,
+                color: colors.onSurface,
               ),
             ),
             const SizedBox(height: 14),
@@ -734,13 +737,12 @@ class _CreatePollScreenState extends State<CreatePoll> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: _buildOptionField(index),
-                    ),
+                    Expanded(child: _buildOptionField(index)),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed:
-                          _isSubmitting ? null : () => _removeOption(index),
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => _removeOption(index),
                       icon: const Icon(
                         Icons.close,
                         color: Colors.redAccent,
@@ -753,11 +755,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
             }),
             TextButton.icon(
               onPressed: _isSubmitting ? null : _addOption,
-              icon: const Icon(
-                Icons.add,
-                size: 20,
-                color: Color(0xFFF5B335),
-              ),
+              icon: const Icon(Icons.add, size: 20, color: Color(0xFFF5B335)),
               label: const Text(
                 'Add more option',
                 style: TextStyle(
@@ -772,36 +770,26 @@ class _CreatePollScreenState extends State<CreatePoll> {
               ),
             ),
             const SizedBox(height: 26),
-            const Text(
+            Text(
               'Poll Settings',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: Colors.black,
+                color: colors.onSurface,
               ),
             ),
             const SizedBox(height: 16),
-            _buildSwitchRow(
-              'Allow multiple votes',
-              _allowMultiple,
-              (value) {
-                setState(() => _allowMultiple = value);
-              },
-            ),
-            _buildSwitchRow(
-              'Anonymous voting',
-              _anonymous,
-              (value) {
-                setState(() => _anonymous = value);
-              },
-            ),
-            _buildSwitchRow(
-              'Allow members to add options',
-              _allowMembersAdd,
-              (value) {
-                setState(() => _allowMembersAdd = value);
-              },
-            ),
+            _buildSwitchRow('Allow multiple votes', _allowMultiple, (value) {
+              setState(() => _allowMultiple = value);
+            }),
+            _buildSwitchRow('Anonymous voting', _anonymous, (value) {
+              setState(() => _anonymous = value);
+            }),
+            _buildSwitchRow('Allow members to add options', _allowMembersAdd, (
+              value,
+            ) {
+              setState(() => _allowMembersAdd = value);
+            }),
             const SizedBox(height: 22),
             _buildVotingScheduleSection(),
             const SizedBox(height: 18),
@@ -820,18 +808,18 @@ class _CreatePollScreenState extends State<CreatePoll> {
                   ),
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.black,
+                          color: colors.onSurface,
                         ),
                       )
                     : Text(
                         'Create $_templateName',
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: colors.onSurface,
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                         ),
@@ -857,16 +845,12 @@ class _CreatePollScreenState extends State<CreatePoll> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         height: 108,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFFFF8E8) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-                isSelected ? const Color(0xFFF5B335) : Colors.grey.shade300,
+            color: isSelected ? const Color(0xFFF5B335) : Colors.grey.shade300,
             width: isSelected ? 1.6 : 1,
           ),
           boxShadow: [
@@ -928,32 +912,22 @@ class _CreatePollScreenState extends State<CreatePoll> {
       enabled: !_isSubmitting,
       decoration: InputDecoration(
         labelText: 'Poll Question',
-        labelStyle: TextStyle(
-          color: Colors.grey.shade500,
-          fontSize: 14,
-        ),
+        labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.grey.shade300,
-          ),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.grey.shade300,
-          ),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFFF5B335),
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Color(0xFFF5B335), width: 1.5),
         ),
       ),
     );
@@ -968,50 +942,33 @@ class _CreatePollScreenState extends State<CreatePoll> {
       readOnly: isDateTemplate,
       onTap: isDateTemplate ? () => _pickDateForOption(index) : null,
       decoration: InputDecoration(
-        labelText:
-            index < 2 ? 'Option ${index + 1}' : 'Option ${index + 1} (Optional)',
+        labelText: index < 2
+            ? 'Option ${index + 1}'
+            : 'Option ${index + 1} (Optional)',
         hintText: _optionHint(index),
-        hintStyle: TextStyle(
-          color: Colors.grey.shade400,
-          fontSize: 14,
-        ),
-        prefixIcon: Icon(
-          _optionIcon(),
-          color: Colors.grey.shade500,
-          size: 21,
-        ),
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        prefixIcon: Icon(_optionIcon(), color: Colors.grey.shade500, size: 21),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.grey.shade300,
-          ),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.grey.shade300,
-          ),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFFF5B335),
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Color(0xFFF5B335), width: 1.5),
         ),
       ),
     );
   }
 
-  Widget _buildSwitchRow(
-    String label,
-    bool value,
-    Function(bool) onChanged,
-  ) {
+  Widget _buildSwitchRow(String label, bool value, Function(bool) onChanged) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -1038,12 +995,11 @@ class _CreatePollScreenState extends State<CreatePoll> {
   }
 
   Widget _buildVotingScheduleSection() {
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: Colors.grey.shade300),
@@ -1052,21 +1008,18 @@ class _CreatePollScreenState extends State<CreatePoll> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Voting Schedule',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: colors.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Voting starts immediately by default.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 12),
           Row(
@@ -1102,10 +1055,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF8E8),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: const Color(0xFFF5B335),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFF5B335), width: 1),
                 ),
                 child: Row(
                   children: [
@@ -1127,10 +1077,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                         ),
                       ),
                     ),
-                    const Icon(
-                      Icons.chevron_right,
-                      color: Color(0xFFF5B335),
-                    ),
+                    const Icon(Icons.chevron_right, color: Color(0xFFF5B335)),
                   ],
                 ),
               ),
@@ -1142,12 +1089,11 @@ class _CreatePollScreenState extends State<CreatePoll> {
   }
 
   Widget _buildVotingDeadlineSection() {
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: Colors.grey.shade300),
@@ -1156,21 +1102,18 @@ class _CreatePollScreenState extends State<CreatePoll> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Voting Deadline',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: colors.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Poll stays open until manually closed by default.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 12),
           Row(
@@ -1200,10 +1143,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF8E8),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: const Color(0xFFF5B335),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFFF5B335), width: 1),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -1213,12 +1153,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
                     Icons.keyboard_arrow_down,
                     color: Color(0xFFF5B335),
                   ),
-                  items: const [
-                    '1 Day',
-                    '3 Days',
-                    '1 Week',
-                    'Custom',
-                  ].map((value) {
+                  items: const ['1 Day', '3 Days', '1 Week', 'Custom'].map((
+                    value,
+                  ) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Row(
@@ -1264,10 +1201,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.grey.shade300,
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
                   ),
                   child: Row(
                     children: [
@@ -1289,10 +1223,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                           ),
                         ),
                       ),
-                      const Icon(
-                        Icons.chevron_right,
-                        color: Color(0xFFF5B335),
-                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFFF5B335)),
                     ],
                   ),
                 ),

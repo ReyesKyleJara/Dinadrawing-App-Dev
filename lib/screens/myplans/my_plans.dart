@@ -1037,19 +1037,52 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
   Widget _buildPlanBanner(Plan plan) {
     final bannerColor = Plan.parseColor(plan.bannerColor);
+    final imageUrl = plan.bannerImageUrl?.trim();
 
     final bannerBrightness = ThemeData.estimateBrightnessForColor(bannerColor);
 
     final iconColor = bannerBrightness == Brightness.dark
-        ? Colors.white.withValues(alpha: 0.80)
+        ? Colors.white.withValues(alpha: 0.82)
         : Colors.black.withValues(alpha: 0.48);
 
-    return Container(
+    return SizedBox(
       width: 92,
       height: double.infinity,
-      color: bannerColor,
-      child: Center(
-        child: Icon(Icons.event_note_rounded, size: 28, color: iconColor),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: bannerColor),
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) {
+                return ColoredBox(color: bannerColor);
+              },
+            ),
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.30),
+                  ],
+                ),
+              ),
+            ),
+          Center(
+            child: Icon(
+              Icons.event_note_rounded,
+              size: 28,
+              color: imageUrl != null && imageUrl.isNotEmpty
+                  ? Colors.white.withValues(alpha: 0.86)
+                  : iconColor,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,14 +5,22 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../services/auth_service.dart';
 import '../../../services/plan_service.dart';
+import '../../../theme/plan_theme_palette.dart';
 import 'create_poll.dart';
 import 'create_responsibility.dart';
 import 'responsibility_post.dart';
 
 class FeedTab extends StatefulWidget {
   final int planId;
+  final String? themeColor;
+  final VoidCallback? onPlanDetailsChanged;
 
-  const FeedTab({super.key, required this.planId});
+  const FeedTab({
+    super.key,
+    required this.planId,
+    this.themeColor,
+    this.onPlanDetailsChanged,
+  });
 
   @override
   State<FeedTab> createState() => _FeedTabState();
@@ -32,6 +40,13 @@ class _FeedTabState extends State<FeedTab> {
   static const Color brandYellow = Color(0xFFF5B335);
   static const Color brandYellowDark = Color(0xFFB87500);
   static const Color brandCreamLight = Color(0xFFFFFCF4);
+
+  PlanThemePalette get _planPalette {
+    return PlanThemePalette.fromHex(
+      widget.themeColor,
+      brightness: Theme.of(context).brightness,
+    );
+  }
 
   @override
   void initState() {
@@ -293,6 +308,22 @@ class _FeedTabState extends State<FeedTab> {
       'votingStatus': post['voting_status']?.toString() ?? 'open',
       'canVote': _parseBool(post['can_vote'], fallback: true),
       'votingMessage': post['voting_message']?.toString() ?? '',
+      'pollKind':
+          post['poll_kind_value']?.toString() ??
+          post['poll_kind']?.toString() ??
+          'general',
+      'isPollFinalized': _parseBool(
+        post['is_poll_finalized'] ?? (post['finalized_at'] != null),
+      ),
+      'finalizedOptionIndex': _parseNullableInt(
+        post['finalized_option_index_value'] ?? post['finalized_option_index'],
+      ),
+      'finalizedOption': post['finalized_option_value']?.toString() ?? '',
+      'isAppliedToPlan': _parseBool(
+        post['is_applied_to_plan'] ?? (post['applied_to_plan_at'] != null),
+      ),
+      'canFinalizePoll': _parseBool(post['can_finalize_poll']),
+      'canApplyPollResult': _parseBool(post['can_apply_poll_result']),
 
       'responsibilityTitle':
           post['responsibility_title']?.toString() ??
@@ -751,6 +782,307 @@ class _FeedTabState extends State<FeedTab> {
         context,
       ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
+  }
+
+  Future<void> _finalizePoll(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid poll.')));
+      return;
+    }
+
+    Future<Map<String, dynamic>> sendRequest(int? optionIndex) {
+      return PlanService.finalizePoll(postId: postId, optionIndex: optionIndex);
+    }
+
+    Map<String, dynamic> result = await sendRequest(null);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] != true && _parseBool(result['requires_selection'])) {
+      final rawIndexes = result['tied_option_indexes'];
+      final indexes = rawIndexes is List
+          ? rawIndexes
+                .map((value) => _parseInt(value, fallback: -1))
+                .where((value) => value >= 0)
+                .toList()
+          : <int>[];
+
+      final options = post['options'] is List
+          ? List<String>.from(post['options'])
+          : <String>[];
+
+      final voteCounts = _parseIntList(result['vote_counts']);
+
+      final selectedIndex = await _showFinalPollChoice(
+        options: options,
+        allowedIndexes: indexes.isEmpty
+            ? List<int>.generate(options.length, (index) => index)
+            : indexes,
+        voteCounts: voteCounts,
+      );
+
+      if (selectedIndex == null || !mounted) {
+        return;
+      }
+
+      result = await sendRequest(selectedIndex);
+
+      if (!mounted) {
+        return;
+      }
+    }
+
+    if (result['success'] != true || result['post'] is! Map) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Unable to finalize this poll.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final updatedPost = _mapPostFromApi(result['post']);
+    _replacePostInList(updatedPost);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']?.toString() ?? 'Poll finalized.'),
+      ),
+    );
+
+    final pollKind = updatedPost['pollKind']?.toString() ?? 'general';
+
+    if (pollKind == 'date' || pollKind == 'location') {
+      await _askToApplyPollResult(updatedPost);
+    }
+  }
+
+  Future<int?> _showFinalPollChoice({
+    required List<String> options,
+    required List<int> allowedIndexes,
+    required List<int> voteCounts,
+  }) async {
+    int? selectedIndex;
+
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final theme = Theme.of(dialogContext);
+            final colors = theme.colorScheme;
+            final palette = PlanThemePalette.fromHex(
+              widget.themeColor,
+              brightness: theme.brightness,
+            );
+
+            return AlertDialog(
+              backgroundColor: colors.surface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                'Choose the final result',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 420),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: allowedIndexes.map((index) {
+                      if (index < 0 || index >= options.length) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final votes = index < voteCounts.length
+                          ? voteCounts[index]
+                          : 0;
+
+                      return RadioListTile<int>(
+                        value: index,
+                        groupValue: selectedIndex,
+                        activeColor: palette.primary,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          options[index],
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '$votes ${votes == 1 ? 'vote' : 'votes'}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            selectedIndex = value;
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: selectedIndex == null
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext, selectedIndex);
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: palette.primary,
+                    foregroundColor: palette.onPrimary,
+                  ),
+                  child: const Text(
+                    'Finalize',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _askToApplyPollResult(Map<String, dynamic> post) async {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final palette = _planPalette;
+    final pollKind = post['pollKind']?.toString() ?? 'general';
+    final resultText = post['finalizedOption']?.toString() ?? '';
+
+    final apply = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: palette.soft,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              pollKind == 'date'
+                  ? Icons.calendar_month_rounded
+                  : Icons.location_on_rounded,
+              color: palette.dark,
+            ),
+          ),
+          title: Text(
+            pollKind == 'date'
+                ? 'Use this as the plan date?'
+                : 'Use this as the plan location?',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Text(
+            resultText,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Not Now'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: palette.primary,
+                foregroundColor: palette.onPrimary,
+              ),
+              child: const Text(
+                'Apply to Plan',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (apply == true && mounted) {
+      await _applyPollResult(post);
+    }
+  }
+
+  Future<void> _applyPollResult(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      return;
+    }
+
+    final result = await PlanService.applyPollResult(postId: postId);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] != true || result['post'] is! Map) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Unable to apply the poll result.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final updatedPost = _mapPostFromApi(result['post']);
+    _replacePostInList(updatedPost);
+    widget.onPlanDetailsChanged?.call();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result['message']?.toString() ?? 'Poll result applied to the plan.',
+        ),
+      ),
+    );
   }
 
   Future<void> _toggleResponsibilityFinalized(Map<String, dynamic> post) async {
@@ -1986,6 +2318,8 @@ class _FeedTabState extends State<FeedTab> {
     return post['canPinPost'] == true ||
         (isPoll && post['canEditPoll'] == true) ||
         (isPoll && post['canToggleVoting'] == true) ||
+        (isPoll && post['canFinalizePoll'] == true) ||
+        (isPoll && post['canApplyPollResult'] == true) ||
         (isResponsibility && post['canManageResponsibility'] == true) ||
         (isResponsibility && post['canFinalizeResponsibility'] == true) ||
         post['canDeletePost'] == true;
@@ -2014,6 +2348,12 @@ class _FeedTabState extends State<FeedTab> {
             break;
           case 'toggle_voting':
             _togglePollVoting(post);
+            break;
+          case 'finalize_poll':
+            _finalizePoll(post);
+            break;
+          case 'apply_poll_result':
+            _applyPollResult(post);
             break;
           case 'edit_responsibility':
             _openCreateResponsibility(editingPost: post);
@@ -2068,6 +2408,30 @@ class _FeedTabState extends State<FeedTab> {
                   ),
                   const SizedBox(width: 12),
                   Text(isVotingClosed ? 'Reopen voting' : 'Close voting'),
+                ],
+              ),
+            ),
+          if (isPoll &&
+              post['canFinalizePoll'] == true &&
+              post['isPollFinalized'] != true)
+            const PopupMenuItem<String>(
+              value: 'finalize_poll',
+              child: Row(
+                children: [
+                  Icon(Icons.flag_outlined, size: 20),
+                  SizedBox(width: 12),
+                  Text('Finalize poll result'),
+                ],
+              ),
+            ),
+          if (isPoll && post['canApplyPollResult'] == true)
+            const PopupMenuItem<String>(
+              value: 'apply_poll_result',
+              child: Row(
+                children: [
+                  Icon(Icons.event_available_outlined, size: 20),
+                  SizedBox(width: 12),
+                  Text('Apply result to plan'),
                 ],
               ),
             ),
@@ -2134,20 +2498,24 @@ class _FeedTabState extends State<FeedTab> {
   }
 
   Widget _buildPostWrapper(Map<String, dynamic> post) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final palette = _planPalette;
     final isPinned = post['isPinned'] == true;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isPinned ? brandYellow : Colors.grey.shade200,
+          color: isPinned ? palette.primary : colors.outlineVariant,
           width: isPinned ? 1.4 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
+            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.025),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -2159,14 +2527,13 @@ class _FeedTabState extends State<FeedTab> {
           if (isPinned) ...[
             Row(
               children: [
-                const Icon(Icons.push_pin, size: 14, color: brandYellowDark),
+                Icon(Icons.push_pin, size: 14, color: palette.dark),
                 const SizedBox(width: 6),
                 Text(
                   'Pinned',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: Colors.grey.shade700,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -2176,40 +2543,45 @@ class _FeedTabState extends State<FeedTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.grey.shade200,
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.black54,
-                      size: 26,
+              Flexible(
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: colors.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.person,
+                        color: colors.onSurfaceVariant,
+                        size: 26,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post['name']?.toString() ?? 'User',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: Colors.black,
-                        ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            post['name']?.toString() ?? 'User',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            post['time']?.toString() ?? '',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        post['time']?.toString() ?? '',
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
               if (_hasPostMenu(post)) _buildPostMenuButton(post),
             ],
@@ -2222,14 +2594,14 @@ class _FeedTabState extends State<FeedTab> {
               post: post,
               planMembers: planMembers,
               currentUserId: currentUserId,
+              themeColor: widget.themeColor,
               onPostUpdated: (updatedPost) {
                 final mappedPost = _mapPostFromApi(updatedPost);
-
                 _replacePostInList(mappedPost);
               },
             ),
           const SizedBox(height: 18),
-          Divider(height: 1, color: Colors.grey.shade200),
+          Divider(height: 1, color: colors.outlineVariant),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.center,
@@ -2249,14 +2621,13 @@ class _FeedTabState extends State<FeedTab> {
                     Icon(
                       Icons.chat_bubble_outline_rounded,
                       size: 21,
-                      color: Colors.grey.shade700,
+                      color: colors.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       _commentActionLabel(_parseInt(post['commentCount'])),
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 14,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -2283,6 +2654,8 @@ class _FeedTabState extends State<FeedTab> {
   }
 
   Widget _buildTextBody(Map<String, dynamic> post) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final content = post['content']?.toString() ?? '';
     final imageUrl = post['imageUrl']?.toString() ?? '';
 
@@ -2290,7 +2663,13 @@ class _FeedTabState extends State<FeedTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (content.trim().isNotEmpty)
-          Text(content, style: const TextStyle(fontSize: 14)),
+          Text(
+            content,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurface,
+              height: 1.4,
+            ),
+          ),
         if (content.trim().isNotEmpty && imageUrl.trim().isNotEmpty)
           const SizedBox(height: 12),
         if (imageUrl.trim().isNotEmpty)
@@ -2356,7 +2735,15 @@ class _FeedTabState extends State<FeedTab> {
   }
 
   Widget _buildPollBody(Map<String, dynamic> post) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final palette = _planPalette;
+
     final String question = post['question']?.toString() ?? 'Poll';
+    final String pollKind = post['pollKind']?.toString() ?? 'general';
+    final bool isFinalized = post['isPollFinalized'] == true;
+    final bool isAppliedToPlan = post['isAppliedToPlan'] == true;
+    final String finalizedOption = post['finalizedOption']?.toString() ?? '';
 
     final List<String> options = post['options'] is List
         ? List<String>.from(post['options'])
@@ -2385,18 +2772,25 @@ class _FeedTabState extends State<FeedTab> {
         ? '$totalVotes total votes • Anonymous voting'
         : '$totalVotes total votes';
 
+    final String pollLabel = switch (pollKind) {
+      'date' => 'Date Poll',
+      'location' => 'Location Poll',
+      _ => 'Poll',
+    };
+
+    final IconData pollIcon = switch (pollKind) {
+      'date' => Icons.calendar_month_rounded,
+      'location' => Icons.location_on_rounded,
+      _ => Icons.bar_chart_rounded,
+    };
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: brandCreamLight,
+        color: palette.softest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF2D999), width: 1),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFFCF4), Color(0xFFFFF6DA)],
-        ),
+        border: Border.all(color: palette.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2406,23 +2800,18 @@ class _FeedTabState extends State<FeedTab> {
               Container(
                 width: 30,
                 height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFE8A3),
+                decoration: BoxDecoration(
+                  color: palette.soft,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.bar_chart_rounded,
-                  size: 18,
-                  color: brandYellowDark,
-                ),
+                child: Icon(pollIcon, size: 18, color: palette.dark),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Poll',
-                style: TextStyle(
-                  fontSize: 15,
+              Text(
+                pollLabel,
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: brandYellowDark,
+                  color: palette.dark,
                 ),
               ),
               const Spacer(),
@@ -2432,20 +2821,19 @@ class _FeedTabState extends State<FeedTab> {
           const SizedBox(height: 18),
           Text(
             question,
-            style: const TextStyle(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: Colors.black,
+              color: colors.onSurface,
               height: 1.25,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             pollMeta,
-            style: TextStyle(
-              fontSize: 13,
+            style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
+              color: colors.onSurfaceVariant,
               height: 1.25,
             ),
           ),
@@ -2453,11 +2841,84 @@ class _FeedTabState extends State<FeedTab> {
             const SizedBox(height: 6),
             Text(
               votingMessage,
-              style: const TextStyle(
-                fontSize: 13,
+              style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w800,
-                color: brandYellowDark,
+                color: palette.dark,
                 height: 1.25,
+              ),
+            ),
+          ],
+          if (isFinalized && finalizedOption.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: palette.primary, width: 1.2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.flag_rounded, size: 17, color: palette.dark),
+                      const SizedBox(width: 7),
+                      Text(
+                        'FINAL RESULT',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: palette.dark,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.7,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (isAppliedToPlan)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.13),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Applied to plan',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    finalizedOption,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  if (post['canApplyPollResult'] == true) ...[
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          _applyPollResult(post);
+                        },
+                        icon: const Icon(Icons.event_available_outlined),
+                        label: const Text('Apply to Plan'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: palette.dark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -2467,12 +2928,14 @@ class _FeedTabState extends State<FeedTab> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
                 'No poll options available.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
               ),
             ),
             if (allowMembersAddOptions && votingStatus != 'closed') ...[
@@ -2521,6 +2984,10 @@ class _FeedTabState extends State<FeedTab> {
   }
 
   Widget _buildAddPollOptionButton(Map<String, dynamic> post) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final palette = _planPalette;
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => _addOptionToPoll(post),
@@ -2528,20 +2995,19 @@ class _FeedTabState extends State<FeedTab> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.88),
+          color: colors.surface.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF2D999), width: 1.3),
+          border: Border.all(color: palette.border, width: 1.3),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.add_circle_outline, size: 22, color: brandYellowDark),
-            SizedBox(width: 12),
+            Icon(Icons.add_circle_outline, size: 22, color: palette.dark),
+            const SizedBox(width: 12),
             Text(
               'Add an option',
-              style: TextStyle(
-                fontSize: 15,
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: brandYellowDark,
+                color: palette.dark,
               ),
             ),
           ],
@@ -2560,6 +3026,9 @@ class _FeedTabState extends State<FeedTab> {
     required int extraCount,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final palette = _planPalette;
     final progress = percentage.clamp(0, 100) / 100.0;
     final hasVoters = voters.isNotEmpty || extraCount > 0;
 
@@ -2570,24 +3039,22 @@ class _FeedTabState extends State<FeedTab> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? brandYellow : const Color(0xFFF0E0B8),
-            width: isSelected ? 1.7 : 1.4,
+            color: isSelected ? palette.primary : palette.border,
+            width: isSelected ? 1.7 : 1.2,
           ),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             children: [
-              Container(width: double.infinity, color: Colors.white),
+              Container(width: double.infinity, color: colors.surface),
               Positioned.fill(
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(
                     widthFactor: progress,
                     child: Container(
-                      color: isSelected
-                          ? const Color(0xFFFFE8A3)
-                          : const Color(0xFFFFF1C7),
+                      color: isSelected ? palette.soft : palette.softest,
                     ),
                   ),
                 ),
@@ -2604,7 +3071,9 @@ class _FeedTabState extends State<FeedTab> {
                       width: 22,
                       height: 22,
                       decoration: BoxDecoration(
-                        color: isSelected ? brandYellow : Colors.transparent,
+                        color: isSelected
+                            ? palette.primary
+                            : Colors.transparent,
                         shape: allowMultiple
                             ? BoxShape.rectangle
                             : BoxShape.circle,
@@ -2613,16 +3082,16 @@ class _FeedTabState extends State<FeedTab> {
                             : null,
                         border: Border.all(
                           color: isSelected
-                              ? brandYellow
-                              : Colors.grey.shade500,
+                              ? palette.primary
+                              : colors.onSurfaceVariant,
                           width: 2,
                         ),
                       ),
                       child: isSelected
-                          ? const Icon(
+                          ? Icon(
                               Icons.check,
                               size: 15,
-                              color: Colors.black,
+                              color: palette.onPrimary,
                             )
                           : null,
                     ),
@@ -2630,10 +3099,9 @@ class _FeedTabState extends State<FeedTab> {
                     Expanded(
                       child: Text(
                         option,
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: Colors.black87,
+                          color: colors.onSurface,
                           height: 1.25,
                         ),
                       ),
@@ -2642,10 +3110,9 @@ class _FeedTabState extends State<FeedTab> {
                     if (anonymous)
                       Text(
                         '$percentage%',
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w900,
-                          color: brandYellowDark,
+                          color: palette.dark,
                         ),
                       )
                     else if (hasVoters)
@@ -2669,6 +3136,7 @@ class _FeedTabState extends State<FeedTab> {
     required List<Map<String, dynamic>> voters,
     required int extraCount,
   }) {
+    final palette = _planPalette;
     final visibleCount = voters.length;
     final totalBubbles = visibleCount + (extraCount > 0 ? 1 : 0);
     final width = totalBubbles <= 0 ? 0.0 : 24.0 + ((totalBubbles - 1) * 18.0);
@@ -2684,8 +3152,8 @@ class _FeedTabState extends State<FeedTab> {
               left: i * 18.0,
               child: _buildSmallVoterBubble(
                 label: _getInitials(voters[i]),
-                backgroundColor: const Color(0xFFFFE8A3),
-                textColor: brandYellowDark,
+                backgroundColor: palette.soft,
+                textColor: palette.dark,
               ),
             ),
           if (extraCount > 0)
@@ -2693,8 +3161,8 @@ class _FeedTabState extends State<FeedTab> {
               left: visibleCount * 18.0,
               child: _buildSmallVoterBubble(
                 label: '+$extraCount',
-                backgroundColor: brandYellow,
-                textColor: Colors.black,
+                backgroundColor: palette.primary,
+                textColor: palette.onPrimary,
               ),
             ),
         ],
@@ -2707,6 +3175,8 @@ class _FeedTabState extends State<FeedTab> {
     required Color backgroundColor,
     required Color textColor,
   }) {
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       width: 24,
       height: 24,
@@ -2714,7 +3184,7 @@ class _FeedTabState extends State<FeedTab> {
       decoration: BoxDecoration(
         color: backgroundColor,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
+        border: Border.all(color: colors.surface, width: 1.5),
       ),
       child: Text(
         label,

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../services/plan_service.dart';
+import '../../../theme/plan_theme_palette.dart';
 
 class ResponsibilityPost extends StatefulWidget {
   final Map<String, dynamic> post;
   final List<Map<String, dynamic>> planMembers;
   final int? currentUserId;
   final ValueChanged<Map<String, dynamic>> onPostUpdated;
+  final String? themeColor;
 
   const ResponsibilityPost({
     super.key,
@@ -14,21 +16,26 @@ class ResponsibilityPost extends StatefulWidget {
     required this.planMembers,
     required this.currentUserId,
     required this.onPostUpdated,
+    this.themeColor,
   });
 
   @override
-  State<ResponsibilityPost> createState() =>
-      _ResponsibilityPostState();
+  State<ResponsibilityPost> createState() => _ResponsibilityPostState();
 }
 
-class _ResponsibilityPostState
-    extends State<ResponsibilityPost> {
-  static const Color brandYellow = Color(0xFFF5B335);
-  static const Color brandYellowDark = Color(0xFFB87500);
-  static const Color brandCream = Color(0xFFFFF8E8);
-  static const Color brandCreamLight = Color(0xFFFFFCF4);
-  static const Color softYellow = Color(0xFFFFE8A3);
-  static const Color softBorder = Color(0xFFF2D999);
+class _ResponsibilityPostState extends State<ResponsibilityPost> {
+  PlanThemePalette get _themePalette {
+    return PlanThemePalette.fromHex(
+      widget.themeColor,
+      brightness: Theme.of(context).brightness,
+    );
+  }
+
+  Color get _themePrimary => _themePalette.primary;
+  Color get _themeDark => _themePalette.dark;
+  Color get _themeSoft => _themePalette.soft;
+  Color get _themeSoftest => _themePalette.softest;
+  Color get _themeBorder => _themePalette.border;
 
   late Map<String, dynamic> _post;
 
@@ -44,9 +51,7 @@ class _ResponsibilityPostState
   }
 
   @override
-  void didUpdateWidget(
-    covariant ResponsibilityPost oldWidget,
-  ) {
+  void didUpdateWidget(covariant ResponsibilityPost oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (!identical(oldWidget.post, widget.post)) {
@@ -54,10 +59,7 @@ class _ResponsibilityPostState
     }
   }
 
-  int _parseInt(
-    dynamic value, {
-    int fallback = 0,
-  }) {
+  int _parseInt(dynamic value, {int fallback = 0}) {
     if (value == null) return fallback;
     if (value is int) return value;
 
@@ -71,10 +73,7 @@ class _ResponsibilityPostState
     return int.tryParse(value.toString());
   }
 
-  bool _parseBool(
-    dynamic value, {
-    bool fallback = false,
-  }) {
+  bool _parseBool(dynamic value, {bool fallback = false}) {
     if (value == null) return fallback;
     if (value is bool) return value;
     if (value is int) return value == 1;
@@ -104,10 +103,7 @@ class _ResponsibilityPostState
     return fallback;
   }
 
-  dynamic _readValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  dynamic _readValue(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       if (map.containsKey(key)) {
         return map[key];
@@ -118,15 +114,11 @@ class _ResponsibilityPostState
   }
 
   String get _mode {
-    return _readString(
-      _post,
-      [
-        'responsibility_mode',
-        'responsibilityMode',
-        'mode',
-      ],
-      fallback: 'person_based',
-    );
+    return _readString(_post, [
+      'responsibility_mode',
+      'responsibilityMode',
+      'mode',
+    ], fallback: 'person_based');
   }
 
   bool get _isPersonBased {
@@ -135,65 +127,49 @@ class _ResponsibilityPostState
 
   bool get _isFinalized {
     return _parseBool(
-      _readValue(
-        _post,
-        [
-          'responsibility_is_finalized',
-          'responsibilityIsFinalized',
-          'isFinalized',
-        ],
-      ),
+      _readValue(_post, [
+        'responsibility_is_finalized',
+        'responsibilityIsFinalized',
+        'isFinalized',
+      ]),
     );
   }
 
   bool get _showProgress {
     return _parseBool(
-      _readValue(
-        _post,
-        [
-          'responsibility_show_progress',
-          'responsibilityShowProgress',
-          'showProgress',
-        ],
-      ),
+      _readValue(_post, [
+        'responsibility_show_progress',
+        'responsibilityShowProgress',
+        'showProgress',
+      ]),
       fallback: true,
     );
   }
 
   bool get _canAddItems {
     return _parseBool(
-      _readValue(
-        _post,
-        [
-          'can_add_responsibility_items',
-          'canAddResponsibilityItems',
-        ],
-      ),
+      _readValue(_post, [
+        'can_add_responsibility_items',
+        'canAddResponsibilityItems',
+      ]),
     );
   }
 
   String get _title {
-    return _readString(
-      _post,
-      [
-        'responsibility_title',
-        'responsibilityTitle',
-        'title',
-        'content',
-      ],
-      fallback: 'Responsibilities',
-    );
+    return _readString(_post, [
+      'responsibility_title',
+      'responsibilityTitle',
+      'title',
+      'content',
+    ], fallback: 'Responsibilities');
   }
 
   List<Map<String, dynamic>> get _items {
-    final rawItems = _readValue(
-      _post,
-      [
-        'responsibility_items',
-        'responsibilityItems',
-        'items',
-      ],
-    );
+    final rawItems = _readValue(_post, [
+      'responsibility_items',
+      'responsibilityItems',
+      'items',
+    ]);
 
     if (rawItems is! List) {
       return <Map<String, dynamic>>[];
@@ -201,23 +177,16 @@ class _ResponsibilityPostState
 
     return rawItems
         .whereType<Map>()
-        .map(
-          (item) => Map<String, dynamic>.from(item),
-        )
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
-  List<Map<String, dynamic>> _assignments(
-    Map<String, dynamic> item,
-  ) {
-    final rawAssignments = _readValue(
-      item,
-      [
-        'assignments',
-        'claimedBy',
-        'claimed_by',
-      ],
-    );
+  List<Map<String, dynamic>> _assignments(Map<String, dynamic> item) {
+    final rawAssignments = _readValue(item, [
+      'assignments',
+      'claimedBy',
+      'claimed_by',
+    ]);
 
     if (rawAssignments is! List) {
       return <Map<String, dynamic>>[];
@@ -225,36 +194,23 @@ class _ResponsibilityPostState
 
     return rawAssignments
         .whereType<Map>()
-        .map(
-          (assignment) =>
-              Map<String, dynamic>.from(assignment),
-        )
+        .map((assignment) => Map<String, dynamic>.from(assignment))
         .toList();
   }
 
-  List<Map<String, dynamic>> _activeAssignments(
-    Map<String, dynamic> item,
-  ) {
+  List<Map<String, dynamic>> _activeAssignments(Map<String, dynamic> item) {
     return _assignments(item).where((assignment) {
-      final status = _readString(
-        assignment,
-        ['status'],
-      );
+      final status = _readString(assignment, ['status']);
 
       return status == 'accepted' || status == 'pending';
     }).toList();
   }
 
-  Map<String, dynamic>? _currentUserAssignment(
-    Map<String, dynamic> item,
-  ) {
-    final rawValue = _readValue(
-      item,
-      [
-        'current_user_assignment',
-        'currentUserAssignment',
-      ],
-    );
+  Map<String, dynamic>? _currentUserAssignment(Map<String, dynamic> item) {
+    final rawValue = _readValue(item, [
+      'current_user_assignment',
+      'currentUserAssignment',
+    ]);
 
     if (rawValue is Map) {
       return Map<String, dynamic>.from(rawValue);
@@ -262,23 +218,11 @@ class _ResponsibilityPostState
 
     for (final assignment in _assignments(item)) {
       final isCurrentUser = _parseBool(
-        _readValue(
-          assignment,
-          [
-            'is_current_user',
-            'isCurrentUser',
-          ],
-        ),
+        _readValue(assignment, ['is_current_user', 'isCurrentUser']),
       );
 
       final userId = _parseNullableInt(
-        _readValue(
-          assignment,
-          [
-            'user_id',
-            'userId',
-          ],
-        ),
+        _readValue(assignment, ['user_id', 'userId']),
       );
 
       if (isCurrentUser ||
@@ -294,14 +238,11 @@ class _ResponsibilityPostState
 
   int get _totalCount {
     final backendValue = _parseNullableInt(
-      _readValue(
-        _post,
-        [
-          'responsibility_total_count',
-          'responsibilityTotalCount',
-          'totalCount',
-        ],
-      ),
+      _readValue(_post, [
+        'responsibility_total_count',
+        'responsibilityTotalCount',
+        'totalCount',
+      ]),
     );
 
     if (backendValue != null) {
@@ -312,28 +253,18 @@ class _ResponsibilityPostState
       return _items.length;
     }
 
-    return _items.fold<int>(
-      0,
-      (sum, item) {
-        return sum +
-            _parseInt(
-              item['slots'],
-              fallback: 1,
-            );
-      },
-    );
+    return _items.fold<int>(0, (sum, item) {
+      return sum + _parseInt(item['slots'], fallback: 1);
+    });
   }
 
   int get _filledCount {
     final backendValue = _parseNullableInt(
-      _readValue(
-        _post,
-        [
-          'responsibility_filled_count',
-          'responsibilityFilledCount',
-          'filledCount',
-        ],
-      ),
+      _readValue(_post, [
+        'responsibility_filled_count',
+        'responsibilityFilledCount',
+        'filledCount',
+      ]),
     );
 
     if (backendValue != null) {
@@ -342,29 +273,17 @@ class _ResponsibilityPostState
 
     if (_isPersonBased) {
       return _items.where((item) {
-        return _readString(
-          item,
-          ['contribution'],
-        ).isNotEmpty;
+        return _readString(item, ['contribution']).isNotEmpty;
       }).length;
     }
 
-    return _items.fold<int>(
-      0,
-      (sum, item) {
-        final acceptedCount = _assignments(item).where(
-          (assignment) {
-            return _readString(
-                  assignment,
-                  ['status'],
-                ) ==
-                'accepted';
-          },
-        ).length;
+    return _items.fold<int>(0, (sum, item) {
+      final acceptedCount = _assignments(item).where((assignment) {
+        return _readString(assignment, ['status']) == 'accepted';
+      }).length;
 
-        return sum + acceptedCount;
-      },
-    );
+      return sum + acceptedCount;
+    });
   }
 
   double get _progress {
@@ -411,53 +330,34 @@ class _ResponsibilityPostState
     if (nestedUser is Map) {
       final user = Map<String, dynamic>.from(nestedUser);
 
-      final nestedName = _readString(
-        user,
-        [
-          'name',
-          'username',
-          'email',
-        ],
-      );
+      final nestedName = _readString(user, ['name', 'username', 'email']);
 
       if (nestedName.isNotEmpty) {
         return nestedName;
       }
     }
 
-    return _readString(
-      member,
-      [
-        'displayName',
-        'name',
-        'username',
-        'email',
-      ],
-      fallback: 'Member',
-    );
+    return _readString(member, [
+      'displayName',
+      'name',
+      'username',
+      'email',
+    ], fallback: 'Member');
   }
 
-  String? _memberUsername(
-    Map<String, dynamic> member,
-  ) {
+  String? _memberUsername(Map<String, dynamic> member) {
     final nestedUser = member['user'];
 
     if (nestedUser is Map) {
       final user = Map<String, dynamic>.from(nestedUser);
-      final username = _readString(
-        user,
-        ['username'],
-      );
+      final username = _readString(user, ['username']);
 
       if (username.isNotEmpty) {
         return username;
       }
     }
 
-    final username = _readString(
-      member,
-      ['username'],
-    );
+    final username = _readString(member, ['username']);
 
     return username.isEmpty ? null : username;
   }
@@ -474,37 +374,28 @@ class _ResponsibilityPostState
       }
     }
 
-    return _parseNullableInt(
-      member['id'] ?? member['user_id'],
-    );
+    return _parseNullableInt(member['id'] ?? member['user_id']);
   }
 
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _applyUpdatedPost(
-    Map<String, dynamic> updatedPost,
-  ) {
+  void _applyUpdatedPost(Map<String, dynamic> updatedPost) {
     setState(() {
       _post = Map<String, dynamic>.from(updatedPost);
     });
 
-    widget.onPostUpdated(
-      Map<String, dynamic>.from(updatedPost),
-    );
+    widget.onPostUpdated(Map<String, dynamic>.from(updatedPost));
   }
 
   Future<void> _runItemAction({
     required int itemId,
-    required Future<Map<String, dynamic>> Function()
-        request,
+    required Future<Map<String, dynamic>> Function() request,
   }) async {
     if (_busyItemIds.contains(itemId)) {
       return;
@@ -519,25 +410,17 @@ class _ResponsibilityPostState
 
       if (!mounted) return;
 
-      if (result['success'] == true &&
-          result['post'] is Map) {
-        _applyUpdatedPost(
-          Map<String, dynamic>.from(
-            result['post'] as Map,
-          ),
-        );
+      if (result['success'] == true && result['post'] is Map) {
+        _applyUpdatedPost(Map<String, dynamic>.from(result['post'] as Map));
       } else {
         _showMessage(
-          result['message']?.toString() ??
-              'The action could not be completed.',
+          result['message']?.toString() ?? 'The action could not be completed.',
         );
       }
     } catch (error) {
       if (!mounted) return;
 
-      _showMessage(
-        'Connection error: $error',
-      );
+      _showMessage('Connection error: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -597,12 +480,8 @@ class _ResponsibilityPostState
                 Navigator.of(dialogContext).pop(true);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: destructive
-                    ? Colors.redAccent
-                    : brandYellow,
-                foregroundColor: destructive
-                    ? Colors.white
-                    : Colors.black,
+                backgroundColor: destructive ? Colors.redAccent : _themePrimary,
+                foregroundColor: destructive ? Colors.white : Colors.black,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -614,9 +493,7 @@ class _ResponsibilityPostState
               ),
               child: Text(
                 confirmLabel,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -627,24 +504,15 @@ class _ResponsibilityPostState
     return result == true;
   }
 
-  Future<void> _claimItem(
-    Map<String, dynamic> item,
-  ) async {
-    final itemId = _parseInt(
-      item['id'],
-      fallback: -1,
-    );
+  Future<void> _claimItem(Map<String, dynamic> item) async {
+    final itemId = _parseInt(item['id'], fallback: -1);
 
     if (itemId <= 0) {
       _showMessage('This role or task is invalid.');
       return;
     }
 
-    final title = _readString(
-      item,
-      ['title'],
-      fallback: 'this role/task',
-    );
+    final title = _readString(item, ['title'], fallback: 'this role/task');
 
     final confirmed = await _showActionConfirmation(
       title: 'Claim this role/task?',
@@ -660,36 +528,24 @@ class _ResponsibilityPostState
     await _runItemAction(
       itemId: itemId,
       request: () {
-        return PlanService.claimResponsibilityItem(
-          itemId: itemId,
-        );
+        return PlanService.claimResponsibilityItem(itemId: itemId);
       },
     );
   }
 
-  Future<void> _unclaimItem(
-    Map<String, dynamic> item,
-  ) async {
-    final itemId = _parseInt(
-      item['id'],
-      fallback: -1,
-    );
+  Future<void> _unclaimItem(Map<String, dynamic> item) async {
+    final itemId = _parseInt(item['id'], fallback: -1);
 
     if (itemId <= 0) {
       _showMessage('This role or task is invalid.');
       return;
     }
 
-    final title = _readString(
-      item,
-      ['title'],
-      fallback: 'this role/task',
-    );
+    final title = _readString(item, ['title'], fallback: 'this role/task');
 
     final confirmed = await _showActionConfirmation(
       title: 'Unclaim this role/task?',
-      message:
-          'Your spot in “$title” will become available to others.',
+      message: 'Your spot in “$title” will become available to others.',
       confirmLabel: 'Unclaim',
       cancelLabel: 'Keep My Spot',
       destructive: true,
@@ -702,9 +558,7 @@ class _ResponsibilityPostState
     await _runItemAction(
       itemId: itemId,
       request: () {
-        return PlanService.unclaimResponsibilityItem(
-          itemId: itemId,
-        );
+        return PlanService.unclaimResponsibilityItem(itemId: itemId);
       },
     );
   }
@@ -713,26 +567,17 @@ class _ResponsibilityPostState
     required Map<String, dynamic> item,
     required bool accept,
   }) async {
-    final itemId = _parseInt(
-      item['id'],
-      fallback: -1,
-    );
+    final itemId = _parseInt(item['id'], fallback: -1);
 
     if (itemId <= 0) {
       _showMessage('This role or task is invalid.');
       return;
     }
 
-    final itemTitle = _readString(
-      item,
-      ['title'],
-      fallback: 'this role/task',
-    );
+    final itemTitle = _readString(item, ['title'], fallback: 'this role/task');
 
     final confirmed = await _showActionConfirmation(
-      title: accept
-          ? 'Accept this role/task?'
-          : 'Decline this role/task?',
+      title: accept ? 'Accept this role/task?' : 'Decline this role/task?',
       message: accept
           ? 'You’ll be confirmed for “$itemTitle,” and the list creator may be notified.'
           : 'Your spot in “$itemTitle” will become available, and the list creator may be notified.',
@@ -749,41 +594,28 @@ class _ResponsibilityPostState
       request: () {
         return PlanService.respondToResponsibility(
           itemId: itemId,
-          responseValue:
-              accept ? 'accepted' : 'declined',
+          responseValue: accept ? 'accepted' : 'declined',
         );
       },
     );
   }
 
-  Future<void> _editContribution(
-    Map<String, dynamic> item,
-  ) async {
-    final itemId = _parseInt(
-      item['id'],
-      fallback: -1,
-    );
+  Future<void> _editContribution(Map<String, dynamic> item) async {
+    final itemId = _parseInt(item['id'], fallback: -1);
 
     if (itemId <= 0) {
       _showMessage('This entry is invalid.');
       return;
     }
 
-    final personName = _readString(
-      item,
-      [
-        'member_display_name',
-        'memberDisplayName',
-        'title',
-      ],
-      fallback: 'this person',
-    );
+    final personName = _readString(item, [
+      'member_display_name',
+      'memberDisplayName',
+      'title',
+    ], fallback: 'this person');
 
     final controller = TextEditingController(
-      text: _readString(
-        item,
-        ['contribution'],
-      ),
+      text: _readString(item, ['contribution']),
     );
 
     final contribution = await showDialog<String>(
@@ -808,20 +640,15 @@ class _ResponsibilityPostState
             autofocus: true,
             minLines: 1,
             maxLines: 4,
-            textCapitalization:
-                TextCapitalization.sentences,
+            textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
-              hintText:
-                  'What will they bring, share, or do?',
+              hintText: 'What will they bring, share, or do?',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: brandYellow,
-                  width: 1.5,
-                ),
+                borderSide: BorderSide(color: _themePrimary, width: 1.5),
               ),
             ),
           ),
@@ -840,12 +667,10 @@ class _ResponsibilityPostState
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.of(dialogContext).pop(
-                  controller.text.trim(),
-                );
+                Navigator.of(dialogContext).pop(controller.text.trim());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: brandYellow,
+                backgroundColor: _themePrimary,
                 foregroundColor: Colors.black,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -854,9 +679,7 @@ class _ResponsibilityPostState
               ),
               child: const Text(
                 'Save',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -884,26 +707,21 @@ class _ResponsibilityPostState
   Set<int> _includedMemberIds() {
     return _items
         .map(
-          (item) => _parseNullableInt(
-            item['member_user_id'] ??
-                item['memberUserId'],
-          ),
+          (item) =>
+              _parseNullableInt(item['member_user_id'] ?? item['memberUserId']),
         )
         .whereType<int>()
         .toSet();
   }
 
-  List<Map<String, dynamic>> _availablePlanMembers(
-    String query,
-  ) {
+  List<Map<String, dynamic>> _availablePlanMembers(String query) {
     final includedIds = _includedMemberIds();
     final cleanQuery = query.trim().toLowerCase();
 
     return widget.planMembers.where((member) {
       final memberId = _memberId(member);
 
-      if (memberId != null &&
-          includedIds.contains(memberId)) {
+      if (memberId != null && includedIds.contains(memberId)) {
         return false;
       }
 
@@ -912,11 +730,9 @@ class _ResponsibilityPostState
       }
 
       final name = _memberName(member).toLowerCase();
-      final username =
-          _memberUsername(member)?.toLowerCase() ?? '';
+      final username = _memberUsername(member)?.toLowerCase() ?? '';
 
-      return name.contains(cleanQuery) ||
-          username.contains(cleanQuery);
+      return name.contains(cleanQuery) || username.contains(cleanQuery);
     }).toList();
   }
 
@@ -924,21 +740,17 @@ class _ResponsibilityPostState
     final controller = TextEditingController();
     String query = '';
 
-    final result =
-        await showModalBottomSheet<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
-            final suggestions =
-                _availablePlanMembers(query);
+            final suggestions = _availablePlanMembers(query);
 
             final cleanQuery = query.trim();
 
@@ -947,16 +759,12 @@ class _ResponsibilityPostState
                 24,
                 18,
                 24,
-                MediaQuery.of(sheetContext).viewInsets.bottom +
-                    24,
+                MediaQuery.of(sheetContext).viewInsets.bottom + 24,
               ),
               child: SizedBox(
-                height:
-                    MediaQuery.of(sheetContext).size.height *
-                        0.70,
+                height: MediaQuery.of(sheetContext).size.height * 0.70,
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
                       child: Container(
@@ -964,8 +772,7 @@ class _ResponsibilityPostState
                         height: 4,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade300,
-                          borderRadius:
-                              BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                     ),
@@ -999,11 +806,9 @@ class _ResponsibilityPostState
                           query = value;
                         });
                       },
-                      textCapitalization:
-                          TextCapitalization.words,
+                      textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
-                        hintText:
-                            'Search a member or type a name',
+                        hintText: 'Search a member or type a name',
                         prefixIcon: const Icon(
                           Icons.search_rounded,
                           color: Colors.grey,
@@ -1011,15 +816,12 @@ class _ResponsibilityPostState
                         filled: true,
                         fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        focusedBorder:
-                            OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: brandYellow,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: _themePrimary,
                             width: 1.5,
                           ),
                         ),
@@ -1041,19 +843,13 @@ class _ResponsibilityPostState
                             const SizedBox(height: 8),
                             ...suggestions.map((member) {
                               final id = _memberId(member);
-                              final name =
-                                  _memberName(member);
-                              final username =
-                                  _memberUsername(member);
+                              final name = _memberName(member);
+                              final username = _memberUsername(member);
 
                               return Padding(
-                                padding:
-                                    const EdgeInsets.only(
-                                  bottom: 8,
-                                ),
+                                padding: const EdgeInsets.only(bottom: 8),
                                 child: InkWell(
-                                  borderRadius:
-                                      BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14),
                                   onTap: () {
                                     Navigator.of(sheetContext).pop({
                                       'title': name,
@@ -1064,15 +860,12 @@ class _ResponsibilityPostState
                                     });
                                   },
                                   child: Container(
-                                    padding:
-                                        const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius:
-                                          BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
-                                        color:
-                                            Colors.grey.shade300,
+                                        color: Colors.grey.shade300,
                                       ),
                                     ),
                                     child: Row(
@@ -1084,21 +877,18 @@ class _ResponsibilityPostState
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
-                                          child:
-                                              _buildIdentityText(
+                                          child: _buildIdentityText(
                                             name: name,
                                             username: username,
-                                            isYou: id != null &&
-                                                widget.currentUserId !=
-                                                    null &&
-                                                id ==
-                                                    widget.currentUserId,
+                                            isYou:
+                                                id != null &&
+                                                widget.currentUserId != null &&
+                                                id == widget.currentUserId,
                                           ),
                                         ),
-                                        const Icon(
-                                          Icons
-                                              .add_circle_outline_rounded,
-                                          color: brandYellow,
+                                        Icon(
+                                          Icons.add_circle_outline_rounded,
+                                          color: _themePrimary,
                                         ),
                                       ],
                                     ),
@@ -1111,8 +901,7 @@ class _ResponsibilityPostState
                             if (suggestions.isNotEmpty)
                               const SizedBox(height: 8),
                             InkWell(
-                              borderRadius:
-                                  BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14),
                               onTap: () {
                                 Navigator.of(sheetContext).pop({
                                   'title': cleanQuery,
@@ -1125,12 +914,9 @@ class _ResponsibilityPostState
                               child: Container(
                                 padding: const EdgeInsets.all(13),
                                 decoration: BoxDecoration(
-                                  color: brandCream,
-                                  borderRadius:
-                                      BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: softBorder,
-                                  ),
+                                  color: _themeSoft,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: _themeBorder),
                                 ),
                                 child: Row(
                                   children: [
@@ -1145,8 +931,7 @@ class _ResponsibilityPostState
                                         'Add “$cleanQuery”',
                                         style: const TextStyle(
                                           fontSize: 14,
-                                          fontWeight:
-                                              FontWeight.w800,
+                                          fontWeight: FontWeight.w800,
                                           color: Colors.black87,
                                         ),
                                       ),
@@ -1177,15 +962,12 @@ class _ResponsibilityPostState
     final controller = TextEditingController();
     int slots = 1;
 
-    final result =
-        await showModalBottomSheet<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
         return StatefulBuilder(
@@ -1195,13 +977,11 @@ class _ResponsibilityPostState
                 24,
                 18,
                 24,
-                MediaQuery.of(sheetContext).viewInsets.bottom +
-                    24,
+                MediaQuery.of(sheetContext).viewInsets.bottom + 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
                     child: Container(
@@ -1209,8 +989,7 @@ class _ResponsibilityPostState
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade300,
-                        borderRadius:
-                            BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
@@ -1239,21 +1018,17 @@ class _ResponsibilityPostState
                   TextField(
                     controller: controller,
                     autofocus: true,
-                    textCapitalization:
-                        TextCapitalization.sentences,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       labelText: 'Role or task',
-                      hintText:
-                          'e.g., Presenter, Buy materials',
+                      hintText: 'e.g., Presenter, Buy materials',
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: brandYellow,
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: _themePrimary,
                           width: 1.5,
                         ),
                       ),
@@ -1266,26 +1041,21 @@ class _ResponsibilityPostState
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: brandCreamLight,
-                      borderRadius:
-                          BorderRadius.circular(12),
-                      border: Border.all(
-                        color: softBorder,
-                      ),
+                      color: _themeSoftest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _themeBorder),
                     ),
                     child: Row(
                       children: [
                         const Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Available slots',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  fontWeight:
-                                      FontWeight.w800,
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.black87,
                                 ),
                               ),
@@ -1308,11 +1078,8 @@ class _ResponsibilityPostState
                                     slots--;
                                   });
                                 },
-                          icon: const Icon(
-                            Icons
-                                .remove_circle_outline_rounded,
-                          ),
-                          color: brandYellowDark,
+                          icon: const Icon(Icons.remove_circle_outline_rounded),
+                          color: _themeDark,
                         ),
                         Text(
                           '$slots',
@@ -1329,11 +1096,8 @@ class _ResponsibilityPostState
                                     slots++;
                                   });
                                 },
-                          icon: const Icon(
-                            Icons
-                                .add_circle_outline_rounded,
-                          ),
-                          color: brandYellowDark,
+                          icon: const Icon(Icons.add_circle_outline_rounded),
+                          color: _themeDark,
                         ),
                       ],
                     ),
@@ -1343,8 +1107,7 @@ class _ResponsibilityPostState
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        final title =
-                            controller.text.trim();
+                        final title = controller.text.trim();
 
                         if (title.isEmpty) {
                           return;
@@ -1358,23 +1121,17 @@ class _ResponsibilityPostState
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: brandYellow,
+                        backgroundColor: _themePrimary,
                         foregroundColor: Colors.black,
                         elevation: 0,
-                        padding:
-                            const EdgeInsets.symmetric(
-                          vertical: 14,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text(
                         'Add',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
                   ),
@@ -1404,10 +1161,7 @@ class _ResponsibilityPostState
       return;
     }
 
-    final postId = _parseInt(
-      _post['id'],
-      fallback: -1,
-    );
+    final postId = _parseInt(_post['id'], fallback: -1);
 
     if (postId <= 0) {
       _showMessage('This responsibility post is invalid.');
@@ -1426,25 +1180,17 @@ class _ResponsibilityPostState
 
       if (!mounted) return;
 
-      if (result['success'] == true &&
-          result['post'] is Map) {
-        _applyUpdatedPost(
-          Map<String, dynamic>.from(
-            result['post'] as Map,
-          ),
-        );
+      if (result['success'] == true && result['post'] is Map) {
+        _applyUpdatedPost(Map<String, dynamic>.from(result['post'] as Map));
       } else {
         _showMessage(
-          result['message']?.toString() ??
-              'The item could not be added.',
+          result['message']?.toString() ?? 'The item could not be added.',
         );
       }
     } catch (error) {
       if (!mounted) return;
 
-      _showMessage(
-        'Connection error: $error',
-      );
+      _showMessage('Connection error: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -1462,18 +1208,13 @@ class _ResponsibilityPostState
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: brandCreamLight,
+        color: _themeSoftest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: softBorder,
-        ),
+        border: Border.all(color: _themeBorder),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFFCF4),
-            Color(0xFFFFF6DA),
-          ],
+          colors: [Color(0xFFFFFCF4), Color(0xFFFFF6DA)],
         ),
       ),
       child: Column(
@@ -1509,23 +1250,19 @@ class _ResponsibilityPostState
               child: LinearProgressIndicator(
                 value: _progress,
                 minHeight: 8,
-                backgroundColor: softYellow,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(
-                  brandYellow,
-                ),
+                backgroundColor: _themeSoft,
+                valueColor: AlwaysStoppedAnimation<Color>(_themePrimary),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              _totalCount > 0 &&
-                      _filledCount >= _totalCount
+              _totalCount > 0 && _filledCount >= _totalCount
                   ? 'Everything is filled.'
                   : '$_filledCount of $_totalCount filled',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: brandYellowDark,
+                color: _themeDark,
               ),
             ),
           ],
@@ -1556,25 +1293,22 @@ class _ResponsibilityPostState
         Container(
           width: 30,
           height: 30,
-          decoration: const BoxDecoration(
-            color: softYellow,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: _themeSoft, shape: BoxShape.circle),
           child: Icon(
             _isPersonBased
                 ? Icons.groups_rounded
                 : Icons.assignment_ind_rounded,
             size: 18,
-            color: brandYellowDark,
+            color: _themeDark,
           ),
         ),
         const SizedBox(width: 8),
-        const Text(
+        Text(
           'Who\'s Doing What',
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: brandYellowDark,
+            color: _themeDark,
           ),
         ),
         const Spacer(),
@@ -1587,24 +1321,17 @@ class _ResponsibilityPostState
     final label = _isFinalized
         ? 'Finalized'
         : _showProgress
-            ? '$_filledCount/$_totalCount Filled'
-            : _isPersonBased
-                ? 'By Person'
-                : 'By Role/Task';
+        ? '$_filledCount/$_totalCount Filled'
+        : _isPersonBased
+        ? 'By Person'
+        : 'By Role/Task';
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(
-        maxWidth: 150,
-      ),
+      constraints: const BoxConstraints(maxWidth: 150),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 11,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
-          color: _isFinalized
-              ? const Color(0xFFFFE8E2)
-              : softYellow,
+          color: _isFinalized ? const Color(0xFFFFE8E2) : _themeSoft,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -1614,9 +1341,7 @@ class _ResponsibilityPostState
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            color: _isFinalized
-                ? const Color(0xFFB42318)
-                : Colors.black,
+            color: _isFinalized ? const Color(0xFFB42318) : Colors.black,
           ),
         ),
       ),
@@ -1626,10 +1351,7 @@ class _ResponsibilityPostState
   Widget _buildEmptyItems() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 20,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -1639,89 +1361,46 @@ class _ResponsibilityPostState
             ? 'No people are included yet.'
             : 'No roles or tasks are available yet.',
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 13,
-          color: Colors.grey.shade600,
-        ),
+        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
       ),
     );
   }
 
-  Widget _buildPersonItem(
-    Map<String, dynamic> item,
-  ) {
-    final itemId = _parseInt(
-      item['id'],
-      fallback: -1,
-    );
+  Widget _buildPersonItem(Map<String, dynamic> item) {
+    final itemId = _parseInt(item['id'], fallback: -1);
 
     final isBusy = _busyItemIds.contains(itemId);
 
-    final name = _readString(
-      item,
-      [
-        'member_display_name',
-        'memberDisplayName',
-        'title',
-      ],
-      fallback: 'Person',
-    );
+    final name = _readString(item, [
+      'member_display_name',
+      'memberDisplayName',
+      'title',
+    ], fallback: 'Person');
 
-    final username = _readString(
-      item,
-      [
-        'member_username',
-        'memberUsername',
-      ],
-    );
+    final username = _readString(item, ['member_username', 'memberUsername']);
 
     final isManual = _parseBool(
-      _readValue(
-        item,
-        [
-          'is_manual',
-          'isManual',
-        ],
-      ),
-      fallback: _parseNullableInt(
-            item['member_user_id'],
-          ) ==
-          null,
+      _readValue(item, ['is_manual', 'isManual']),
+      fallback: _parseNullableInt(item['member_user_id']) == null,
     );
 
     final isCurrentUser = _parseBool(
-      _readValue(
-        item,
-        [
-          'is_current_user_member',
-          'isCurrentUserMember',
-        ],
-      ),
-      fallback: _parseNullableInt(
-                item['member_user_id'],
-              ) !=
-              null &&
+      _readValue(item, ['is_current_user_member', 'isCurrentUserMember']),
+      fallback:
+          _parseNullableInt(item['member_user_id']) != null &&
           widget.currentUserId != null &&
-          _parseNullableInt(
-                item['member_user_id'],
-              ) ==
-              widget.currentUserId,
+          _parseNullableInt(item['member_user_id']) == widget.currentUserId,
     );
 
-    final contribution = _readString(
-      item,
-      ['contribution'],
-    );
+    final contribution = _readString(item, ['contribution']);
 
-    final canEdit = !_isFinalized &&
+    final canEdit =
+        !_isFinalized &&
         _parseBool(
-          _readValue(
-            item,
-            [
-              'can_current_user_fill_contribution',
-              'canCurrentUserFillContribution',
-            ],
-          ),
+          _readValue(item, [
+            'can_current_user_fill_contribution',
+            'canCurrentUserFillContribution',
+          ]),
         );
 
     final hasContribution = contribution.isNotEmpty;
@@ -1733,37 +1412,27 @@ class _ResponsibilityPostState
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              hasContribution ? brandYellow : softBorder,
+          color: hasContribution ? _themePrimary : _themeBorder,
           width: hasContribution ? 1.5 : 1.2,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInitialAvatar(
-            name: name,
-            isManual: isManual,
-          ),
+          _buildInitialAvatar(name: name, isManual: isManual),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildIdentityText(
                   name: name,
-                  username:
-                      isManual || username.isEmpty
-                          ? null
-                          : username,
+                  username: isManual || username.isEmpty ? null : username,
                   isYou: isCurrentUser,
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  hasContribution
-                      ? contribution
-                      : 'Nothing added yet',
+                  hasContribution ? contribution : 'Nothing added yet',
                   style: TextStyle(
                     fontSize: 13,
                     color: hasContribution
@@ -1778,9 +1447,7 @@ class _ResponsibilityPostState
                 if (canEdit) ...[
                   const SizedBox(height: 10),
                   _buildSmallActionButton(
-                    label: hasContribution
-                        ? 'Edit entry'
-                        : 'Add entry',
+                    label: hasContribution ? 'Edit entry' : 'Add entry',
                     icon: hasContribution
                         ? Icons.edit_outlined
                         : Icons.add_rounded,
@@ -1799,86 +1466,49 @@ class _ResponsibilityPostState
     );
   }
 
-  Widget _buildRoleTaskItem(
-    Map<String, dynamic> item,
-  ) {
-    final itemId = _parseInt(
-      item['id'],
-      fallback: -1,
-    );
+  Widget _buildRoleTaskItem(Map<String, dynamic> item) {
+    final itemId = _parseInt(item['id'], fallback: -1);
 
     final isBusy = _busyItemIds.contains(itemId);
 
-    final title = _readString(
-      item,
-      ['title'],
-      fallback: 'Role or Task',
-    );
+    final title = _readString(item, ['title'], fallback: 'Role or Task');
 
-    final slots = _parseInt(
-      item['slots'],
-      fallback: 1,
-    );
+    final slots = _parseInt(item['slots'], fallback: 1);
 
-    final activeAssignments =
-        _activeAssignments(item);
+    final activeAssignments = _activeAssignments(item);
 
-    final acceptedAssignments =
-        activeAssignments.where((assignment) {
-      return _readString(
-            assignment,
-            ['status'],
-          ) ==
-          'accepted';
+    final acceptedAssignments = activeAssignments.where((assignment) {
+      return _readString(assignment, ['status']) == 'accepted';
     }).toList();
 
-    final pendingAssignments =
-        activeAssignments.where((assignment) {
-      return _readString(
-            assignment,
-            ['status'],
-          ) ==
-          'pending';
+    final pendingAssignments = activeAssignments.where((assignment) {
+      return _readString(assignment, ['status']) == 'pending';
     }).toList();
 
     final reservedCount = activeAssignments.length;
     final isFull = reservedCount >= slots;
 
-    final currentAssignment =
-        _currentUserAssignment(item);
+    final currentAssignment = _currentUserAssignment(item);
 
     final currentStatus = currentAssignment == null
         ? ''
-        : _readString(
-            currentAssignment,
-            ['status'],
-          );
+        : _readString(currentAssignment, ['status']);
 
     final currentSource = currentAssignment == null
         ? ''
-        : _readString(
-            currentAssignment,
-            ['source'],
-          );
+        : _readString(currentAssignment, ['source']);
 
     final hasPendingPreAssignment =
-        currentStatus == 'pending' &&
-            currentSource == 'preassigned';
+        currentStatus == 'pending' && currentSource == 'preassigned';
 
-    final currentUserAccepted =
-        currentStatus == 'accepted';
+    final currentUserAccepted = currentStatus == 'accepted';
 
-    final canClaim = !_isFinalized &&
+    final canClaim =
+        !_isFinalized &&
         !hasPendingPreAssignment &&
         !currentUserAccepted &&
         _parseBool(
-          _readValue(
-            item,
-            [
-              'can_current_user_claim',
-              'canCurrentUserClaim',
-            ],
-          ),
+          _readValue(item, ['can_current_user_claim', 'canCurrentUserClaim']),
           fallback: !isFull,
         );
 
@@ -1889,7 +1519,7 @@ class _ResponsibilityPostState
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isFull ? brandYellow : softBorder,
+          color: isFull ? _themePrimary : _themeBorder,
           width: isFull ? 1.5 : 1.2,
         ),
       ),
@@ -1900,21 +1530,20 @@ class _ResponsibilityPostState
             width: 36,
             height: 36,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: softYellow,
+            decoration: BoxDecoration(
+              color: _themeSoft,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.assignment_ind_rounded,
               size: 19,
-              color: brandYellowDark,
+              color: _themeDark,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
@@ -1929,42 +1558,31 @@ class _ResponsibilityPostState
                 Text(
                   '${acceptedAssignments.length}/$slots accepted'
                   '${pendingAssignments.isNotEmpty ? ' • ${pendingAssignments.length} pending' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: brandYellowDark,
+                    color: _themeDark,
                   ),
                 ),
                 if (activeAssignments.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  ...activeAssignments.map(
-                    (assignment) {
-                      return Padding(
-                        padding:
-                            const EdgeInsets.only(bottom: 7),
-                        child: _buildAssignmentPersonRow(
-                          assignment,
-                        ),
-                      );
-                    },
-                  ),
+                  ...activeAssignments.map((assignment) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: _buildAssignmentPersonRow(assignment),
+                    );
+                  }),
                 ] else ...[
                   const SizedBox(height: 8),
                   Text(
                     'No one has taken this yet',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
                 if (!_isFinalized) ...[
                   const SizedBox(height: 11),
                   if (hasPendingPreAssignment)
-                    _buildPendingResponse(
-                      item: item,
-                      isBusy: isBusy,
-                    )
+                    _buildPendingResponse(item: item, isBusy: isBusy)
                   else if (currentUserAccepted)
                     _buildSmallActionButton(
                       label: 'Unclaim',
@@ -1995,93 +1613,58 @@ class _ResponsibilityPostState
     );
   }
 
-  Widget _buildAssignmentPersonRow(
-    Map<String, dynamic> assignment,
-  ) {
+  Widget _buildAssignmentPersonRow(Map<String, dynamic> assignment) {
     final nestedUser = assignment['user'];
 
     final user = nestedUser is Map
         ? Map<String, dynamic>.from(nestedUser)
         : <String, dynamic>{};
 
-    final name = _readString(
-      assignment,
-      [
-        'display_name',
-        'displayName',
-        'name',
-        'manual_name',
-      ],
-      fallback: _readString(
-        user,
-        ['name'],
-        fallback: 'Person',
-      ),
-    );
+    final name = _readString(assignment, [
+      'display_name',
+      'displayName',
+      'name',
+      'manual_name',
+    ], fallback: _readString(user, ['name'], fallback: 'Person'));
 
-    final username = _readString(
-      assignment,
-      [
-        'username_value',
-        'usernameValue',
-        'username',
-      ],
-      fallback: _readString(
-        user,
-        ['username'],
-      ),
-    );
+    final username = _readString(assignment, [
+      'username_value',
+      'usernameValue',
+      'username',
+    ], fallback: _readString(user, ['username']));
 
     final userId = _parseNullableInt(
-      assignment['user_id'] ??
-          assignment['userId'] ??
-          user['id'],
+      assignment['user_id'] ?? assignment['userId'] ?? user['id'],
     );
 
     final isManual = userId == null;
 
     final isCurrentUser = _parseBool(
-      assignment['is_current_user'] ??
-          assignment['isCurrentUser'],
-      fallback: userId != null &&
+      assignment['is_current_user'] ?? assignment['isCurrentUser'],
+      fallback:
+          userId != null &&
           widget.currentUserId != null &&
           userId == widget.currentUserId,
     );
 
-    final status = _readString(
-      assignment,
-      ['status'],
-      fallback: 'accepted',
-    );
+    final status = _readString(assignment, ['status'], fallback: 'accepted');
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: brandCreamLight,
+        color: _themeSoftest,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: softBorder,
-        ),
+        border: Border.all(color: _themeBorder),
       ),
       child: Row(
         children: [
-          _buildInitialAvatar(
-            name: name,
-            isManual: isManual,
-            size: 30,
-          ),
+          _buildInitialAvatar(name: name, isManual: isManual, size: 30),
           const SizedBox(width: 9),
           Expanded(
             child: _buildIdentityText(
               name: name,
-              username:
-                  isManual || username.isEmpty
-                      ? null
-                      : username,
+              username: isManual || username.isEmpty ? null : username,
               isYou: isCurrentUser,
               compact: true,
             ),
@@ -2097,14 +1680,9 @@ class _ResponsibilityPostState
     final isPending = status == 'pending';
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isPending
-            ? const Color(0xFFFFF4D6)
-            : const Color(0xFFEAF7EE),
+        color: isPending ? const Color(0xFFFFF4D6) : const Color(0xFFEAF7EE),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -2112,9 +1690,7 @@ class _ResponsibilityPostState
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w900,
-          color: isPending
-              ? const Color(0xFF9A6700)
-              : const Color(0xFF18794E),
+          color: isPending ? const Color(0xFF9A6700) : const Color(0xFF18794E),
         ),
       ),
     );
@@ -2126,23 +1702,17 @@ class _ResponsibilityPostState
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
       decoration: BoxDecoration(
-        color: brandCream,
+        color: _themeSoft,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: softBorder,
-        ),
+        border: Border.all(color: _themeBorder),
       ),
       child: Row(
         children: [
           const Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'You were pre-assigned',
@@ -2155,10 +1725,7 @@ class _ResponsibilityPostState
                 SizedBox(height: 2),
                 Text(
                   'Accept or decline this role/task.',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.black54,
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.black54),
                 ),
               ],
             ),
@@ -2172,25 +1739,19 @@ class _ResponsibilityPostState
             borderColor: Colors.redAccent,
             isBusy: isBusy,
             onTap: () {
-              _respondToPreAssignment(
-                item: item,
-                accept: false,
-              );
+              _respondToPreAssignment(item: item, accept: false);
             },
           ),
           const SizedBox(width: 8),
           _buildResponseIcon(
             icon: Icons.check_rounded,
             tooltip: 'Accept',
-            backgroundColor: brandYellow,
+            backgroundColor: _themePrimary,
             iconColor: Colors.black,
-            borderColor: brandYellow,
+            borderColor: _themePrimary,
             isBusy: isBusy,
             onTap: () {
-              _respondToPreAssignment(
-                item: item,
-                accept: true,
-              );
+              _respondToPreAssignment(item: item, accept: true);
             },
           ),
         ],
@@ -2221,10 +1782,7 @@ class _ResponsibilityPostState
             decoration: BoxDecoration(
               color: backgroundColor,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: borderColor,
-                width: 1.2,
-              ),
+              border: Border.all(color: borderColor, width: 1.2),
             ),
             child: isBusy
                 ? SizedBox(
@@ -2235,11 +1793,7 @@ class _ResponsibilityPostState
                       color: iconColor,
                     ),
                   )
-                : Icon(
-                    icon,
-                    size: 20,
-                    color: iconColor,
-                  ),
+                : Icon(icon, size: 20, color: iconColor),
           ),
         ),
       ),
@@ -2257,20 +1811,11 @@ class _ResponsibilityPostState
       borderRadius: BorderRadius.circular(999),
       onTap: isBusy ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 11,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
-          color: filled
-              ? brandYellow
-              : Colors.grey.shade100,
+          color: filled ? _themePrimary : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(999),
-          border: filled
-              ? null
-              : Border.all(
-                  color: Colors.grey.shade300,
-                ),
+          border: filled ? null : Border.all(color: Colors.grey.shade300),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2288,9 +1833,7 @@ class _ResponsibilityPostState
               Icon(
                 icon,
                 size: 14,
-                color: filled
-                    ? Colors.black
-                    : Colors.grey.shade800,
+                color: filled ? Colors.black : Colors.grey.shade800,
               ),
             const SizedBox(width: 5),
             Text(
@@ -2298,9 +1841,7 @@ class _ResponsibilityPostState
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
-                color: filled
-                    ? Colors.black
-                    : Colors.grey.shade800,
+                color: filled ? Colors.black : Colors.grey.shade800,
               ),
             ),
           ],
@@ -2311,16 +1852,11 @@ class _ResponsibilityPostState
 
   Widget _buildNeutralStatusChip(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: Colors.grey.shade300,
-        ),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Text(
         label,
@@ -2343,9 +1879,7 @@ class _ResponsibilityPostState
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isManual
-            ? Colors.grey.shade100
-            : softYellow,
+        color: isManual ? Colors.grey.shade100 : _themeSoft,
         shape: BoxShape.circle,
       ),
       child: Text(
@@ -2353,9 +1887,7 @@ class _ResponsibilityPostState
         style: TextStyle(
           fontSize: size <= 30 ? 9 : 11,
           fontWeight: FontWeight.w900,
-          color: isManual
-              ? Colors.grey.shade700
-              : brandYellowDark,
+          color: isManual ? Colors.grey.shade700 : _themeDark,
         ),
       ),
     );
@@ -2383,18 +1915,17 @@ class _ResponsibilityPostState
               ),
             ),
             if (isYou)
-              const Text(
+              Text(
                 '(You)',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: brandYellowDark,
+                  color: _themeDark,
                 ),
               ),
           ],
         ),
-        if (username != null &&
-            username.trim().isNotEmpty) ...[
+        if (username != null && username.trim().isNotEmpty) ...[
           const SizedBox(height: 2),
           Text(
             _formatUsername(username),
@@ -2415,34 +1946,28 @@ class _ResponsibilityPostState
       onTap: _isAddingItem ? null : _addItem,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: softBorder,
-            width: 1.2,
-          ),
+          border: Border.all(color: _themeBorder, width: 1.2),
         ),
         child: Row(
           children: [
             if (_isAddingItem)
-              const SizedBox(
+              SizedBox(
                 width: 21,
                 height: 21,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: brandYellowDark,
+                  color: _themeDark,
                 ),
               )
             else
-              const Icon(
+              Icon(
                 Icons.add_circle_outline_rounded,
                 size: 22,
-                color: brandYellowDark,
+                color: _themeDark,
               ),
             const SizedBox(width: 11),
             Expanded(
@@ -2450,10 +1975,10 @@ class _ResponsibilityPostState
                 _isPersonBased
                     ? 'Add another person'
                     : 'Add another role or task',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: brandYellowDark,
+                  color: _themeDark,
                 ),
               ),
             ),

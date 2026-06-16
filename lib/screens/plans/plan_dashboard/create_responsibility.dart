@@ -129,6 +129,27 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
   static const Color brandCreamLight = Color(0xFFFFFCF4);
   static const Color softBorder = Color(0xFFF2D999);
 
+  ThemeData get _theme => Theme.of(context);
+  ColorScheme get _colors => _theme.colorScheme;
+  bool get _isDark => _theme.brightness == Brightness.dark;
+  Color get _pageColor => _theme.scaffoldBackgroundColor;
+  Color get _surfaceColor => _isDark ? const Color(0xFF202024) : Colors.white;
+  Color get _surfaceAltColor =>
+      _isDark ? const Color(0xFF29292E) : Colors.grey.shade50;
+  Color get _borderColor => _isDark ? Colors.white24 : Colors.grey.shade300;
+  Color get _subtleBorderColor =>
+      _isDark ? Colors.white12 : Colors.grey.shade200;
+  Color get _textColor => _colors.onSurface;
+  Color get _mutedTextColor => _colors.onSurfaceVariant;
+  Color get _accentTextColor => _isDark ? brandYellow : brandYellowDark;
+  Color get _accentSoftColor => _isDark ? const Color(0xFF3A3020) : brandCream;
+  Color get _accentSoftestColor =>
+      _isDark ? const Color(0xFF2D281F) : brandCreamLight;
+  Color get _accentCircleColor =>
+      _isDark ? const Color(0xFF594217) : const Color(0xFFFFE8A3);
+  Color get _accentBorderColor =>
+      _isDark ? brandYellow.withValues(alpha: 0.45) : softBorder;
+
   final TextEditingController _titleController = TextEditingController();
 
   final List<ResponsibilityPersonDraft> _people = [];
@@ -678,7 +699,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     final selected = await showModalBottomSheet<ResponsibilitySelectedPerson>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _surfaceColor,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -715,7 +737,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                         width: 42,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: _borderColor,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -726,22 +748,24 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                         Expanded(
                           child: Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.w900,
-                              color: Colors.black,
+                              color: _textColor,
                             ),
                           ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.of(sheetContext).pop(),
-                          icon: const Icon(Icons.close),
+                          icon: Icon(Icons.close),
                         ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     TextField(
                       controller: searchController,
+                      style: TextStyle(color: _textColor),
+                      cursorColor: brandYellow,
                       autofocus: true,
                       textCapitalization: TextCapitalization.words,
                       onChanged: (value) {
@@ -751,19 +775,19 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                       },
                       decoration: InputDecoration(
                         hintText: 'Search a member or type a name',
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.search_rounded,
-                          color: Colors.grey,
+                          color: _mutedTextColor,
                         ),
                         filled: true,
-                        fillColor: Colors.grey.shade50,
+                        fillColor: _surfaceAltColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(color: _borderColor),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(color: _borderColor),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -786,7 +810,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.grey.shade600,
+                                  color: _mutedTextColor,
                                 ),
                               ),
                             ),
@@ -830,9 +854,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: brandCream,
+                                  color: _accentSoftColor,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: softBorder),
+                                  border: Border.all(color: _accentBorderColor),
                                 ),
                                 child: Row(
                                   children: [
@@ -840,24 +864,24 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                       width: 38,
                                       height: 38,
                                       alignment: Alignment.center,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFFFE8A3),
+                                      decoration: BoxDecoration(
+                                        color: _accentCircleColor,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.person_add_alt_1_rounded,
                                         size: 19,
-                                        color: brandYellowDark,
+                                        color: _accentTextColor,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         'Add “$cleanQuery”',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w800,
-                                          color: Colors.black87,
+                                          color: _textColor,
                                         ),
                                       ),
                                     ),
@@ -874,7 +898,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                   Icon(
                                     Icons.person_search_rounded,
                                     size: 48,
-                                    color: Colors.grey.shade300,
+                                    color: _borderColor,
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
@@ -884,7 +908,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: Colors.grey.shade600,
+                                      color: _mutedTextColor,
                                     ),
                                   ),
                                 ],
@@ -921,9 +945,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: _borderColor),
           ),
           child: Row(
             children: [
@@ -931,16 +955,16 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 width: 38,
                 height: 38,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFE8A3),
+                decoration: BoxDecoration(
+                  color: _accentCircleColor,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
                   _initials(name),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: brandYellowDark,
+                    color: _accentTextColor,
                   ),
                 ),
               ),
@@ -952,7 +976,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                   isYou: isYou,
                 ),
               ),
-              const Icon(Icons.add_circle_outline_rounded, color: brandYellow),
+              Icon(Icons.add_circle_outline_rounded, color: brandYellow),
             ],
           ),
         ),
@@ -1496,18 +1520,18 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
     final isPersonBased = _selectedMode == ResponsibilityMode.personBased;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _pageColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: _pageColor,
+        surfaceTintColor: _pageColor,
         shadowColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         leadingWidth: 100,
         leading: TextButton.icon(
           onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios, size: 14, color: brandYellow),
-          label: const Text(
+          icon: Icon(Icons.arrow_back_ios, size: 14, color: brandYellow),
+          label: Text(
             'Back',
             style: TextStyle(color: brandYellow, fontSize: 14),
           ),
@@ -1524,24 +1548,28 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           children: [
             Text(
               _isEditing ? 'Edit Responsibilities' : 'Set Up Who Does What',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
-                color: Colors.black,
+                color: _textColor,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Organize people, roles, tasks, and shared responsibilities.',
-              style: TextStyle(fontSize: 15, color: Colors.grey, height: 1.25),
+              style: TextStyle(
+                fontSize: 15,
+                color: _mutedTextColor,
+                height: 1.25,
+              ),
             ),
             const SizedBox(height: 28),
-            const Text(
+            Text(
               'How should this work?',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: Colors.black,
+                color: _textColor,
               ),
             ),
             const SizedBox(height: 14),
@@ -1550,11 +1578,11 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               const SizedBox(height: 10),
               Text(
                 'The setup type cannot be changed after posting.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: _mutedTextColor),
               ),
             ],
             const SizedBox(height: 24),
-            Divider(color: Colors.grey.shade300),
+            Divider(color: _borderColor),
             const SizedBox(height: 22),
             _buildTitleField(),
             const SizedBox(height: 24),
@@ -1571,7 +1599,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                   : 'Add the roles or tasks your plan needs, set the available slots, and optionally pre-assign people.',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: _mutedTextColor,
                 height: 1.35,
               ),
             ),
@@ -1607,7 +1635,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                       )
                     : Text(
                         _submitLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
@@ -1626,9 +1654,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         children: [
@@ -1641,7 +1669,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Divider(height: 1, color: Colors.grey.shade200),
+            child: Divider(height: 1, color: _subtleBorderColor),
           ),
           _buildModeOption(
             mode: ResponsibilityMode.roleTaskBased,
@@ -1672,7 +1700,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         width: double.infinity,
         padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
-          color: isSelected ? brandCream : Colors.white,
+          color: isSelected ? _accentSoftColor : _surfaceColor,
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
             color: isSelected ? brandYellow : Colors.transparent,
@@ -1687,15 +1715,13 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               height: 40,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFFFE8A3)
-                    : Colors.grey.shade100,
+                color: isSelected ? _accentCircleColor : _surfaceAltColor,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 21,
-                color: isSelected ? brandYellowDark : Colors.grey.shade600,
+                color: isSelected ? _accentTextColor : _mutedTextColor,
               ),
             ),
             const SizedBox(width: 12),
@@ -1705,10 +1731,10 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
-                      color: Colors.black87,
+                      color: _textColor,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1716,7 +1742,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                     description,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: _mutedTextColor,
                       height: 1.35,
                     ),
                   ),
@@ -1727,7 +1753,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
               size: 21,
-              color: isSelected ? brandYellow : Colors.grey.shade400,
+              color: isSelected ? brandYellow : _mutedTextColor,
             ),
           ],
         ),
@@ -1738,14 +1764,16 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
   Widget _buildTitleField() {
     return TextField(
       controller: _titleController,
+      style: TextStyle(color: _textColor),
+      cursorColor: brandYellow,
       enabled: !_isSubmitting,
       textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
         labelText: 'Title',
         hintText: _titleHint,
-        labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-        prefixIcon: const Icon(Icons.title_rounded, color: Colors.grey),
+        labelStyle: TextStyle(color: _mutedTextColor, fontSize: 14),
+        hintStyle: TextStyle(color: _mutedTextColor, fontSize: 14),
+        prefixIcon: Icon(Icons.title_rounded, color: _mutedTextColor),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
@@ -1753,7 +1781,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: _borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1772,26 +1800,26 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: _textColor,
             ),
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: brandCream,
+            color: _accentSoftColor,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: softBorder),
+            border: Border.all(color: _accentBorderColor),
           ),
           child: Text(
             countLabel,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: brandYellowDark,
+              color: _accentTextColor,
             ),
           ),
         ),
@@ -1818,12 +1846,12 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: _isSubmitting ? null : _addPerson,
-            icon: const Icon(
+            icon: Icon(
               Icons.person_add_alt_1_rounded,
               size: 19,
               color: brandYellow,
             ),
-            label: const Text(
+            label: Text(
               'Add person',
               style: TextStyle(
                 color: brandYellow,
@@ -1848,9 +1876,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _borderColor),
       ),
       child: Row(
         children: [
@@ -1859,9 +1887,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: person.isManual
-                  ? Colors.grey.shade100
-                  : const Color(0xFFFFE8A3),
+              color: person.isManual ? _surfaceAltColor : _accentCircleColor,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -1869,7 +1895,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: person.isManual ? Colors.grey.shade700 : brandYellowDark,
+                color: person.isManual ? _mutedTextColor : _accentTextColor,
               ),
             ),
           ),
@@ -1884,7 +1910,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           IconButton(
             onPressed: _isSubmitting ? null : () => _removePerson(index),
             tooltip: 'Remove',
-            icon: const Icon(Icons.close, size: 21, color: Colors.redAccent),
+            icon: Icon(Icons.close, size: 21, color: Colors.redAccent),
           ),
         ],
       ),
@@ -1905,19 +1931,19 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           children: [
             Text(
               name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
-                color: Colors.black87,
+                color: _textColor,
               ),
             ),
             if (isYou)
-              const Text(
+              Text(
                 '(You)',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: brandYellowDark,
+                  color: _accentTextColor,
                 ),
               ),
           ],
@@ -1929,7 +1955,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade500,
+              color: _mutedTextColor,
             ),
           ),
         ],
@@ -1956,8 +1982,8 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: _isSubmitting ? null : _addRoleTask,
-            icon: const Icon(Icons.add_rounded, size: 20, color: brandYellow),
-            label: const Text(
+            icon: Icon(Icons.add_rounded, size: 20, color: brandYellow),
+            label: Text(
               'Add role or task',
               style: TextStyle(
                 color: brandYellow,
@@ -1981,9 +2007,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: brandCreamLight,
+        color: _accentSoftestColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: softBorder),
+        border: Border.all(color: _accentBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1994,16 +2020,16 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 width: 29,
                 height: 29,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFE8A3),
+                decoration: BoxDecoration(
+                  color: _accentCircleColor,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
                   '${index + 1}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: brandYellowDark,
+                    color: _accentTextColor,
                   ),
                 ),
               ),
@@ -2011,27 +2037,25 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               Expanded(
                 child: Text(
                   'Role or Task ${index + 1}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black87,
+                    color: _textColor,
                   ),
                 ),
               ),
               IconButton(
                 onPressed: _isSubmitting ? null : () => _removeRoleTask(index),
                 tooltip: 'Remove',
-                icon: const Icon(
-                  Icons.close,
-                  size: 21,
-                  color: Colors.redAccent,
-                ),
+                icon: Icon(Icons.close, size: 21, color: Colors.redAccent),
               ),
             ],
           ),
           const SizedBox(height: 10),
           TextField(
             controller: item.titleController,
+            style: TextStyle(color: _textColor),
+            cursorColor: brandYellow,
             enabled: !_isSubmitting,
             textCapitalization: TextCapitalization.sentences,
             onChanged: (_) {
@@ -2040,18 +2064,18 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             decoration: InputDecoration(
               labelText: 'Role or task',
               hintText: 'e.g., Presenter, Buy materials',
-              prefixIcon: const Icon(
+              prefixIcon: Icon(
                 Icons.assignment_ind_outlined,
-                color: Colors.grey,
+                color: _mutedTextColor,
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: _surfaceColor,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderSide: BorderSide(color: _borderColor),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2075,15 +2099,15 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _borderColor),
       ),
       child: Row(
         children: [
-          const Icon(Icons.groups_rounded, size: 20, color: brandYellowDark),
+          Icon(Icons.groups_rounded, size: 20, color: _accentTextColor),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2092,34 +2116,34 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: _textColor,
                   ),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'How many people can take this?',
-                  style: TextStyle(fontSize: 10, color: Colors.black45),
+                  style: TextStyle(fontSize: 10, color: _mutedTextColor),
                 ),
               ],
             ),
           ),
           IconButton(
             onPressed: _isSubmitting ? null : () => _decreaseSlots(index),
-            icon: const Icon(Icons.remove_circle_outline_rounded),
-            color: brandYellowDark,
+            icon: Icon(Icons.remove_circle_outline_rounded),
+            color: _accentTextColor,
           ),
           Text(
             '${item.slots}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Colors.black,
+              color: _textColor,
             ),
           ),
           IconButton(
             onPressed: _isSubmitting ? null : () => _increaseSlots(index),
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            color: brandYellowDark,
+            icon: Icon(Icons.add_circle_outline_rounded),
+            color: _accentTextColor,
           ),
         ],
       ),
@@ -2133,29 +2157,25 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Pre-assign people',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _textColor,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             'Plan members can accept or decline. Names added manually are confirmed immediately.',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey.shade600,
-              height: 1.3,
-            ),
+            style: TextStyle(fontSize: 10, color: _mutedTextColor, height: 1.3),
           ),
           if (item.preAssignedPeople.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -2173,12 +2193,12 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             onPressed: _isSubmitting
                 ? null
                 : () => _addPreAssignedPerson(index),
-            icon: const Icon(
+            icon: Icon(
               Icons.person_add_alt_1_rounded,
               size: 18,
               color: brandYellow,
             ),
-            label: const Text(
+            label: Text(
               'Add person',
               style: TextStyle(
                 color: brandYellow,
@@ -2203,9 +2223,9 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: brandCreamLight,
+        color: _accentSoftestColor,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: softBorder),
+        border: Border.all(color: _accentBorderColor),
       ),
       child: Row(
         children: [
@@ -2214,9 +2234,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: person.isManual
-                  ? Colors.grey.shade100
-                  : const Color(0xFFFFE8A3),
+              color: person.isManual ? _surfaceAltColor : _accentCircleColor,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -2224,7 +2242,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
-                color: person.isManual ? Colors.grey.shade700 : brandYellowDark,
+                color: person.isManual ? _mutedTextColor : _accentTextColor,
               ),
             ),
           ),
@@ -2242,7 +2260,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 : () => _removePreAssignedPerson(itemIndex, person),
             tooltip: 'Remove',
             visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
+            icon: Icon(Icons.close, size: 18, color: Colors.redAccent),
           ),
         ],
       ),
@@ -2255,20 +2273,20 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: brandCreamLight,
+        color: _accentSoftestColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: softBorder),
+        border: Border.all(color: _accentBorderColor),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 32, color: brandYellowDark),
+          Icon(icon, size: 32, color: _accentTextColor),
           const SizedBox(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade700,
+              color: _mutedTextColor,
               height: 1.35,
             ),
           ),
@@ -2284,19 +2302,19 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Settings',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: _textColor,
             ),
           ),
           const SizedBox(height: 14),
@@ -2314,7 +2332,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
               });
             },
           ),
-          Divider(height: 24, color: Colors.grey.shade200),
+          Divider(height: 24, color: _subtleBorderColor),
           _buildSwitchRow(
             label: 'Show progress',
             description: isPersonBased
@@ -2347,10 +2365,10 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+                  color: _textColor,
                 ),
               ),
               const SizedBox(height: 3),
@@ -2358,7 +2376,7 @@ class _CreateResponsibilityState extends State<CreateResponsibility> {
                 description,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey.shade600,
+                  color: _mutedTextColor,
                   height: 1.3,
                 ),
               ),

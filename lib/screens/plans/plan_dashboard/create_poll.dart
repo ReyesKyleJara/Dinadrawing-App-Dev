@@ -20,6 +20,18 @@ class CreatePoll extends StatefulWidget {
 }
 
 class _CreatePollScreenState extends State<CreatePoll> {
+  static const Color _accent = Color(0xFFF5B335);
+
+  ThemeData get _theme => Theme.of(context);
+  ColorScheme get _colors => _theme.colorScheme;
+  bool get _isDark => _theme.brightness == Brightness.dark;
+  Color get _surfaceColor => _isDark ? const Color(0xFF202024) : Colors.white;
+  Color get _fieldColor => _isDark ? const Color(0xFF29292E) : Colors.white;
+  Color get _borderColor => _isDark ? Colors.white24 : Colors.grey.shade300;
+  Color get _mutedTextColor => _colors.onSurfaceVariant;
+  Color get _accentSoftColor =>
+      _isDark ? const Color(0xFF3A3020) : const Color(0xFFFFF8E8);
+
   final TextEditingController _questionController = TextEditingController();
 
   final List<TextEditingController> _optionControllers = [
@@ -162,11 +174,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF5B335),
-              onPrimary: Colors.black,
-              onSurface: Colors.black,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: _accent, onPrimary: Colors.black),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFF5B335),
@@ -209,11 +219,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF5B335),
-              onPrimary: Colors.black,
-              onSurface: Colors.black,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: _accent, onPrimary: Colors.black),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFF5B335),
@@ -237,11 +245,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF5B335),
-              onPrimary: Colors.black,
-              onSurface: Colors.black,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: _accent, onPrimary: Colors.black),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFF5B335),
@@ -307,11 +313,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF5B335),
-              onPrimary: Colors.black,
-              onSurface: Colors.black,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: _accent, onPrimary: Colors.black),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFF5B335),
@@ -335,11 +339,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF5B335),
-              onPrimary: Colors.black,
-              onSurface: Colors.black,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: _accent, onPrimary: Colors.black),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFF5B335),
@@ -642,8 +644,8 @@ class _CreatePollScreenState extends State<CreatePoll> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        surfaceTintColor: theme.scaffoldBackgroundColor,
         shadowColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -728,7 +730,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
               ],
             ),
             const SizedBox(height: 24),
-            Divider(color: Colors.grey.shade300),
+            Divider(color: _borderColor),
             const SizedBox(height: 22),
             _buildQuestionField(),
             const SizedBox(height: 16),
@@ -813,13 +815,13 @@ class _CreatePollScreenState extends State<CreatePoll> {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: colors.onSurface,
+                          color: Colors.black,
                         ),
                       )
                     : Text(
                         'Create $_templateName',
-                        style: TextStyle(
-                          color: colors.onSurface,
+                        style: const TextStyle(
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                         ),
@@ -847,10 +849,10 @@ class _CreatePollScreenState extends State<CreatePoll> {
         height: 108,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFF8E8) : Colors.white,
+          color: isSelected ? _accentSoftColor : _surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? const Color(0xFFF5B335) : Colors.grey.shade300,
+            color: isSelected ? _accent : _borderColor,
             width: isSelected ? 1.6 : 1,
           ),
           boxShadow: [
@@ -865,13 +867,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 28,
-              color: isSelected
-                  ? const Color(0xFFF5B335)
-                  : Colors.grey.shade500,
-            ),
+            Icon(icon, size: 28, color: isSelected ? _accent : _mutedTextColor),
             const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -882,7 +878,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  color: isSelected ? Colors.black : Colors.black87,
+                  color: _colors.onSurface,
                 ),
               ),
             ),
@@ -896,7 +892,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade600,
+                  color: _mutedTextColor,
                 ),
               ),
             ),
@@ -909,21 +905,25 @@ class _CreatePollScreenState extends State<CreatePoll> {
   Widget _buildQuestionField() {
     return TextField(
       controller: _questionController,
+      style: TextStyle(color: _colors.onSurface),
+      cursorColor: _accent,
       enabled: !_isSubmitting,
       decoration: InputDecoration(
         labelText: 'Poll Question',
-        labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+        labelStyle: TextStyle(color: _mutedTextColor, fontSize: 14),
+        filled: true,
+        fillColor: _fieldColor,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: _borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: _borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -938,6 +938,8 @@ class _CreatePollScreenState extends State<CreatePoll> {
 
     return TextField(
       controller: _optionControllers[index],
+      style: TextStyle(color: _colors.onSurface),
+      cursorColor: _accent,
       enabled: !_isSubmitting,
       readOnly: isDateTemplate,
       onTap: isDateTemplate ? () => _pickDateForOption(index) : null,
@@ -946,19 +948,21 @@ class _CreatePollScreenState extends State<CreatePoll> {
             ? 'Option ${index + 1}'
             : 'Option ${index + 1} (Optional)',
         hintText: _optionHint(index),
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-        prefixIcon: Icon(_optionIcon(), color: Colors.grey.shade500, size: 21),
+        hintStyle: TextStyle(color: _mutedTextColor, fontSize: 14),
+        prefixIcon: Icon(_optionIcon(), color: _mutedTextColor, size: 21),
+        filled: true,
+        fillColor: _fieldColor,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: _borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: _borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -977,10 +981,10 @@ class _CreatePollScreenState extends State<CreatePoll> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: _colors.onSurface,
               ),
             ),
           ),
@@ -1001,8 +1005,8 @@ class _CreatePollScreenState extends State<CreatePoll> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
+        color: _surfaceColor,
+        border: Border.all(color: _borderColor),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1019,7 +1023,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
           const SizedBox(height: 4),
           Text(
             'Voting starts immediately by default.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 12, color: _mutedTextColor),
           ),
           const SizedBox(height: 12),
           Row(
@@ -1030,7 +1034,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade800,
+                    color: _colors.onSurface,
                   ),
                 ),
               ),
@@ -1053,7 +1057,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                   vertical: 13,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E8),
+                  color: _accentSoftColor,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFF5B335), width: 1),
                 ),
@@ -1070,10 +1074,10 @@ class _CreatePollScreenState extends State<CreatePoll> {
                         _votingStartsAt == null
                             ? 'Choose start time'
                             : _formatScheduleDateTime(_votingStartsAt!),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: Colors.black87,
+                          color: _colors.onSurface,
                         ),
                       ),
                     ),
@@ -1095,8 +1099,8 @@ class _CreatePollScreenState extends State<CreatePoll> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
+        color: _surfaceColor,
+        border: Border.all(color: _borderColor),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1113,7 +1117,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
           const SizedBox(height: 4),
           Text(
             'Poll stays open until manually closed by default.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 12, color: _mutedTextColor),
           ),
           const SizedBox(height: 12),
           Row(
@@ -1124,7 +1128,7 @@ class _CreatePollScreenState extends State<CreatePoll> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade800,
+                    color: _colors.onSurface,
                   ),
                 ),
               ),
@@ -1141,13 +1145,15 @@ class _CreatePollScreenState extends State<CreatePoll> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E8),
+                color: _accentSoftColor,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFF5B335), width: 1),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _deadlineChoice,
+                  dropdownColor: _surfaceColor,
+                  style: TextStyle(color: _colors.onSurface),
                   isExpanded: true,
                   icon: const Icon(
                     Icons.keyboard_arrow_down,
@@ -1199,9 +1205,9 @@ class _CreatePollScreenState extends State<CreatePoll> {
                     vertical: 13,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _fieldColor,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    border: Border.all(color: _borderColor, width: 1),
                   ),
                   child: Row(
                     children: [
@@ -1216,10 +1222,10 @@ class _CreatePollScreenState extends State<CreatePoll> {
                           _customVotingEndsAt == null
                               ? 'Choose custom deadline'
                               : _formatScheduleDateTime(_customVotingEndsAt!),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: Colors.black87,
+                            color: _colors.onSurface,
                           ),
                         ),
                       ),

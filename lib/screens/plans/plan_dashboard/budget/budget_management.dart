@@ -14,6 +14,7 @@ class BudgetPlanEditorPage extends StatefulWidget {
     required this.availableMembers,
     this.mode = _BudgetEditorMode.fullSetup,
     this.initialStep = 0,
+    this.themeColor,
   });
 
   final int planId;
@@ -21,12 +22,16 @@ class BudgetPlanEditorPage extends StatefulWidget {
   final List<Map<String, dynamic>> availableMembers;
   final _BudgetEditorMode mode;
   final int initialStep;
+  final String? themeColor;
 
   @override
   State<BudgetPlanEditorPage> createState() => _BudgetPlanEditorPageState();
 }
 
-class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
+class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage>
+    with _BudgetPaletteMixin<BudgetPlanEditorPage> {
+  @override
+  String? get budgetThemeColor => widget.themeColor;
   late int _currentStep;
 
   bool _isSaving = false;
@@ -548,7 +553,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                                               ],
                                             ),
                                           ),
-                                          const Icon(
+                                          Icon(
                                             Icons.add_circle_outline_rounded,
                                             color: _budgetYellowDark,
                                             size: 22,
@@ -588,6 +593,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                             },
                             decoration: _tableInputDecoration(
                               context,
+                              accentColor: _budgetYellow,
                               hint: 'Enter a name',
                               prefixIcon: Icons.person_add_alt_1_rounded,
                             ).copyWith(errorText: manualError),
@@ -966,7 +972,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                         shape: BoxShape.circle,
                       ),
                       child: isCompleted
-                          ? const Icon(
+                          ? Icon(
                               Icons.check_rounded,
                               size: 15,
                               color: _budgetYellowDark,
@@ -1123,7 +1129,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.add_rounded,
                           size: 19,
                           color: _budgetYellowDark,
@@ -1224,6 +1230,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                   },
                   decoration: _tableInputDecoration(
                     context,
+                    accentColor: _budgetYellow,
                     hint: 'Expense name',
                   ),
                 ),
@@ -1251,6 +1258,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                   },
                   decoration: _tableInputDecoration(
                     context,
+                    accentColor: _budgetYellow,
                     hint: '0.00',
                     prefixText: '₱ ',
                   ),
@@ -1290,6 +1298,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
               },
               decoration: _tableInputDecoration(
                 context,
+                accentColor: _budgetYellow,
                 hint: 'Optional note',
                 prefixIcon: Icons.notes_rounded,
               ),
@@ -1535,6 +1544,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
               },
               decoration: _tableInputDecoration(
                 context,
+                accentColor: _budgetYellow,
                 hint: '0.00',
                 prefixText: '₱ ',
               ),
@@ -1737,7 +1747,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.visibility_outlined,
                 color: _budgetYellowDark,
                 size: 20,
@@ -1947,17 +1957,22 @@ class ContributionTrackingSheet extends StatefulWidget {
     super.key,
     required this.planId,
     required this.budget,
+    this.themeColor,
   });
 
   final int planId;
   final Map<String, dynamic> budget;
+  final String? themeColor;
 
   @override
   State<ContributionTrackingSheet> createState() =>
       _ContributionTrackingSheetState();
 }
 
-class _ContributionTrackingSheetState extends State<ContributionTrackingSheet> {
+class _ContributionTrackingSheetState extends State<ContributionTrackingSheet>
+    with _BudgetPaletteMixin<ContributionTrackingSheet> {
+  @override
+  String? get budgetThemeColor => widget.themeColor;
   late bool _enabled;
   late bool _allowMemberMarkPaid;
   late bool _showStatusToMembers;

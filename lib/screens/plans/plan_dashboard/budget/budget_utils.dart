@@ -94,6 +94,7 @@ class MoneyTextInputFormatter extends TextInputFormatter {
 InputDecoration _tableInputDecoration(
   BuildContext context, {
   required String hint,
+  required Color accentColor,
   String? prefixText,
   IconData? prefixIcon,
 }) {
@@ -127,7 +128,7 @@ InputDecoration _tableInputDecoration(
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: _budgetYellow, width: 1.4),
+      borderSide: BorderSide(color: accentColor, width: 1.4),
     ),
   );
 }

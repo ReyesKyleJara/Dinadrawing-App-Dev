@@ -175,7 +175,7 @@ class _PlanDashboardScreenState extends State<PlanDashboardScreen> {
                     themeColor: plan.themeColor,
                     onPlanDetailsChanged: _refreshPlanDetails,
                   )
-                : BudgetTab(planId: widget.planId),
+                : BudgetTab(planId: widget.planId, themeColor: plan.themeColor),
           ),
         ],
       ),

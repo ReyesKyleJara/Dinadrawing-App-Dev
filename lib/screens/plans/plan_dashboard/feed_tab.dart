@@ -1811,10 +1811,12 @@ class _FeedTabState extends State<FeedTab> {
     final BuildContext parentContext = context;
     File? selectedImage;
 
+    final composerColors = Theme.of(parentContext).colorScheme;
+
     showModalBottomSheet(
       context: parentContext,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: composerColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1823,6 +1825,8 @@ class _FeedTabState extends State<FeedTab> {
 
         return StatefulBuilder(
           builder: (sheetContext, setModalState) {
+            final colors = Theme.of(sheetContext).colorScheme;
+
             Future<void> pickImage() async {
               final picked = await _imagePicker.pickImage(
                 source: ImageSource.gallery,
@@ -1916,20 +1920,21 @@ class _FeedTabState extends State<FeedTab> {
                       IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.close,
-                          color: Colors.black,
+                          color: colors.onSurface,
                           size: 20,
                         ),
                         onPressed: modalIsSubmitting
                             ? null
                             : () => Navigator.of(sheetContext).pop(),
                       ),
-                      const Text(
+                      Text(
                         'Create Post',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: colors.onSurface,
                         ),
                       ),
                       TextButton(
@@ -1957,15 +1962,18 @@ class _FeedTabState extends State<FeedTab> {
                       ),
                     ],
                   ),
-                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Divider(height: 1, color: colors.outlineVariant),
+                  ),
                   Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 18,
-                        backgroundColor: Colors.grey,
+                        backgroundColor: colors.surfaceContainerHighest,
                         child: Icon(
                           Icons.person,
-                          color: Colors.white,
+                          color: colors.onSurfaceVariant,
                           size: 20,
                         ),
                       ),
@@ -1973,17 +1981,18 @@ class _FeedTabState extends State<FeedTab> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'You',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
+                              color: colors.onSurface,
                             ),
                           ),
                           Text(
                             'Just Now',
                             style: TextStyle(
-                              color: Colors.grey[500],
+                              color: colors.onSurfaceVariant,
                               fontSize: 11,
                             ),
                           ),
@@ -2000,12 +2009,26 @@ class _FeedTabState extends State<FeedTab> {
                             controller: textCtrl,
                             maxLines: null,
                             keyboardType: TextInputType.multiline,
-                            decoration: const InputDecoration(
+                            cursorColor: brandYellow,
+                            decoration: InputDecoration(
                               hintText: "What's on your mind?",
-                              hintStyle: TextStyle(color: Colors.grey),
+                              hintStyle: TextStyle(
+                                color: colors.onSurfaceVariant,
+                              ),
                               border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              focusedErrorBorder: InputBorder.none,
+                              filled: false,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
                             ),
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colors.onSurface,
+                            ),
                           ),
                         ),
                         if (selectedImage != null) ...[
@@ -2054,19 +2077,22 @@ class _FeedTabState extends State<FeedTab> {
                       ],
                     ),
                   ),
-                  const Divider(),
-                  const Align(
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 10),
+                    child: Divider(height: 1, color: colors.outlineVariant),
+                  ),
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Add to your post',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: colors.onSurface,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildComposerOption(
                     Icons.image_outlined,
                     selectedImage == null ? 'Post photo' : 'Change photo',
@@ -2219,21 +2245,28 @@ class _FeedTabState extends State<FeedTab> {
   }
 
   Widget _buildSimplifiedCreatePostBox() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return GestureDetector(
       onTap: _openMainComposer,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: colors.outlineVariant),
         ),
         child: Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 18,
-              backgroundColor: Colors.grey,
-              child: Icon(Icons.person, color: Colors.white, size: 20),
+              backgroundColor: colors.surfaceContainerHighest,
+              child: Icon(
+                Icons.person,
+                color: colors.onSurfaceVariant,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -2241,13 +2274,17 @@ class _FeedTabState extends State<FeedTab> {
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  color: colors.surfaceContainerLow,
+                  border: Border.all(color: colors.outlineVariant),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 alignment: Alignment.centerLeft,
-                child: const Text(
+                child: Text(
                   'Type something..',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -2284,25 +2321,31 @@ class _FeedTabState extends State<FeedTab> {
   }
 
   Widget _buildComposerOption(IconData icon, String text, VoidCallback onTap) {
+    final colors = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: isSubmittingPost ? null : onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.black87),
+            Icon(icon, size: 20, color: colors.onSurface),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+                  color: colors.onSurface,
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: colors.onSurfaceVariant,
+            ),
           ],
         ),
       ),

@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../services/budget_service.dart';
+import '../../../../theme/plan_theme_palette.dart';
 
 part 'budget_management.dart';
 part 'budget_utils.dart';
-
-const Color _budgetYellow = Color(0xFFF2B73F);
-const Color _budgetYellowDark = Color(0xFFD89B22);
-const Color _budgetCream = Color(0xFFFFF8E8);
 
 enum _BudgetMenuAction {
   editExpenses,
@@ -17,16 +14,33 @@ enum _BudgetMenuAction {
   resetBudget,
 }
 
+mixin _BudgetPaletteMixin<T extends StatefulWidget> on State<T> {
+  String? get budgetThemeColor;
+
+  PlanThemePalette get _budgetPalette => PlanThemePalette.fromHex(
+    budgetThemeColor,
+    brightness: Theme.of(context).brightness,
+  );
+
+  Color get _budgetYellow => _budgetPalette.primary;
+  Color get _budgetYellowDark => _budgetPalette.dark;
+  Color get _budgetCream => _budgetPalette.softest;
+}
+
 class BudgetTab extends StatefulWidget {
-  const BudgetTab({super.key, required this.planId});
+  const BudgetTab({super.key, required this.planId, this.themeColor});
 
   final int planId;
+  final String? themeColor;
 
   @override
   State<BudgetTab> createState() => _BudgetTabState();
 }
 
-class _BudgetTabState extends State<BudgetTab> {
+class _BudgetTabState extends State<BudgetTab>
+    with _BudgetPaletteMixin<BudgetTab> {
+  @override
+  String? get budgetThemeColor => widget.themeColor;
   bool _isLoading = true;
   bool _isResetting = false;
   bool _isResolvingReview = false;
@@ -99,6 +113,7 @@ class _BudgetTabState extends State<BudgetTab> {
           initialBudget: _budget,
           availableMembers: _availableMembers,
           mode: mode,
+          themeColor: widget.themeColor,
         ),
       ),
     );
@@ -121,7 +136,11 @@ class _BudgetTabState extends State<BudgetTab> {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return ContributionTrackingSheet(planId: widget.planId, budget: budget);
+        return ContributionTrackingSheet(
+          planId: widget.planId,
+          budget: budget,
+          themeColor: widget.themeColor,
+        );
       },
     );
 
@@ -183,7 +202,7 @@ class _BudgetTabState extends State<BudgetTab> {
                             color: _budgetYellow.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(13),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.manage_accounts_outlined,
                             color: _budgetYellowDark,
                           ),
@@ -576,9 +595,7 @@ class _BudgetTabState extends State<BudgetTab> {
     if (_isLoading) {
       return ColoredBox(
         color: theme.scaffoldBackgroundColor,
-        child: const Center(
-          child: CircularProgressIndicator(color: _budgetYellow),
-        ),
+        child: Center(child: CircularProgressIndicator(color: _budgetYellow)),
       );
     }
 
@@ -684,7 +701,7 @@ class _BudgetTabState extends State<BudgetTab> {
           Positioned.fill(
             child: ColoredBox(
               color: Colors.black.withValues(alpha: 0.35),
-              child: const Center(
+              child: Center(
                 child: CircularProgressIndicator(color: _budgetYellow),
               ),
             ),
@@ -793,7 +810,7 @@ class _BudgetTabState extends State<BudgetTab> {
                   color: _budgetYellow.withValues(alpha: 0.20),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.warning_amber_rounded,
                   color: _budgetYellowDark,
                   size: 22,
@@ -883,7 +900,7 @@ class _BudgetTabState extends State<BudgetTab> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _budgetYellow.withValues(alpha: 0.45)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.account_balance_wallet_outlined,
               color: _budgetYellowDark,
               size: 32,
@@ -1112,7 +1129,7 @@ class _BudgetTabState extends State<BudgetTab> {
                   color: _budgetYellow.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.account_balance_wallet_outlined,
                   color: _budgetYellowDark,
                   size: 23,
@@ -1235,7 +1252,7 @@ class _BudgetTabState extends State<BudgetTab> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.info_outline_rounded,
                     color: _budgetYellowDark,
                     size: 18,
@@ -1370,7 +1387,7 @@ class _BudgetTabState extends State<BudgetTab> {
               color: _budgetYellow.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.payments_outlined,
               color: _budgetYellowDark,
               size: 21,
@@ -1406,7 +1423,7 @@ class _BudgetTabState extends State<BudgetTab> {
 
           TextButton(
             onPressed: _openContributionSettings,
-            child: const Text(
+            child: Text(
               'Enable',
               style: TextStyle(
                 color: _budgetYellowDark,
@@ -1460,7 +1477,7 @@ class _BudgetTabState extends State<BudgetTab> {
             onPressed: onAction,
             child: Text(
               actionLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _budgetYellowDark,
                 fontWeight: FontWeight.w800,
               ),
@@ -1922,7 +1939,7 @@ class _BudgetTabState extends State<BudgetTab> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.history_rounded, size: 19, color: _budgetYellowDark),
+          Icon(Icons.history_rounded, size: 19, color: _budgetYellowDark),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

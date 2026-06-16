@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -29,15 +27,11 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   String? selectedLocationLabel;
   _SelectionSource selectionSource = _SelectionSource.none;
   bool isMapExpanded = false;
-  bool isSearchingLocations = false;
   bool isSavingPlan = false;
-  List<_LocationResult> locationSuggestions = [];
-  Timer? _locationSearchDebounce;
   StateSetter? _expandedMapSetState;
 
   @override
   void dispose() {
-    _locationSearchDebounce?.cancel();
     planNameController.dispose();
     descriptionController.dispose();
     locationController.dispose();
@@ -52,10 +46,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2101),
       builder: (context, child) {
+        final theme = Theme.of(context);
+        final colors = theme.colorScheme;
+
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFFB84D),
+          data: theme.copyWith(
+            colorScheme: colors.copyWith(
+              primary: const Color(0xFFFFB84D),
               onPrimary: Colors.black,
             ),
           ),
@@ -75,19 +72,21 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
         const yellow = Color(0xFFFFB84D);
+        final theme = Theme.of(context);
+        final colors = theme.colorScheme;
 
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: colors.copyWith(
               primary: yellow,
               secondary: yellow,
               onPrimary: Colors.black,
             ),
-            timePickerTheme: const TimePickerThemeData(
+            timePickerTheme: theme.timePickerTheme.copyWith(
               dayPeriodColor: yellow,
               dayPeriodTextColor: Colors.black,
               dialHandColor: yellow,
-              dialBackgroundColor: Colors.white,
+              dialBackgroundColor: colors.surfaceContainerHighest,
             ),
           ),
           child: child!,
@@ -124,102 +123,6 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     } catch (_) {
       _showSnackBar("Could not find that place", Colors.redAccent);
     }
-  }
-
-  void _onLocationQueryChanged(String query) {
-    _locationSearchDebounce?.cancel();
-
-    final trimmedQuery = query.trim();
-
-    if (trimmedQuery.length < 2) {
-      setState(() {
-        locationSuggestions = [];
-        isSearchingLocations = false;
-      });
-      return;
-    }
-
-    _locationSearchDebounce = Timer(const Duration(milliseconds: 350), () {
-      _loadLocationSuggestions(trimmedQuery);
-    });
-  }
-
-  Future<void> _loadLocationSuggestions(String query) async {
-    if (!mounted) return;
-
-    setState(() => isSearchingLocations = true);
-
-    try {
-      final suggestions = await _fetchLocationSuggestions(query);
-
-      if (!mounted) return;
-
-      setState(() {
-        locationSuggestions = suggestions;
-        isSearchingLocations = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        locationSuggestions = [];
-        isSearchingLocations = false;
-      });
-    }
-  }
-
-  Future<List<_LocationResult>> _fetchLocationSuggestions(String query) async {
-    final uri = Uri.parse(
-      'https://nominatim.openstreetmap.org/search?q=${Uri.encodeQueryComponent(query)}&format=jsonv2&limit=5',
-    );
-
-    final response = await http.get(
-      uri,
-      headers: const {
-        'Accept': 'application/json',
-        'User-Agent': 'dinadrawing-app/1.0',
-      },
-    );
-
-    if (response.statusCode != 200) {
-      return [];
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    if (decoded is! List) {
-      return [];
-    }
-
-    return decoded
-        .map<_LocationResult>((item) {
-          final locationData = item as Map<String, dynamic>;
-          final latitude =
-              double.tryParse(locationData['lat']?.toString() ?? '');
-          final longitude =
-              double.tryParse(locationData['lon']?.toString() ?? '');
-          final displayName =
-              locationData['display_name']?.toString() ?? query;
-
-          if (latitude == null || longitude == null) {
-            return _LocationResult(
-              location: const LatLng(14.5995, 120.9842),
-              label: displayName,
-            );
-          }
-
-          return _LocationResult(
-            location: LatLng(latitude, longitude),
-            label: displayName,
-          );
-        })
-        .where(
-          (result) =>
-              result.location.latitude != 14.5995 ||
-              result.location.longitude != 120.9842 ||
-              result.label.isNotEmpty,
-        )
-        .toList();
   }
 
   Future<_LocationResult?> _searchLocationWithFallback(String query) async {
@@ -334,24 +237,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Future<void> _handleMapTap(LatLng tappedLocation) async {
-    await _updateSelectedLocation(
-      tappedLocation,
-      source: _SelectionSource.tap,
-    );
-  }
-
-  Future<void> _selectSuggestion(_LocationResult suggestion) async {
-    locationController.text = suggestion.label;
-
-    setState(() {
-      locationSuggestions = [];
-    });
-
-    await _updateSelectedLocation(
-      suggestion.location,
-      label: suggestion.label,
-      source: _SelectionSource.search,
-    );
+    await _updateSelectedLocation(tappedLocation, source: _SelectionSource.tap);
   }
 
   Future<void> _showExpandedMap() async {
@@ -364,7 +250,12 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
           builder: (dialogContext, dialogSetState) {
             _expandedMapSetState = dialogSetState;
 
+            final theme = Theme.of(dialogContext);
+            final colors = theme.colorScheme;
+
             return Dialog(
+              backgroundColor: colors.surface,
+              surfaceTintColor: colors.surface,
               insetPadding: const EdgeInsets.all(16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -378,12 +269,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                       padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
                       child: Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Pick a location',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: colors.onSurface,
                               ),
                             ),
                           ),
@@ -392,12 +284,13 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                               _expandedMapSetState = null;
                               Navigator.pop(dialogContext);
                             },
+                            color: colors.onSurface,
                             icon: const Icon(Icons.close),
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: colors.outlineVariant),
                     Expanded(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
@@ -513,18 +406,17 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -538,7 +430,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
               _buildFieldLabel("Plan Name (required)"),
               _buildTextField("Enter a plan name", planNameController),
               const SizedBox(height: 24),
-              _buildFieldLabel("Description"),
+              _buildFieldLabel("Description (optional)"),
               _buildTextField(
                 "Enter a short description",
                 descriptionController,
@@ -552,16 +444,12 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                 locationController,
                 icon: Icons.search,
                 onSubmitted: _searchLocation,
-                onChanged: _onLocationQueryChanged,
               ),
-              if (isSearchingLocations) ...[
-                const SizedBox(height: 8),
-                const LinearProgressIndicator(minHeight: 2),
-              ],
-              if (locationSuggestions.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _buildSuggestionList(),
-              ],
+              const SizedBox(height: 6),
+              Text(
+                'Press Enter/Search to locate • Search data © OpenStreetMap contributors',
+                style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+              ),
               const SizedBox(height: 12),
               _buildMapPlaceholder(),
               const SizedBox(height: 32),
@@ -588,17 +476,23 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildHeader() {
-    return const Column(
+    final colors = Theme.of(context).colorScheme;
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "Create Plan",
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: colors.onSurface,
+          ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           "Fill in the details to start planning",
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: colors.onSurfaceVariant),
         ),
       ],
     );
@@ -643,13 +537,15 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildMapPlaceholder() {
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: const Color(0xFFF9F9F9),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        color: colors.surfaceContainerHighest,
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Stack(
         children: [
@@ -662,8 +558,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             top: 12,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: colors.surface.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.outlineVariant),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black12,
@@ -684,7 +581,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                       Icons.push_pin,
                       size: 16,
                       color: selectionSource == _SelectionSource.none
-                          ? Colors.grey
+                          ? colors.onSurfaceVariant
                           : const Color(0xFF4CAF50),
                     ),
                     const SizedBox(width: 6),
@@ -692,9 +589,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                       selectedLocationLabel == null
                           ? 'Tap map to pin'
                           : 'Pin selected',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
+                        color: colors.onSurface,
                       ),
                     ),
                   ],
@@ -707,12 +605,10 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
             top: 12,
             child: FloatingActionButton.small(
               heroTag: 'expand-map',
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
+              foregroundColor: colors.onSurface,
               onPressed: _showExpandedMap,
-              child: const Icon(
-                Icons.open_in_full,
-                color: Colors.black87,
-              ),
+              child: const Icon(Icons.open_in_full),
             ),
           ),
         ],
@@ -721,29 +617,6 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildGoogleMap() {
-    if (kIsWeb) {
-      return Container(
-        color: const Color(0xFFF9F9F9),
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.map, size: 48, color: Colors.grey),
-                SizedBox(height: 12),
-                Text(
-                  'Map unavailable on Web.\nAdd the Google Maps JS API key to web/index.html or run on a device.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     final fallbackTarget = selectedLocation ?? const LatLng(14.5995, 120.9842);
 
     return GoogleMap(
@@ -773,15 +646,15 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildSaveButton() {
+    final colors = Theme.of(context).colorScheme;
+
     return ElevatedButton(
       onPressed: isSavingPlan ? null : _handleSavePlan,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFFFB84D),
-        disabledBackgroundColor: Colors.grey.shade300,
+        disabledBackgroundColor: colors.surfaceContainerHighest,
         minimumSize: const Size(double.infinity, 55),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,
       ),
       child: isSavingPlan
@@ -805,13 +678,16 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   }
 
   Widget _buildFieldLabel(String label) {
+    final colors = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 14,
+          color: colors.onSurface,
         ),
       ),
     );
@@ -824,103 +700,79 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     ValueChanged<String>? onSubmitted,
     ValueChanged<String>? onChanged,
   }) {
+    final colors = Theme.of(context).colorScheme;
+
     return TextField(
       controller: controller,
-      textInputAction:
-          icon != null ? TextInputAction.search : TextInputAction.done,
+      style: TextStyle(color: colors.onSurface),
+      cursorColor: const Color(0xFFFFB84D),
+      textInputAction: icon != null
+          ? TextInputAction.search
+          : TextInputAction.done,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: TextStyle(color: colors.onSurfaceVariant),
         prefixIcon: icon != null
-            ? Icon(
-                icon,
-                color: Colors.grey,
-                size: 20,
-              )
+            ? Icon(icon, color: colors.onSurfaceVariant, size: 20)
             : null,
         filled: true,
-        fillColor: const Color(0xFFF9F9F9),
+        fillColor: colors.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colors.outlineVariant),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSuggestionList() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: locationSuggestions.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final suggestion = locationSuggestions[index];
-
-          return ListTile(
-            dense: true,
-            leading: const Icon(
-              Icons.place_outlined,
-              color: Color(0xFFFFB84D),
-            ),
-            title: Text(
-              suggestion.label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () => _selectSuggestion(suggestion),
-          );
-        },
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFFFB84D), width: 1.5),
+        ),
       ),
     );
   }
 
   Widget _buildPickerBox(String text, IconData icon, VoidCallback onTap) {
     final bool isSelected = !text.contains("Select");
+    final colors = Theme.of(context).colorScheme;
 
     return InkWell(
       onTap: isSavingPlan ? null : onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 15,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9F9F9),
+          color: colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.outlineVariant),
         ),
         child: Row(
           children: [
             Icon(
               icon,
               size: 18,
-              color: isSelected ? const Color(0xFFFFB84D) : Colors.grey,
+              color: isSelected
+                  ? const Color(0xFFFFB84D)
+                  : colors.onSurfaceVariant,
             ),
             const SizedBox(width: 10),
-            Text(
-              text,
-              style: TextStyle(
-                color: isSelected ? Colors.black : Colors.grey,
-                fontSize: 14,
+            Expanded(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isSelected
+                      ? colors.onSurface
+                      : colors.onSurfaceVariant,
+                  fontSize: 14,
+                ),
               ),
             ),
           ],
@@ -936,8 +788,5 @@ class _LocationResult {
   final LatLng location;
   final String label;
 
-  const _LocationResult({
-    required this.location,
-    required this.label,
-  });
+  const _LocationResult({required this.location, required this.label});
 }

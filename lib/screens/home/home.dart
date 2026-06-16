@@ -13,12 +13,9 @@ import '../plans/join_plan.dart';
 import '../plans/plan_dashboard/plan_dashboard.dart';
 
 const Color _brandYellow = Color(0xFFF2B73F);
-const Color _brandYellowDark = Color(0xFFD89B22);
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-  });
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() {
@@ -41,18 +38,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadCurrentUser();
     _loadUpcomingPlans();
 
-    _switchTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) {
-        if (!mounted) {
-          return;
-        }
+    _switchTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) {
+        return;
+      }
 
-        setState(() {
-          _showWheel = !_showWheel;
-        });
-      },
-    );
+      setState(() {
+        _showWheel = !_showWheel;
+      });
+    });
   }
 
   @override
@@ -64,17 +58,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadCurrentUser() async {
     try {
-      final settingsResult =
-          await AuthService.getUserSettings();
+      final settingsResult = await AuthService.getUserSettings();
 
       Map<String, dynamic>? user;
 
       final rawUser = settingsResult['user'];
 
       if (rawUser is Map) {
-        user = Map<String, dynamic>.from(
-          rawUser,
-        );
+        user = Map<String, dynamic>.from(rawUser);
       }
 
       user ??= await AuthService.getCurrentUser();
@@ -83,14 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      ProfileService.instance.syncFromUser(
-        user,
-        clearAvatarWhenMissing: true,
-      );
+      ProfileService.instance.syncFromUser(user, clearAvatarWhenMissing: true);
     } catch (error) {
-      debugPrint(
-        'HOME USER LOAD ERROR: $error',
-      );
+      debugPrint('HOME USER LOAD ERROR: $error');
     }
   }
 
@@ -104,18 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final result = await PlanService.getPlans();
 
-      final plansByMe = _parsePlans(
-        result['plans_by_me'],
-      );
+      final plansByMe = _parsePlans(result['plans_by_me']);
 
-      final plansWithMe = _parsePlans(
-        result['plans_with_me'],
-      );
+      final plansWithMe = _parsePlans(result['plans_with_me']);
 
-      final combinedPlans = [
-        ...plansByMe,
-        ...plansWithMe,
-      ];
+      final combinedPlans = [...plansByMe, ...plansWithMe];
 
       if (!mounted) {
         return;
@@ -134,9 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoadingPlans = false;
       });
 
-      debugPrint(
-        'HOME PLANS LOAD ERROR: $error',
-      );
+      debugPrint('HOME PLANS LOAD ERROR: $error');
     }
   }
 
@@ -147,27 +124,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return rawPlans
         .whereType<Map>()
-        .map(
-          (item) => Plan.fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
+        .map((item) => Plan.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
   Future<void> _refreshHome() async {
-    await Future.wait([
-      _loadCurrentUser(),
-      _loadUpcomingPlans(),
-    ]);
+    await Future.wait([_loadCurrentUser(), _loadUpcomingPlans()]);
   }
 
   Future<void> _openCreatePlan() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CreatePlanPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const CreatePlanPage()),
     );
 
     if (!mounted) {
@@ -180,9 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openJoinPlan() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const JoinPlanPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const JoinPlanPage()),
     );
 
     if (!mounted) {
@@ -195,11 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openPlanDashboard(Plan plan) {
     if (plan.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Unable to open plan. Missing plan ID.',
-          ),
-        ),
+        const SnackBar(content: Text('Unable to open plan. Missing plan ID.')),
       );
 
       return;
@@ -207,22 +169,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => PlanDashboardScreen(
-          planId: plan.id!,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => PlanDashboardScreen(planId: plan.id!)),
     ).then((_) {
       _loadUpcomingPlans();
     });
   }
 
-  String _getPlanDateLocationText(
-    Plan plan,
-  ) {
+  String _getPlanDateLocationText(Plan plan) {
     final hasDate = plan.date.trim().isNotEmpty;
-    final hasLocation =
-        plan.location.trim().isNotEmpty;
+    final hasLocation = plan.location.trim().isNotEmpty;
 
     if (hasDate && hasLocation) {
       return '${plan.date} • ${plan.location}';
@@ -251,10 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 20,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -267,31 +219,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (_isLoadingPlans)
                   const Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 40,
-                      ),
-                      child: CircularProgressIndicator(
-                        color: _brandYellow,
-                      ),
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: CircularProgressIndicator(color: _brandYellow),
                     ),
                   )
                 else if (_upcomingPlans.isEmpty)
                   _buildEmptyPlansState()
                 else
-                  ..._upcomingPlans.map(
-                    (plan) {
-                      return HomePlanCard(
-                        plan: plan,
-                        dateLocationText:
-                            _getPlanDateLocationText(
-                          plan,
-                        ),
-                        onTap: () {
-                          _openPlanDashboard(plan);
-                        },
-                      );
-                    },
-                  ),
+                  ..._upcomingPlans.map((plan) {
+                    return HomePlanCard(
+                      plan: plan,
+                      dateLocationText: _getPlanDateLocationText(plan),
+                      onTap: () {
+                        _openPlanDashboard(plan);
+                      },
+                    );
+                  }),
                 const SizedBox(height: 100),
               ],
             ),
@@ -314,17 +257,11 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ValueListenableBuilder<String>(
-                valueListenable:
-                    ProfileService.instance.name,
-                builder: (
-                  context,
-                  profileName,
-                  child,
-                ) {
-                  final displayName =
-                      profileName.trim().isEmpty
-                          ? 'User'
-                          : profileName.trim();
+                valueListenable: ProfileService.instance.name,
+                builder: (context, profileName, child) {
+                  final displayName = profileName.trim().isEmpty
+                      ? 'User'
+                      : profileName.trim();
 
                   return Text(
                     'Hello, $displayName!',
@@ -357,15 +294,11 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const MainWrapper(
-                  initialIndex: 3,
-                ),
+                builder: (_) => const MainWrapper(initialIndex: 3),
               ),
             );
           },
-          child: const ProfileAvatar(
-            radius: 19,
-          ),
+          child: const ProfileAvatar(radius: 19),
         ),
       ],
     );
@@ -374,8 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildQuickDecisionCard() {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final isDark =
-        theme.brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(17),
@@ -383,15 +315,11 @@ class _HomeScreenState extends State<HomeScreen> {
         color: colors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: colors.outlineVariant.withValues(
-            alpha: 0.65,
-          ),
+          color: colors.outlineVariant.withValues(alpha: 0.65),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: isDark ? 0.20 : 0.05,
-            ),
+            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -427,8 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            const QuickDecisionPage(),
+                        builder: (_) => const QuickDecisionPage(),
                       ),
                     );
                   },
@@ -447,10 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: const Text(
                     'Try it now',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
               ],
@@ -458,17 +382,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 12),
           AnimatedSwitcher(
-            duration: const Duration(
-              milliseconds: 500,
-            ),
-            transitionBuilder: (
-              child,
-              animation,
-            ) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(opacity: animation, child: child);
             },
             child: _showWheel
                 ? Image.asset(
@@ -509,9 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const MainWrapper(
-                  initialIndex: 1,
-                ),
+                builder: (_) => const MainWrapper(initialIndex: 1),
               ),
             );
           },
@@ -541,29 +455,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildEmptyPlansState() {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final isDark =
-        theme.brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
-        22,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
       decoration: BoxDecoration(
         color: isDark
-            ? _brandYellow.withValues(
-                alpha: 0.08,
-              )
+            ? _brandYellow.withValues(alpha: 0.08)
             : const Color(0xFFFFFAEF),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark
-              ? _brandYellow.withValues(
-                  alpha: 0.30,
-                )
+              ? _brandYellow.withValues(alpha: 0.30)
               : const Color(0xFFFFE4AD),
           width: 1,
         ),
@@ -574,9 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: _brandYellow.withValues(
-                alpha: isDark ? 0.22 : 0.18,
-              ),
+              color: _brandYellow.withValues(alpha: isDark ? 0.22 : 0.18),
               borderRadius: BorderRadius.circular(18),
             ),
             child: const Icon(
@@ -622,10 +524,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: const Text(
                     'Create Plan',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
               ),
@@ -636,20 +535,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colors.onSurface,
                     minimumSize: const Size(0, 44),
-                    side: const BorderSide(
-                      color: _brandYellow,
-                      width: 1.4,
-                    ),
+                    side: const BorderSide(color: _brandYellow, width: 1.4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text(
                     'Join Plan',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
               ),
@@ -677,11 +570,9 @@ class HomePlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final isDark =
-        theme.brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
 
-    final bannerColor =
-        Plan.parseColor(plan.bannerColor);
+    final bannerColor = Plan.parseColor(plan.bannerColor);
 
     return Material(
       color: Colors.transparent,
@@ -689,22 +580,16 @@ class HomePlanCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          margin: const EdgeInsets.only(
-            bottom: 14,
-          ),
+          margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
             color: colors.surface,
             border: Border.all(
-              color: colors.outlineVariant.withValues(
-                alpha: 0.72,
-              ),
+              color: colors.outlineVariant.withValues(alpha: 0.72),
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: isDark ? 0.18 : 0.035,
-                ),
+                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.035),
                 blurRadius: 9,
                 offset: const Offset(0, 3),
               ),
@@ -717,30 +602,22 @@ class HomePlanCard extends StatelessWidget {
                   width: 8,
                   decoration: BoxDecoration(
                     color: bannerColor,
-                    borderRadius:
-                        const BorderRadius.horizontal(
+                    borderRadius: const BorderRadius.horizontal(
                       left: Radius.circular(16),
                     ),
                   ),
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      14,
-                      14,
-                      14,
-                      12,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           plan.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              theme.textTheme.titleMedium?.copyWith(
+                          style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: colors.onSurface,
@@ -751,8 +628,7 @@ class HomePlanCard extends StatelessWidget {
                           dateLocationText,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              theme.textTheme.bodySmall?.copyWith(
+                          style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.onSurfaceVariant,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -760,15 +636,13 @@ class HomePlanCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _PlanMemberAvatarStack(
+                              members: plan.members,
                               surfaceColor: colors.surface,
-                              avatarBackground: colors
-                                  .surfaceContainerHighest,
-                              iconColor:
-                                  colors.onSurfaceVariant,
+                              avatarBackground: colors.surfaceContainerHighest,
+                              iconColor: colors.onSurfaceVariant,
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -777,8 +651,7 @@ class HomePlanCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: plan.statusColor,
-                                borderRadius:
-                                    BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 plan.status,
@@ -806,67 +679,239 @@ class HomePlanCard extends StatelessWidget {
 
 class _PlanMemberAvatarStack extends StatelessWidget {
   const _PlanMemberAvatarStack({
+    required this.members,
     required this.surfaceColor,
     required this.avatarBackground,
     required this.iconColor,
   });
 
+  final List<Map<String, dynamic>> members;
   final Color surfaceColor;
   final Color avatarBackground;
   final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
+    final visibleMembers = members.take(3).toList();
+    final overflowCount = members.length - visibleMembers.length;
+    final hasMembers = visibleMembers.isNotEmpty;
+    final stackWidth = hasMembers
+        ? 24.0 +
+              ((visibleMembers.length - 1) * 15.0) +
+              (overflowCount > 0 ? 30.0 : 0.0)
+        : 72.0;
+
     return SizedBox(
-      width: 72,
+      width: stackWidth,
       height: 24,
       child: Stack(
-        children: [
-          _buildAvatar(
-            left: 0,
-            backgroundColor: avatarBackground,
-          ),
-          _buildAvatar(
-            left: 15,
-            backgroundColor: avatarBackground.withValues(
-              alpha: 0.92,
-            ),
-          ),
-          _buildAvatar(
-            left: 30,
-            backgroundColor: avatarBackground.withValues(
-              alpha: 0.84,
-            ),
-          ),
-        ],
+        clipBehavior: Clip.none,
+        children: hasMembers
+            ? _buildMemberItems(visibleMembers, overflowCount)
+            : [
+                _buildFallbackAvatar(
+                  left: 0,
+                  backgroundColor: avatarBackground,
+                ),
+                _buildFallbackAvatar(
+                  left: 15,
+                  backgroundColor: avatarBackground.withValues(alpha: 0.92),
+                ),
+                _buildFallbackAvatar(
+                  left: 30,
+                  backgroundColor: avatarBackground.withValues(alpha: 0.84),
+                ),
+              ],
       ),
     );
+  }
+
+  List<Widget> _buildMemberItems(
+    List<Map<String, dynamic>> visibleMembers,
+    int overflowCount,
+  ) {
+    final items = <Widget>[];
+
+    for (var index = 0; index < visibleMembers.length; index++) {
+      items.add(
+        _buildAvatar(
+          left: index * 15.0,
+          member: visibleMembers[index],
+          backgroundColor: avatarBackground.withValues(
+            alpha: 1 - (index * 0.08),
+          ),
+        ),
+      );
+    }
+
+    if (overflowCount > 0) {
+      items.add(
+        _buildOverflowBadge(
+          left: visibleMembers.length * 15.0,
+          overflowCount: overflowCount,
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  Widget _buildFallbackAvatar({
+    required double left,
+    required Color backgroundColor,
+  }) {
+    return _buildAvatar(left: left, backgroundColor: backgroundColor);
   }
 
   Widget _buildAvatar({
     required double left,
     required Color backgroundColor,
+    Map<String, dynamic>? member,
   }) {
     return Positioned(
       left: left,
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: surfaceColor,
-            width: 1.5,
-          ),
+          border: Border.all(color: surfaceColor, width: 1.5),
         ),
         child: CircleAvatar(
           radius: 12,
           backgroundColor: backgroundColor,
-          child: Icon(
-            Icons.person_rounded,
-            size: 13,
+          backgroundImage: _memberPhotoProvider(member),
+          child: _memberPhotoProvider(member) == null
+              ? _memberFallbackContent(member)
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverflowBadge({
+    required double left,
+    required int overflowCount,
+  }) {
+    return Positioned(
+      left: left,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: avatarBackground,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: surfaceColor, width: 1.5),
+        ),
+        child: Text(
+          '+$overflowCount',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
             color: iconColor,
           ),
         ),
       ),
     );
+  }
+
+  ImageProvider<Object>? _memberPhotoProvider(Map<String, dynamic>? member) {
+    final photoUrl = _memberPhotoUrl(member);
+
+    if (photoUrl == null) {
+      return null;
+    }
+
+    return NetworkImage(photoUrl);
+  }
+
+  Widget _memberFallbackContent(Map<String, dynamic>? member) {
+    final initials = _memberInitials(member);
+
+    if (initials.isEmpty) {
+      return Icon(Icons.person_rounded, size: 13, color: iconColor);
+    }
+
+    return Text(
+      initials,
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+        color: iconColor,
+      ),
+    );
+  }
+
+  String? _memberPhotoUrl(Map<String, dynamic>? member) {
+    if (member == null) {
+      return null;
+    }
+
+    final nestedUser = member['user'];
+
+    final possibleValues = [
+      member['photo_url'],
+      member['profile_photo_url'],
+      member['avatar_url'],
+      if (nestedUser is Map)
+        nestedUser['photo_url'] ??
+            nestedUser['profile_photo_url'] ??
+            nestedUser['avatar_url'],
+    ];
+
+    for (final value in possibleValues) {
+      final url = value?.toString().trim();
+
+      if (url != null && url.isNotEmpty) {
+        return url;
+      }
+    }
+
+    return null;
+  }
+
+  String _memberInitials(Map<String, dynamic>? member) {
+    if (member == null) {
+      return '';
+    }
+
+    final nestedUser = member['user'];
+    final name = _firstNonEmptyString([
+      member['name'],
+      if (nestedUser is Map) nestedUser['name'],
+      member['username'],
+      if (nestedUser is Map) nestedUser['username'],
+      member['email'],
+      if (nestedUser is Map) nestedUser['email'],
+    ]);
+
+    if (name.isEmpty) {
+      return '';
+    }
+
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    if (parts.isEmpty) {
+      return '';
+    }
+
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  String _firstNonEmptyString(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim();
+
+      if (text != null && text.isNotEmpty) {
+        return text;
+      }
+    }
+
+    return '';
   }
 }

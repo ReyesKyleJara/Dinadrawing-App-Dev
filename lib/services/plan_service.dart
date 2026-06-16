@@ -227,6 +227,49 @@ class PlanService {
     return _resultFromResponse(response);
   }
 
+  static Future<Map<String, dynamic>> getPostEventStatus(int planId) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/plans/$planId/post-event-status'),
+      headers: headers,
+    );
+
+    return _resultFromResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> resolvePostEvent({
+    required int planId,
+    required String action,
+    String? planDate,
+    String? planTime,
+  }) async {
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/plans/$planId/post-event'),
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{
+        'action': action,
+        if (planDate != null) 'plan_date': planDate,
+        'plan_time': planTime,
+      }),
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to update the post-event status.',
+    );
+  }
+
   static Future<Map<String, dynamic>> joinPlan({
     required String inviteCode,
   }) async {
@@ -420,6 +463,27 @@ class PlanService {
     return _resultFromResponse(
       response,
       fallbackMessage: 'Unable to mark activity as read.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> removePlanMember({
+    required int planId,
+    required int memberId,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/plans/$planId/members/$memberId'),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to remove this member.',
     );
   }
 

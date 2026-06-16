@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../services/auth_service.dart';
 import '../../../services/plan_service.dart';
 
 class MembersPage extends StatefulWidget {
@@ -22,6 +23,10 @@ class _MembersPageState extends State<MembersPage> {
 
   bool isLoading = true;
   String? errorMessage;
+
+  int? _currentUserId;
+  int? _planAdminId;
+  final Set<int> _removingMemberIds = <int>{};
 
   @override
   void initState() {
@@ -236,6 +241,21 @@ class _MembersPageState extends State<MembersPage> {
     return false;
   }
 
+  bool get _currentUserIsPlanAdmin {
+    return _currentUserId != null &&
+        _planAdminId != null &&
+        _currentUserId == _planAdminId;
+  }
+
+  bool _canRemoveMember(Map<String, dynamic> member) {
+    final memberId = _getMemberId(member);
+
+    return _currentUserIsPlanAdmin &&
+        memberId != null &&
+        memberId != _currentUserId &&
+        !_isPlanAdmin(member);
+  }
+
   Future<void> _fetchMembers() async {
     if (mounted) {
       setState(() {
@@ -245,7 +265,9 @@ class _MembersPageState extends State<MembersPage> {
     }
 
     try {
+      final currentUserFuture = AuthService.getCurrentUser();
       final result = await PlanService.getPlanById(widget.planId);
+      final currentUser = await currentUserFuture;
 
       final rawPlan = result['plan'];
 
@@ -303,14 +325,10 @@ class _MembersPageState extends State<MembersPage> {
           combinedMembers.add(separateAdmin);
         } else {
           combinedMembers[existingIndex]['is_plan_admin'] = true;
-
           combinedMembers[existingIndex]['name'] ??= separateAdmin['name'];
-
           combinedMembers[existingIndex]['username'] ??=
               separateAdmin['username'];
-
           combinedMembers[existingIndex]['email'] ??= separateAdmin['email'];
-
           combinedMembers[existingIndex]['photo_url'] ??=
               separateAdmin['photo_url'];
         }
@@ -334,10 +352,15 @@ class _MembersPageState extends State<MembersPage> {
       }
 
       uniqueMembers.sort((first, second) {
+        final firstIsAdmin = _isPlanAdmin(first);
+        final secondIsAdmin = _isPlanAdmin(second);
+
+        if (firstIsAdmin != secondIsAdmin) {
+          return firstIsAdmin ? -1 : 1;
+        }
+
         final firstName = _getMemberName(first).toLowerCase();
-
         final secondName = _getMemberName(second).toLowerCase();
-
         final nameComparison = firstName.compareTo(secondName);
 
         if (nameComparison != 0) {
@@ -345,7 +368,6 @@ class _MembersPageState extends State<MembersPage> {
         }
 
         final firstUsername = _getMemberUsername(first)?.toLowerCase() ?? '';
-
         final secondUsername = _getMemberUsername(second)?.toLowerCase() ?? '';
 
         return firstUsername.compareTo(secondUsername);
@@ -357,6 +379,8 @@ class _MembersPageState extends State<MembersPage> {
 
       setState(() {
         members = uniqueMembers;
+        _planAdminId = adminId;
+        _currentUserId = _parseNullableInt(currentUser?['id']);
 
         inviteCode = plan['invite_code']?.toString().trim() ?? 'No Code';
 
@@ -378,12 +402,137 @@ class _MembersPageState extends State<MembersPage> {
     }
   }
 
+  Future<void> _confirmRemoveMember(Map<String, dynamic> member) async {
+    final memberId = _getMemberId(member);
+    final name = _getMemberName(member);
+
+    if (memberId == null || !_canRemoveMember(member)) {
+      return;
+    }
+
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: colors.errorContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.person_remove_alt_1_rounded,
+              color: colors.onErrorContainer,
+            ),
+          ),
+          title: Text(
+            'Remove $name?',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Text(
+            '$name will lose access to this plan. Their previous posts and '
+            'budget history will remain for record purposes.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+              height: 1.45,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: colors.onError,
+              ),
+              child: const Text(
+                'Remove Member',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _removingMemberIds.add(memberId);
+    });
+
+    final result = await PlanService.removePlanMember(
+      planId: widget.planId,
+      memberId: memberId,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _removingMemberIds.remove(memberId);
+    });
+
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Unable to remove this member.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      members.removeWhere((item) => _getMemberId(item) == memberId);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result['message']?.toString() ?? '$name was removed from the plan.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        foregroundColor: colors.onSurface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leadingWidth: 100,
         leading: TextButton.icon(
@@ -404,18 +553,21 @@ class _MembersPageState extends State<MembersPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Members',
-                style: TextStyle(
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: colors.onSurface,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'See plan members and invite new people.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 28),
               Expanded(child: _buildMembersContent()),
@@ -427,8 +579,8 @@ class _MembersPageState extends State<MembersPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandYellow,
                     foregroundColor: Colors.black,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    disabledForegroundColor: Colors.grey.shade600,
+                    disabledBackgroundColor: colors.surfaceContainerHighest,
+                    disabledForegroundColor: colors.onSurfaceVariant,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -449,6 +601,9 @@ class _MembersPageState extends State<MembersPage> {
   }
 
   Widget _buildMembersContent() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     if (isLoading) {
       return const Center(child: CircularProgressIndicator(color: brandYellow));
     }
@@ -461,13 +616,16 @@ class _MembersPageState extends State<MembersPage> {
             Icon(
               Icons.group_off_outlined,
               size: 44,
-              color: Colors.grey.shade400,
+              color: colors.onSurfaceVariant.withValues(alpha: 0.55),
             ),
             const SizedBox(height: 12),
             Text(
               errorMessage!,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 13,
+                color: colors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             TextButton.icon(
@@ -485,7 +643,10 @@ class _MembersPageState extends State<MembersPage> {
       return Center(
         child: Text(
           'No members found.',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 13,
+            color: colors.onSurfaceVariant,
+          ),
         ),
       );
     }
@@ -497,7 +658,10 @@ class _MembersPageState extends State<MembersPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: members.length,
         separatorBuilder: (_, _) {
-          return const SizedBox(height: 4);
+          return Divider(
+            height: 1,
+            color: colors.outlineVariant.withValues(alpha: 0.45),
+          );
         },
         itemBuilder: (context, index) {
           return _buildMemberItem(members[index]);
@@ -507,12 +671,14 @@ class _MembersPageState extends State<MembersPage> {
   }
 
   Widget _buildMemberItem(Map<String, dynamic> member) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final name = _getMemberName(member);
     final username = _getMemberUsername(member);
     final photoUrl = _getMemberPhotoUrl(member);
     final isAdmin = _isPlanAdmin(member);
 
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
@@ -526,10 +692,10 @@ class _MembersPageState extends State<MembersPage> {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Colors.black87,
+                    color: colors.onSurface,
                   ),
                 ),
                 if (username != null) ...[
@@ -538,15 +704,18 @@ class _MembersPageState extends State<MembersPage> {
                     username,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 4),
                 Text(
                   isAdmin ? 'Plan Admin' : 'Member',
-                  style: TextStyle(
+                  style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: colors.onSurfaceVariant,
                     fontWeight: FontWeight.normal,
                   ),
                 ),
@@ -564,14 +733,16 @@ class _MembersPageState extends State<MembersPage> {
     required String? photoUrl,
     required bool isAdmin,
   }) {
+    final colors = Theme.of(context).colorScheme;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
         CircleAvatar(
           radius: 23,
           backgroundColor: isAdmin
-              ? const Color(0xFFFFF2CF)
-              : Colors.grey.shade200,
+              ? brandYellow.withValues(alpha: 0.20)
+              : colors.surfaceContainerHighest,
           backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
           child: photoUrl == null
               ? Text(
@@ -579,7 +750,7 @@ class _MembersPageState extends State<MembersPage> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: isAdmin ? brandYellowDark : Colors.black87,
+                    color: isAdmin ? brandYellowDark : colors.onSurface,
                   ),
                 )
               : null,
@@ -595,7 +766,7 @@ class _MembersPageState extends State<MembersPage> {
               decoration: BoxDecoration(
                 color: brandYellow,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFF9F9FB), width: 2),
+                border: Border.all(color: colors.surface, width: 2),
               ),
               child: const Icon(
                 Icons.star_rounded,
@@ -612,59 +783,84 @@ class _MembersPageState extends State<MembersPage> {
     required Map<String, dynamic> member,
     required bool isAdmin,
   }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final memberId = _getMemberId(member);
+    final isRemoving =
+        memberId != null && _removingMemberIds.contains(memberId);
+    final canRemove = _canRemoveMember(member);
+
+    if (isRemoving) {
+      return const SizedBox(
+        width: 40,
+        height: 40,
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: CircularProgressIndicator(strokeWidth: 2, color: brandYellow),
+        ),
+      );
+    }
+
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_horiz, color: Colors.grey),
+      icon: Icon(Icons.more_horiz, color: colors.onSurfaceVariant),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       offset: const Offset(0, 40),
-      color: Colors.white,
+      color: colors.surface,
+      surfaceTintColor: Colors.transparent,
       elevation: 4,
-      onSelected: (value) {
+      onSelected: (value) async {
         final name = _getMemberName(member);
 
         if (value == 'message') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Messaging $name is coming soon.')),
           );
-
           return;
         }
 
         if (value == 'remove') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Remove member is coming soon.')),
-          );
+          await _confirmRemoveMember(member);
         }
       },
       itemBuilder: (context) {
         return [
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'message',
             child: Row(
               children: [
                 Icon(
                   Icons.chat_bubble_outline,
                   size: 18,
-                  color: Colors.black87,
+                  color: colors.onSurface,
                 ),
-                SizedBox(width: 12),
-                Text('Message', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 12),
+                Text(
+                  'Message',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurface,
+                    fontSize: 14,
+                  ),
+                ),
               ],
             ),
           ),
-          if (!isAdmin)
-            const PopupMenuItem<String>(
+          if (canRemove)
+            PopupMenuItem<String>(
               value: 'remove',
               child: Row(
                 children: [
                   Icon(
                     Icons.remove_circle_outline,
                     size: 18,
-                    color: Colors.redAccent,
+                    color: colors.error,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Text(
                     'Remove Member',
-                    style: TextStyle(fontSize: 14, color: Colors.redAccent),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 14,
+                      color: colors.error,
+                    ),
                   ),
                 ],
               ),
@@ -915,7 +1111,9 @@ class _MembersPageState extends State<MembersPage> {
                                   : Icons.error_outline_rounded,
                               size: 17,
                               color: isSuccess
-                                  ? Colors.green.shade700
+                                  ? (theme.brightness == Brightness.dark
+                                        ? Colors.greenAccent.shade400
+                                        : Colors.green.shade700)
                                   : colors.error,
                             ),
                             const SizedBox(width: 7),
@@ -924,7 +1122,9 @@ class _MembersPageState extends State<MembersPage> {
                                 inlineMessage!,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isSuccess
-                                      ? Colors.green.shade700
+                                      ? (theme.brightness == Brightness.dark
+                                            ? Colors.greenAccent.shade400
+                                            : Colors.green.shade700)
                                       : colors.error,
                                   fontWeight: FontWeight.w700,
                                   height: 1.35,

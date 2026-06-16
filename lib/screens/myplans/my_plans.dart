@@ -516,7 +516,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
               });
             },
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 1),
           _buildViewButton(
             assetPath: 'images/grid.png',
             selected: _isDetailedView,
@@ -532,12 +532,12 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
             tooltip: 'More options',
             icon: Icon(
               Icons.more_vert_rounded,
-              size: 21,
+              size: 18,
               color: colors.onSurface,
             ),
             padding: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             color: colors.surface,
             offset: const Offset(0, 42),
@@ -587,18 +587,18 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
       message: tooltip,
       child: Material(
         color: selected ? colors.primaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(8),
           child: SizedBox(
-            width: 31,
-            height: 31,
+            width: 28,
+            height: 28,
             child: Center(
               child: Image.asset(
                 assetPath,
-                width: 17,
-                height: 17,
+                width: 15,
+                height: 15,
                 color: selected
                     ? colors.onPrimaryContainer
                     : colors.onSurfaceVariant,
@@ -608,7 +608,7 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                     selected
                         ? Icons.grid_view_rounded
                         : Icons.view_list_rounded,
-                    size: 18,
+                    size: 16,
                     color: selected
                         ? colors.onPrimaryContainer
                         : colors.onSurfaceVariant,
@@ -634,13 +634,13 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
 
     return Row(
       children: [
-        Icon(icon, size: 19, color: foreground),
-        const SizedBox(width: 11),
+        Icon(icon, size: 17, color: foreground),
+        const SizedBox(width: 9),
         Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: foreground,
-            fontSize: 13,
+            fontSize: 12.5,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -940,7 +940,13 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildRolePill(plan),
+                            _PlanMemberAvatarStack(
+                              members: plan.members,
+                              surfaceColor: colors.surface,
+                              avatarBackground:
+                                  colors.surfaceContainerHighest,
+                              iconColor: colors.onSurfaceVariant,
+                            ),
                             _buildStatusPill(plan.status),
                           ],
                         ),
@@ -1027,7 +1033,11 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
                   ],
                 ),
               ),
-              if (_isAdmin(plan)) _buildPlanMenu(plan),
+              _buildStatusPill(plan.status),
+              if (_isAdmin(plan)) ...[
+                const SizedBox(width: 8),
+                _buildPlanMenu(plan),
+              ],
             ],
           ),
         ),
@@ -1087,45 +1097,6 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
     );
   }
 
-  Widget _buildRolePill(Plan plan) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    final isAdmin = _isAdmin(plan);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: isAdmin
-            ? _brandYellow.withValues(alpha: isDark ? 0.20 : 0.18)
-            : colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isAdmin ? Icons.star_rounded : Icons.person_outline_rounded,
-            size: 12,
-            color: isAdmin ? _brandYellowDark : colors.onSurfaceVariant,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            isAdmin ? 'Admin' : 'Member',
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: isAdmin
-                  ? (isDark ? _brandYellow : _brandYellowDark)
-                  : colors.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatusPill(String status) {
     final backgroundColor = Plan.getStatusColor(status);
 
@@ -1146,5 +1117,249 @@ class _MyPlansScreenState extends State<MyPlansScreen> {
         ),
       ),
     );
+  }
+}
+
+class _PlanMemberAvatarStack extends StatelessWidget {
+  const _PlanMemberAvatarStack({
+    required this.members,
+    required this.surfaceColor,
+    required this.avatarBackground,
+    required this.iconColor,
+  });
+
+  final List<Map<String, dynamic>> members;
+  final Color surfaceColor;
+  final Color avatarBackground;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleMembers = members.take(3).toList();
+    final overflowCount = members.length - visibleMembers.length;
+    final hasMembers = visibleMembers.isNotEmpty;
+    final stackWidth = hasMembers
+        ? 24.0 + ((visibleMembers.length - 1) * 15.0) +
+            (overflowCount > 0 ? 30.0 : 0.0)
+        : 72.0;
+
+    return SizedBox(
+      width: stackWidth,
+      height: 24,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: hasMembers
+            ? _buildMemberItems(visibleMembers, overflowCount)
+            : [
+                _buildFallbackAvatar(
+                  left: 0,
+                  backgroundColor: avatarBackground,
+                ),
+                _buildFallbackAvatar(
+                  left: 15,
+                  backgroundColor: avatarBackground.withValues(alpha: 0.92),
+                ),
+                _buildFallbackAvatar(
+                  left: 30,
+                  backgroundColor: avatarBackground.withValues(alpha: 0.84),
+                ),
+              ],
+      ),
+    );
+  }
+
+  List<Widget> _buildMemberItems(
+    List<Map<String, dynamic>> visibleMembers,
+    int overflowCount,
+  ) {
+    final items = <Widget>[];
+
+    for (var index = 0; index < visibleMembers.length; index++) {
+      items.add(
+        _buildAvatar(
+          left: index * 15.0,
+          member: visibleMembers[index],
+          backgroundColor: avatarBackground.withValues(
+            alpha: 1 - (index * 0.08),
+          ),
+        ),
+      );
+    }
+
+    if (overflowCount > 0) {
+      items.add(
+        _buildOverflowBadge(
+          left: visibleMembers.length * 15.0,
+          overflowCount: overflowCount,
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  Widget _buildFallbackAvatar({
+    required double left,
+    required Color backgroundColor,
+  }) {
+    return _buildAvatar(
+      left: left,
+      backgroundColor: backgroundColor,
+    );
+  }
+
+  Widget _buildAvatar({
+    required double left,
+    required Color backgroundColor,
+    Map<String, dynamic>? member,
+  }) {
+    return Positioned(
+      left: left,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: surfaceColor,
+            width: 1.5,
+          ),
+        ),
+        child: CircleAvatar(
+          radius: 12,
+          backgroundColor: backgroundColor,
+          backgroundImage: _memberPhotoProvider(member),
+          child: _memberPhotoProvider(member) == null
+              ? _memberFallbackContent(member)
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverflowBadge({
+    required double left,
+    required int overflowCount,
+  }) {
+    return Positioned(
+      left: left,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: avatarBackground,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: surfaceColor,
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          '+$overflowCount',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: iconColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  ImageProvider<Object>? _memberPhotoProvider(Map<String, dynamic>? member) {
+    if (member == null) {
+      return null;
+    }
+
+    final nestedUser = member['user'];
+
+    final possibleValues = [
+      member['photo_url'],
+      member['profile_photo_url'],
+      member['avatar_url'],
+      if (nestedUser is Map)
+        nestedUser['photo_url'] ??
+            nestedUser['profile_photo_url'] ??
+            nestedUser['avatar_url'],
+    ];
+
+    for (final value in possibleValues) {
+      final url = value?.toString().trim();
+
+      if (url != null && url.isNotEmpty) {
+        return NetworkImage(url);
+      }
+    }
+
+    return null;
+  }
+
+  Widget _memberFallbackContent(Map<String, dynamic>? member) {
+    final initials = _memberInitials(member);
+
+    if (initials.isEmpty) {
+      return Icon(
+        Icons.person_rounded,
+        size: 13,
+        color: iconColor,
+      );
+    }
+
+    return Text(
+      initials,
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+        color: iconColor,
+      ),
+    );
+  }
+
+  String _memberInitials(Map<String, dynamic>? member) {
+    if (member == null) {
+      return '';
+    }
+
+    final nestedUser = member['user'];
+    final name = _firstNonEmptyString([
+      member['name'],
+      if (nestedUser is Map) nestedUser['name'],
+      member['username'],
+      if (nestedUser is Map) nestedUser['username'],
+      member['email'],
+      if (nestedUser is Map) nestedUser['email'],
+    ]);
+
+    if (name.isEmpty) {
+      return '';
+    }
+
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    if (parts.isEmpty) {
+      return '';
+    }
+
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  String _firstNonEmptyString(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim();
+
+      if (text != null && text.isNotEmpty) {
+        return text;
+      }
+    }
+
+    return '';
   }
 }

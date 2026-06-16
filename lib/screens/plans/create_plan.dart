@@ -28,7 +28,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
   _SelectionSource selectionSource = _SelectionSource.none;
   bool isMapExpanded = false;
   bool isSavingPlan = false;
-  StateSetter? _expandedMapSetState;
+  final ValueNotifier<int> _mapRevision = ValueNotifier<int>(0);
 
   @override
   void dispose() {
@@ -36,6 +36,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     descriptionController.dispose();
     locationController.dispose();
     mapController?.dispose();
+    _mapRevision.dispose();
     super.dispose();
   }
 
@@ -227,7 +228,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
       locationController.text = readableLabel;
     });
 
-    _expandedMapSetState?.call(() {});
+    _mapRevision.value++;
 
     await mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
@@ -246,10 +247,9 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, dialogSetState) {
-            _expandedMapSetState = dialogSetState;
-
+        return ValueListenableBuilder<int>(
+          valueListenable: _mapRevision,
+          builder: (dialogContext, _, __) {
             final theme = Theme.of(dialogContext);
             final colors = theme.colorScheme;
 
@@ -280,10 +280,7 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
                             ),
                           ),
                           IconButton(
-                            onPressed: () {
-                              _expandedMapSetState = null;
-                              Navigator.pop(dialogContext);
-                            },
+                            onPressed: () => Navigator.pop(dialogContext),
                             color: colors.onSurface,
                             icon: const Icon(Icons.close),
                           ),
@@ -308,7 +305,6 @@ class _CreatePlanPageState extends State<CreatePlanPage> {
 
     if (mounted) {
       setState(() => isMapExpanded = false);
-      _expandedMapSetState = null;
     }
   }
 

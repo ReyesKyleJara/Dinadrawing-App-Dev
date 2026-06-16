@@ -4,6 +4,9 @@ import '../../services/auth_service.dart';
 import '../../services/plan_service.dart';
 import 'plan_model.dart';
 
+const Color _brandYellow = Color(0xFFF2B73F);
+const Color _brandYellowDark = Color(0xFFD89B22);
+
 class ArchivedPlansPage extends StatefulWidget {
   const ArchivedPlansPage({super.key});
 
@@ -14,28 +17,35 @@ class ArchivedPlansPage extends StatefulWidget {
 class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
   bool _isLoading = true;
   bool _isProcessing = false;
+  String? _loadError;
 
   int? _currentUserId;
 
-  List<Plan> _plansByMe = [];
-  List<Plan> _plansWithMe = [];
+  List<Plan> _plansByMe = <Plan>[];
+  List<Plan> _plansWithMe = <Plan>[];
 
   final Set<int> _selectedPlanIds = <int>{};
 
-  List<_PlanEntry> get _allEntries => [
-        ..._plansByMe.map(
-          (plan) => _PlanEntry(
-            plan: plan,
-            sectionLabel: 'Plans by Me',
-          ),
-        ),
-        ..._plansWithMe.map(
-          (plan) => _PlanEntry(
-            plan: plan,
-            sectionLabel: 'Plans with Me',
-          ),
-        ),
+  List<Plan> get _allPlans => <Plan>[
+        ..._plansByMe,
+        ..._plansWithMe,
       ];
+
+  List<Plan> get _selectedPlans {
+    return _allPlans
+        .where(
+          (plan) =>
+              plan.id != null && _selectedPlanIds.contains(plan.id),
+        )
+        .toList();
+  }
+
+  bool get _hasSelection => _selectedPlanIds.isNotEmpty;
+
+  bool get _allSelectablePlansSelected {
+    final ids = _allPlans.map((plan) => plan.id).whereType<int>().toSet();
+    return ids.isNotEmpty && _selectedPlanIds.containsAll(ids);
+  }
 
   @override
   void initState() {
@@ -43,40 +53,63 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
     _loadArchivedPlans();
   }
 
-  Future<void> _loadArchivedPlans() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadArchivedPlans({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
 
     try {
-      final currentUser = await AuthService.getCurrentUser();
+      final currentUserResult = await AuthService.getCurrentUser();
       final result = await PlanService.getArchivedPlans();
 
+      if (result['success'] == false) {
+        throw Exception(
+          result['message']?.toString() ?? 'Unable to load archived plans.',
+        );
+      }
+
       final plansByMeData = result['plansByMe'] ?? result['plans_by_me'];
-      final plansWithMeData = result['plansWithMe'] ?? result['plans_with_me'];
+      final plansWithMeData =
+          result['plansWithMe'] ?? result['plans_with_me'];
 
       if (!mounted) return;
 
       setState(() {
-        _currentUserId = _parseInt(currentUser?['id']);
+        _currentUserId = _extractCurrentUserId(currentUserResult);
         _plansByMe = _parsePlans(plansByMeData);
         _plansWithMe = _parsePlans(plansWithMeData);
         _selectedPlanIds.clear();
         _isLoading = false;
+        _loadError = null;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
+        _loadError = _cleanError(error);
       });
-
-      _showSnackBar('Failed to load archived plans: $e');
     }
   }
 
+  int? _extractCurrentUserId(dynamic raw) {
+    if (raw is! Map) return null;
+
+    final map = Map<String, dynamic>.from(raw);
+    final nestedUser = map['user'];
+
+    if (nestedUser is Map) {
+      return _parseInt(nestedUser['id']);
+    }
+
+    return _parseInt(map['id']);
+  }
+
   List<Plan> _parsePlans(dynamic raw) {
-    if (raw is! List) return [];
+    if (raw is! List) return <Plan>[];
 
     return raw
         .whereType<Map>()
@@ -96,15 +129,23 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
 
   bool _isSelected(Plan plan) {
     final id = plan.id;
-    if (id == null) return false;
-    return _selectedPlanIds.contains(id);
+    return id != null && _selectedPlanIds.contains(id);
   }
 
-  void _showSnackBar(String message) {
+  String _cleanError(Object error) {
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
     if (!mounted) return;
 
+    final colors = Theme.of(context).colorScheme;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? colors.error : null,
+      ),
     );
   }
 
@@ -112,221 +153,216 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
     final id = plan.id;
 
     if (id == null) {
-      _showSnackBar('This plan has no valid ID.');
+      _showMessage('This plan has no valid ID.', isError: true);
       return;
     }
 
     setState(() {
-      if (_selectedPlanIds.contains(id)) {
+      if (!_selectedPlanIds.add(id)) {
         _selectedPlanIds.remove(id);
-      } else {
-        _selectedPlanIds.add(id);
       }
     });
   }
 
-  void _selectAll() {
+  void _toggleSelectAll() {
+    final ids = _allPlans.map((plan) => plan.id).whereType<int>().toSet();
+
     setState(() {
-      _selectedPlanIds
-        ..clear()
-        ..addAll(
-          _allEntries.map((entry) => entry.plan.id).whereType<int>(),
-        );
+      if (_allSelectablePlansSelected) {
+        _selectedPlanIds.clear();
+      } else {
+        _selectedPlanIds
+          ..clear()
+          ..addAll(ids);
+      }
     });
   }
 
   void _clearSelection() {
-    setState(() {
-      _selectedPlanIds.clear();
-    });
+    setState(_selectedPlanIds.clear);
   }
 
-  List<Plan> _selectedPlans() {
-    return _allEntries
-        .map((entry) => entry.plan)
-        .where((plan) => plan.id != null && _selectedPlanIds.contains(plan.id))
-        .toList();
-  }
-
-  Future<bool?> _showConfirmDialog({
+  Future<bool> _showConfirmDialog({
     required String title,
     required String content,
     required String confirmText,
-    required Color confirmColor,
-  }) {
-    return showDialog<bool>(
+    bool destructive = false,
+  }) async {
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final colors = theme.colorScheme;
+
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
           ),
-        ),
-        content: Text(
-          content,
-          style: const TextStyle(
-            color: Colors.black87,
-            height: 1.35,
+          icon: Icon(
+            destructive
+                ? Icons.delete_outline_rounded
+                : Icons.unarchive_outlined,
+            color: destructive ? colors.error : _brandYellowDark,
+            size: 30,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
+          title: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: confirmColor,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          content: Text(
+            content,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+              height: 1.45,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                    destructive ? colors.error : _brandYellow,
+                foregroundColor:
+                    destructive ? colors.onError : Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                confirmText,
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
-            child: Text(
-              confirmText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
+
+    return result == true;
   }
 
-  Future<void> _restoreSelected() async {
-    final selectedPlans = _selectedPlans();
-
-    if (selectedPlans.isEmpty) {
-      _showSnackBar('Please select at least one plan.');
-      return;
-    }
+  Future<void> _restorePlans(List<Plan> plans) async {
+    if (plans.isEmpty || _isProcessing) return;
 
     final confirmed = await _showConfirmDialog(
-      title: 'Restore Plan',
-      content: selectedPlans.length == 1
-          ? 'Restore "${selectedPlans.first.title}" back to Active Plans?'
-          : 'Restore ${selectedPlans.length} plans back to Active Plans?',
+      title: plans.length == 1 ? 'Restore this plan?' : 'Restore plans?',
+      content: plans.length == 1
+          ? '“${plans.first.title}” will return to Active Plans.'
+          : '${plans.length} selected plans will return to Active Plans.',
       confirmText: 'Restore',
-      confirmColor: const Color(0xFFF2B73F),
     );
 
-    if (confirmed != true) return;
+    if (!confirmed || !mounted) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     try {
-      for (final plan in selectedPlans) {
-        await PlanService.unarchivePlan(plan.id!);
+      for (final plan in plans) {
+        final id = plan.id;
+        if (id == null) continue;
+
+        final result = await PlanService.unarchivePlan(id);
+        if (result['success'] == false) {
+          throw Exception(
+            result['message']?.toString() ??
+                'Unable to restore ${plan.title}.',
+          );
+        }
       }
 
       if (!mounted) return;
 
-      await _loadArchivedPlans();
-
-      _showSnackBar('${selectedPlans.length} plan(s) restored.');
-    } catch (e) {
-      _showSnackBar('Restore failed: $e');
+      await _loadArchivedPlans(showLoading: false);
+      _showMessage(
+        plans.length == 1
+            ? 'Plan restored.'
+            : '${plans.length} plans restored.',
+      );
+    } catch (error) {
+      _showMessage(_cleanError(error), isError: true);
     } finally {
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
+        setState(() => _isProcessing = false);
       }
     }
   }
 
-  Future<void> _deleteSelected() async {
-    final selectedPlans = _selectedPlans();
+  Future<void> _deletePlans(List<Plan> plans) async {
+    if (plans.isEmpty || _isProcessing) return;
 
-    if (selectedPlans.isEmpty) {
-      _showSnackBar('Please select at least one plan.');
-      return;
-    }
-
-    if (selectedPlans.any((plan) => !_isAdmin(plan))) {
-      _showSnackBar('Only plan admins can delete plans.');
+    if (plans.any((plan) => !_isAdmin(plan))) {
+      _showMessage(
+        'Only plans you administer can be moved to Deleted Plans.',
+        isError: true,
+      );
       return;
     }
 
     final confirmed = await _showConfirmDialog(
-      title: 'Delete Plan',
-      content: selectedPlans.length == 1
-          ? 'Move "${selectedPlans.first.title}" to Deleted Plans?'
-          : 'Move ${selectedPlans.length} plans to Deleted Plans?',
-      confirmText: 'Delete',
-      confirmColor: Colors.red.shade400,
+      title: plans.length == 1
+          ? 'Move to Deleted Plans?'
+          : 'Move plans to Deleted Plans?',
+      content: plans.length == 1
+          ? '“${plans.first.title}” will be moved to Deleted Plans and can still be restored later.'
+          : '${plans.length} selected plans will be moved to Deleted Plans and can still be restored later.',
+      confirmText: 'Move',
+      destructive: true,
     );
 
-    if (confirmed != true) return;
+    if (!confirmed || !mounted) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     try {
-      for (final plan in selectedPlans) {
-        await PlanService.deletePlan(plan.id!);
+      for (final plan in plans) {
+        final id = plan.id;
+        if (id == null) continue;
+
+        final result = await PlanService.deletePlan(id);
+        if (result['success'] == false) {
+          throw Exception(
+            result['message']?.toString() ??
+                'Unable to delete ${plan.title}.',
+          );
+        }
       }
 
       if (!mounted) return;
 
-      await _loadArchivedPlans();
-
-      _showSnackBar('${selectedPlans.length} plan(s) moved to Deleted Plans.');
-    } catch (e) {
-      _showSnackBar('Delete failed: $e');
+      await _loadArchivedPlans(showLoading: false);
+      _showMessage(
+        plans.length == 1
+            ? 'Plan moved to Deleted Plans.'
+            : '${plans.length} plans moved to Deleted Plans.',
+      );
+    } catch (error) {
+      _showMessage(_cleanError(error), isError: true);
     } finally {
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
+        setState(() => _isProcessing = false);
       }
     }
-  }
-
-  Future<void> _restoreSingle(Plan plan) async {
-    if (plan.id == null) return;
-
-    setState(() {
-      _selectedPlanIds
-        ..clear()
-        ..add(plan.id!);
-    });
-
-    await _restoreSelected();
-  }
-
-  Future<void> _deleteSingle(Plan plan) async {
-    if (plan.id == null) return;
-
-    setState(() {
-      _selectedPlanIds
-        ..clear()
-        ..add(plan.id!);
-    });
-
-    await _deleteSelected();
   }
 
   String _dateLocation(Plan plan) {
     final hasDate = plan.date.trim().isNotEmpty;
     final hasLocation = plan.location.trim().isNotEmpty;
 
-    if (hasDate && hasLocation) return '${plan.date} • ${plan.location}';
+    if (hasDate && hasLocation) {
+      return '${plan.date} • ${plan.location}';
+    }
     if (hasDate) return plan.date;
     if (hasLocation) return plan.location;
 
@@ -335,68 +371,25 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSelection = _selectedPlanIds.isNotEmpty;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar:
+          _hasSelection ? _buildSelectionBar() : null,
       body: SafeArea(
         child: Column(
-          children: [
+          children: <Widget>[
             _buildTopBar(),
             _buildHeader(),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Expanded(
               child: RefreshIndicator(
-                color: const Color(0xFFF2B73F),
-                onRefresh: _loadArchivedPlans,
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFF2B73F),
-                        ),
-                      )
-                    : _allEntries.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 180),
-                              Center(
-                                child: Text(
-                                  'No archived plans yet.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                            itemCount: _allEntries.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final entry = _allEntries[index];
-                              final plan = entry.plan;
-
-                              return _ArchivedPlanCard(
-                                plan: plan,
-                                sectionLabel: entry.sectionLabel,
-                                dateLocation: _dateLocation(plan),
-                                isSelected: _isSelected(plan),
-                                isAdmin: _isAdmin(plan),
-                                onTap: () => _toggleSelection(plan),
-                                onRestore: _isProcessing ? null : () => _restoreSingle(plan),
-                                onDelete: !_isAdmin(plan) || _isProcessing
-                                    ? null
-                                    : () => _deleteSingle(plan),
-                              );
-                            },
-                          ),
+                color: _brandYellow,
+                onRefresh: () => _loadArchivedPlans(showLoading: false),
+                child: _buildBody(),
               ),
             ),
-            if (hasSelection) _buildBottomActions(),
           ],
         ),
       ),
@@ -404,29 +397,43 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
   }
 
   Widget _buildTopBar() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
-        children: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.arrow_back_ios, size: 16),
-            color: const Color(0xFFF2B73F),
-            onPressed: () => Navigator.pop(context, true),
-          ),
-          const SizedBox(width: 6),
-          const Text(
-            'Back',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.black54,
+        children: <Widget>[
+          TextButton.icon(
+            onPressed: _isProcessing
+                ? null
+                : () => Navigator.pop(context, true),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 15),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(
+              foregroundColor: _brandYellowDark,
             ),
           ),
           const Spacer(),
+          if (_isProcessing)
+            const Padding(
+              padding: EdgeInsets.only(right: 10),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _brandYellow,
+                ),
+              ),
+            ),
           IconButton(
-            onPressed: _isProcessing ? null : _loadArchivedPlans,
-            icon: const Icon(Icons.refresh, size: 20),
+            tooltip: 'Refresh',
+            onPressed: _isProcessing
+                ? null
+                : () => _loadArchivedPlans(showLoading: false),
+            icon: const Icon(Icons.refresh_rounded),
+            color: colors.onSurfaceVariant,
           ),
         ],
       ),
@@ -434,101 +441,387 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
   }
 
   Widget _buildHeader() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Expanded(
+        children: <Widget>[
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 Text(
                   'Archived Plans',
-                  style: TextStyle(
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    color: colors.onSurface,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
-                  'Restore archived plans or move admin-owned plans to Deleted Plans.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                    height: 1.3,
+                  'Plans kept for reference. Restore them anytime, or move admin-owned plans to Deleted Plans.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
-          if (_allEntries.isNotEmpty)
+          if (_allPlans.isNotEmpty) ...<Widget>[
+            const SizedBox(width: 8),
             PopupMenuButton<String>(
               enabled: !_isProcessing,
+              tooltip: 'Selection options',
+              color: colors.surface,
               onSelected: (value) {
-                if (value == 'selectAll') {
-                  _selectAll();
+                if (value == 'toggleAll') {
+                  _toggleSelectAll();
                 } else if (value == 'clear') {
                   _clearSelection();
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'selectAll',
-                  child: Text('Select All'),
+              itemBuilder: (_) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'toggleAll',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      _allSelectablePlansSelected
+                          ? Icons.deselect_rounded
+                          : Icons.select_all_rounded,
+                    ),
+                    title: Text(
+                      _allSelectablePlansSelected
+                          ? 'Deselect all'
+                          : 'Select all',
+                    ),
+                  ),
                 ),
-                PopupMenuItem(
+                const PopupMenuItem<String>(
                   value: 'clear',
-                  child: Text('Clear Selection'),
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.clear_all_rounded),
+                    title: Text('Clear selection'),
+                  ),
                 ),
               ],
             ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildBottomActions() {
-    final selectedPlans = _selectedPlans();
-    final canDelete = selectedPlans.isNotEmpty && selectedPlans.every(_isAdmin);
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _brandYellow),
+      );
+    }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _isProcessing ? null : _restoreSelected,
-              icon: const Icon(Icons.restore, color: Colors.white),
-              label: const Text(
-                'Restore',
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF2B73F),
-                minimumSize: const Size.fromHeight(54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+    if (_loadError != null) {
+      return _buildErrorState();
+    }
+
+    if (_allPlans.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 110),
+      children: <Widget>[
+        if (_plansByMe.isNotEmpty) ...<Widget>[
+          _buildSectionHeader(
+            label: 'Plans by Me',
+            count: _plansByMe.length,
+            icon: Icons.admin_panel_settings_outlined,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _isProcessing || !canDelete ? null : _deleteSelected,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          const SizedBox(height: 10),
+          ..._plansByMe.map(
+            (plan) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ArchivedPlanCard(
+                plan: plan,
+                dateLocation: _dateLocation(plan),
+                isSelected: _isSelected(plan),
+                isAdmin: true,
+                isProcessing: _isProcessing,
+                onTap: () => _toggleSelection(plan),
+                onRestore: () => _restorePlans(<Plan>[plan]),
+                onDelete: () => _deletePlans(<Plan>[plan]),
               ),
             ),
           ),
         ],
+        if (_plansByMe.isNotEmpty && _plansWithMe.isNotEmpty)
+          const SizedBox(height: 12),
+        if (_plansWithMe.isNotEmpty) ...<Widget>[
+          _buildSectionHeader(
+            label: 'Plans with Me',
+            count: _plansWithMe.length,
+            icon: Icons.groups_2_outlined,
+          ),
+          const SizedBox(height: 10),
+          ..._plansWithMe.map(
+            (plan) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ArchivedPlanCard(
+                plan: plan,
+                dateLocation: _dateLocation(plan),
+                isSelected: _isSelected(plan),
+                isAdmin: _isAdmin(plan),
+                isProcessing: _isProcessing,
+                onTap: () => _toggleSelection(plan),
+                onRestore: () => _restorePlans(<Plan>[plan]),
+                onDelete: _isAdmin(plan)
+                    ? () => _deletePlans(<Plan>[plan])
+                    : null,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required String label,
+    required int count,
+    required IconData icon,
+  }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 18, color: _brandYellowDark),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            '$count',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectionBar() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final selectedPlans = _selectedPlans;
+    final canDelete =
+        selectedPlans.isNotEmpty && selectedPlans.every(_isAdmin);
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border(
+            top: BorderSide(color: colors.outlineVariant),
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.24 : 0.08,
+              ),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    '${selectedPlans.length} selected',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _isProcessing ? null : _clearSelection,
+                  child: const Text('Clear'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _restorePlans(selectedPlans),
+                    icon: const Icon(Icons.unarchive_outlined),
+                    label: const Text('Restore'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _brandYellow,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isProcessing || !canDelete
+                        ? null
+                        : () => _deletePlans(selectedPlans),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Move to Deleted'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.error,
+                      minimumSize: const Size.fromHeight(48),
+                      side: BorderSide(
+                        color: canDelete
+                            ? colors.error.withValues(alpha: 0.65)
+                            : colors.outlineVariant,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: <Widget>[
+        SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.56,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: _brandYellow.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: const Icon(
+                      Icons.archive_outlined,
+                      size: 34,
+                      color: _brandYellowDark,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No archived plans',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Plans you archive will stay here until you restore or delete them.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: <Widget>[
+        SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.52,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 44,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    _loadError ?? 'Unable to load archived plans.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _loadArchivedPlans,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Try Again'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -536,149 +829,253 @@ class _ArchivedPlansPageState extends State<ArchivedPlansPage> {
 class _ArchivedPlanCard extends StatelessWidget {
   const _ArchivedPlanCard({
     required this.plan,
-    required this.sectionLabel,
     required this.dateLocation,
     required this.isSelected,
     required this.isAdmin,
+    required this.isProcessing,
     required this.onTap,
     required this.onRestore,
     required this.onDelete,
   });
 
   final Plan plan;
-  final String sectionLabel;
   final String dateLocation;
   final bool isSelected;
   final bool isAdmin;
+  final bool isProcessing;
   final VoidCallback onTap;
-  final VoidCallback? onRestore;
+  final VoidCallback onRestore;
   final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final bannerColor = Plan.parseColor(plan.bannerColor);
+    final hasBannerImage =
+        plan.bannerImageUrl?.trim().isNotEmpty ?? false;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: plan.id == null ? null : onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? const Color(0xFFF2B73F) : Colors.grey.shade300,
-            width: isSelected ? 1.8 : 1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: plan.id == null || isProcessing ? null : onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? _brandYellow.withValues(
+                    alpha: theme.brightness == Brightness.dark ? 0.12 : 0.08,
+                  )
+                : colors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? _brandYellow
+                  : colors.outlineVariant.withValues(alpha: 0.75),
+              width: isSelected ? 1.6 : 1,
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.16 : 0.04,
+                ),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 76,
-              height: 92,
-              decoration: BoxDecoration(
-                color: bannerColor,
-                borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(14),
-                ),
-              ),
-              child: Icon(
-                Icons.archive_outlined,
-                color: Colors.black.withValues(alpha: 0.45),
-                size: 26,
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      plan.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dateLocation,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$sectionLabel • ${isAdmin ? "Admin" : "Member"}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Checkbox(
-              value: isSelected,
-              activeColor: const Color(0xFFF2B73F),
-              onChanged: plan.id == null ? null : (_) => onTap(),
-            ),
-            PopupMenuButton<String>(
-              enabled: plan.id != null,
-              onSelected: (value) {
-                if (value == 'restore') {
-                  onRestore?.call();
-                } else if (value == 'delete') {
-                  onDelete?.call();
-                }
-              },
-              itemBuilder: (_) {
-                final items = <PopupMenuEntry<String>>[
-                  const PopupMenuItem(
-                    value: 'restore',
-                    child: Text('Restore'),
+          constraints: const BoxConstraints(minHeight: 116),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              SizedBox(
+                width: 78,
+                height: 116,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(17),
                   ),
-                ];
-
-                if (isAdmin) {
-                  items.add(
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
-                  );
-                }
-
-                return items;
-              },
-            ),
-          ],
+                  child: hasBannerImage
+                      ? Image.network(
+                          plan.bannerImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _buildFallbackMedia(
+                            bannerColor,
+                          ),
+                        )
+                      : _buildFallbackMedia(bannerColor),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 13, 4, 13),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        plan.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colors.onSurface,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: <Widget>[
+                          Icon(
+                            Icons.place_outlined,
+                            size: 15,
+                            color: colors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              dateLocation,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 11),
+                      Wrap(
+                        spacing: 7,
+                        runSpacing: 6,
+                        children: <Widget>[
+                          _buildChip(
+                            context,
+                            label: 'Archived',
+                            icon: Icons.archive_outlined,
+                          ),
+                          _buildChip(
+                            context,
+                            label: isAdmin ? 'Admin' : 'Member',
+                            icon: isAdmin
+                                ? Icons.admin_panel_settings_outlined
+                                : Icons.person_outline_rounded,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Checkbox(
+                    value: isSelected,
+                    activeColor: _brandYellow,
+                    checkColor: Colors.black,
+                    onChanged: plan.id == null || isProcessing
+                        ? null
+                        : (_) => onTap(),
+                  ),
+                  PopupMenuButton<String>(
+                    enabled: plan.id != null && !isProcessing,
+                    tooltip: 'Plan actions',
+                    color: colors.surface,
+                    onSelected: (value) {
+                      if (value == 'restore') {
+                        onRestore();
+                      } else if (value == 'delete') {
+                        onDelete?.call();
+                      }
+                    },
+                    itemBuilder: (_) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'restore',
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.unarchive_outlined),
+                          title: Text('Restore'),
+                        ),
+                      ),
+                      if (onDelete != null)
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.delete_outline_rounded,
+                              color: colors.error,
+                            ),
+                            title: Text(
+                              'Move to Deleted Plans',
+                              style: TextStyle(color: colors.error),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackMedia(Color bannerColor) {
+    return ColoredBox(
+      color: bannerColor,
+      child: Center(
+        child: Icon(
+          Icons.archive_outlined,
+          color: PlanThemeContrast.onColor(bannerColor),
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+  }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 12, color: colors.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _PlanEntry {
-  _PlanEntry({
-    required this.plan,
-    required this.sectionLabel,
-  });
+class PlanThemeContrast {
+  const PlanThemeContrast._();
 
-  final Plan plan;
-  final String sectionLabel;
+  static Color onColor(Color color) {
+    return color.computeLuminance() > 0.55
+        ? Colors.black.withValues(alpha: 0.55)
+        : Colors.white.withValues(alpha: 0.86);
+  }
 }

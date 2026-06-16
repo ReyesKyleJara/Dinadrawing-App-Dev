@@ -20,6 +20,8 @@ class Plan {
   final bool isArchived;
   final bool isDeleted;
 
+  final List<Map<String, dynamic>> members;
+
   Plan({
     this.id,
     this.adminId,
@@ -37,6 +39,7 @@ class Plan {
     this.themeColor = '#F2B73F',
     this.isArchived = false,
     this.isDeleted = false,
+    this.members = const <Map<String, dynamic>>[],
   });
 
   factory Plan.fromJson(Map<String, dynamic> json) {
@@ -59,7 +62,19 @@ class Plan {
       themeColor: json['theme_color']?.toString() ?? '#F2B73F',
       isArchived: _parseBool(json['is_archived']),
       isDeleted: _parseBool(json['is_deleted']),
+      members: _parseMembers(json['members']),
     );
+  }
+
+  static List<Map<String, dynamic>> _parseMembers(dynamic value) {
+    if (value is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    return value
+        .whereType<Map>()
+        .map((member) => Map<String, dynamic>.from(member))
+        .toList(growable: false);
   }
 
   static int? _parseInt(dynamic value) {

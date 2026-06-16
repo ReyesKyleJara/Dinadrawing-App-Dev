@@ -37,6 +37,24 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
   Color get _themeSoftest => _themePalette.softest;
   Color get _themeBorder => _themePalette.border;
 
+  ColorScheme get _colors => Theme.of(context).colorScheme;
+  Color get _surface => _colors.surface;
+  Color get _surfaceMuted => _colors.surfaceContainerHighest;
+  Color get _onSurface => _colors.onSurface;
+  Color get _onSurfaceVariant => _colors.onSurfaceVariant;
+  Color get _outlineVariant => _colors.outlineVariant;
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _themeAccent {
+    if (!_isDarkMode) return _themeDark;
+
+    return Color.lerp(
+      _themePrimary,
+      Colors.white,
+      0.22,
+    )!;
+  }
+
   late Map<String, dynamic> _post;
 
   final Set<int> _busyItemIds = <int>{};
@@ -441,24 +459,24 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
+          backgroundColor: _surface,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.w900,
-              color: Colors.black,
+              color: _onSurface,
             ),
           ),
           content: Text(
             message,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey.shade700,
+              color: _onSurfaceVariant,
               height: 1.4,
             ),
           ),
@@ -469,8 +487,8 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               },
               child: Text(
                 cancelLabel,
-                style: const TextStyle(
-                  color: Colors.black87,
+                style: TextStyle(
+                  color: _onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -481,7 +499,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: destructive ? Colors.redAccent : _themePrimary,
-                foregroundColor: destructive ? Colors.white : Colors.black,
+                foregroundColor: destructive ? Colors.white : _themePalette.onPrimary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -622,17 +640,17 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
+          backgroundColor: _surface,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
           title: Text(
             'Entry for $personName',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.w900,
-              color: Colors.black,
+              color: _onSurface,
             ),
           ),
           content: TextField(
@@ -657,10 +675,10 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: Colors.black87,
+                  color: _onSurface,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -671,7 +689,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _themePrimary,
-                foregroundColor: Colors.black,
+                foregroundColor: _themePalette.onPrimary,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -743,7 +761,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -771,7 +789,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                         width: 42,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: _outlineVariant,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -779,13 +797,13 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                     const SizedBox(height: 18),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Add person',
                             style: TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.w900,
-                              color: Colors.black,
+                              color: _onSurface,
                             ),
                           ),
                         ),
@@ -809,12 +827,12 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
                         hintText: 'Search a member or type a name',
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.search_rounded,
-                          color: Colors.grey,
+                          color: _onSurfaceVariant,
                         ),
                         filled: true,
-                        fillColor: Colors.grey.shade50,
+                        fillColor: _surfaceMuted.withValues(alpha: 0.55),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -837,7 +855,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.grey.shade600,
+                                color: _onSurfaceVariant,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -862,10 +880,10 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: _surface,
                                       borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
-                                        color: Colors.grey.shade300,
+                                        color: _outlineVariant,
                                       ),
                                     ),
                                     child: Row(
@@ -929,10 +947,10 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                                     Expanded(
                                       child: Text(
                                         'Add “$cleanQuery”',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w800,
-                                          color: Colors.black87,
+                                          color: _onSurface,
                                         ),
                                       ),
                                     ),
@@ -965,7 +983,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -988,7 +1006,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                       width: 42,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: _outlineVariant,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -996,13 +1014,13 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                   const SizedBox(height: 18),
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Add role or task',
                           style: TextStyle(
                             fontSize: 21,
                             fontWeight: FontWeight.w900,
-                            color: Colors.black,
+                            color: _onSurface,
                           ),
                         ),
                       ),
@@ -1047,7 +1065,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                     ),
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1056,7 +1074,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.black87,
+                                  color: _onSurface,
                                 ),
                               ),
                               SizedBox(height: 2),
@@ -1064,7 +1082,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                                 'How many people can take this?',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: Colors.black45,
+                                  color: _onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -1079,7 +1097,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                                   });
                                 },
                           icon: const Icon(Icons.remove_circle_outline_rounded),
-                          color: _themeDark,
+                          color: _themeAccent,
                         ),
                         Text(
                           '$slots',
@@ -1097,7 +1115,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                                   });
                                 },
                           icon: const Icon(Icons.add_circle_outline_rounded),
-                          color: _themeDark,
+                          color: _themeAccent,
                         ),
                       ],
                     ),
@@ -1122,7 +1140,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _themePrimary,
-                        foregroundColor: Colors.black,
+                        foregroundColor: _themePalette.onPrimary,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -1211,10 +1229,18 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
         color: _themeSoftest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _themeBorder),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFFCF4), Color(0xFFFFF6DA)],
+          colors: _isDarkMode
+              ? <Color>[
+                  _themeSoftest,
+                  _surface.withValues(alpha: 0.96),
+                ]
+              : <Color>[
+                  _themeSoftest,
+                  _themeSoft.withValues(alpha: 0.72),
+                ],
         ),
       ),
       child: Column(
@@ -1224,10 +1250,10 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
           const SizedBox(height: 18),
           Text(
             _title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: Colors.black,
+              color: _onSurface,
               height: 1.25,
             ),
           ),
@@ -1239,7 +1265,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
+              color: _onSurfaceVariant,
               height: 1.3,
             ),
           ),
@@ -1262,7 +1288,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: _themeDark,
+                color: _themeAccent,
               ),
             ),
           ],
@@ -1299,7 +1325,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                 ? Icons.groups_rounded
                 : Icons.assignment_ind_rounded,
             size: 18,
-            color: _themeDark,
+            color: _themeAccent,
           ),
         ),
         const SizedBox(width: 8),
@@ -1308,7 +1334,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: _themeDark,
+            color: _themeAccent,
           ),
         ),
         const Spacer(),
@@ -1331,7 +1357,9 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
-          color: _isFinalized ? const Color(0xFFFFE8E2) : _themeSoft,
+          color: _isFinalized
+              ? _colors.errorContainer.withValues(alpha: 0.72)
+              : _themeSoft,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -1341,7 +1369,9 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            color: _isFinalized ? const Color(0xFFB42318) : Colors.black,
+            color: _isFinalized
+                ? _colors.onErrorContainer
+                : _themeAccent,
           ),
         ),
       ),
@@ -1353,7 +1383,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surface,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
@@ -1361,7 +1391,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
             ? 'No people are included yet.'
             : 'No roles or tasks are available yet.',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        style: TextStyle(fontSize: 13, color: _onSurfaceVariant),
       ),
     );
   }
@@ -1409,7 +1439,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: hasContribution ? _themePrimary : _themeBorder,
@@ -1436,8 +1466,8 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                   style: TextStyle(
                     fontSize: 13,
                     color: hasContribution
-                        ? Colors.grey.shade700
-                        : Colors.grey.shade500,
+                        ? _onSurface
+                        : _onSurfaceVariant,
                     height: 1.3,
                     fontStyle: hasContribution
                         ? FontStyle.normal
@@ -1516,7 +1546,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isFull ? _themePrimary : _themeBorder,
@@ -1537,7 +1567,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
             child: Icon(
               Icons.assignment_ind_rounded,
               size: 19,
-              color: _themeDark,
+              color: _themeAccent,
             ),
           ),
           const SizedBox(width: 12),
@@ -1547,10 +1577,10 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black87,
+                    color: _onSurface,
                     height: 1.25,
                   ),
                 ),
@@ -1561,7 +1591,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: _themeDark,
+                    color: _themeAccent,
                   ),
                 ),
                 if (activeAssignments.isNotEmpty) ...[
@@ -1576,7 +1606,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                   const SizedBox(height: 8),
                   Text(
                     'No one has taken this yet',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
                   ),
                 ],
                 if (!_isFinalized) ...[
@@ -1682,7 +1712,9 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isPending ? const Color(0xFFFFF4D6) : const Color(0xFFEAF7EE),
+        color: isPending
+            ? _colors.tertiaryContainer.withValues(alpha: 0.72)
+            : _colors.primaryContainer.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -1690,7 +1722,9 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w900,
-          color: isPending ? const Color(0xFF9A6700) : const Color(0xFF18794E),
+          color: isPending
+              ? _colors.onTertiaryContainer
+              : _colors.onPrimaryContainer,
         ),
       ),
     );
@@ -1710,7 +1744,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1719,13 +1753,13 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black87,
+                    color: _onSurface,
                   ),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'Accept or decline this role/task.',
-                  style: TextStyle(fontSize: 10, color: Colors.black54),
+                  style: TextStyle(fontSize: 10, color: _onSurfaceVariant),
                 ),
               ],
             ),
@@ -1734,7 +1768,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
           _buildResponseIcon(
             icon: Icons.close_rounded,
             tooltip: 'Decline',
-            backgroundColor: Colors.white,
+            backgroundColor: _surface,
             iconColor: Colors.redAccent,
             borderColor: Colors.redAccent,
             isBusy: isBusy,
@@ -1747,7 +1781,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
             icon: Icons.check_rounded,
             tooltip: 'Accept',
             backgroundColor: _themePrimary,
-            iconColor: Colors.black,
+            iconColor: _themePalette.onPrimary,
             borderColor: _themePrimary,
             isBusy: isBusy,
             onTap: () {
@@ -1813,27 +1847,27 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
-          color: filled ? _themePrimary : Colors.grey.shade100,
+          color: filled ? _themePrimary : _surfaceMuted,
           borderRadius: BorderRadius.circular(999),
-          border: filled ? null : Border.all(color: Colors.grey.shade300),
+          border: filled ? null : Border.all(color: _outlineVariant),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isBusy)
-              const SizedBox(
+              SizedBox(
                 width: 14,
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.black,
+                  color: _themePalette.onPrimary,
                 ),
               )
             else
               Icon(
                 icon,
                 size: 14,
-                color: filled ? Colors.black : Colors.grey.shade800,
+                color: filled ? _themePalette.onPrimary : _onSurface,
               ),
             const SizedBox(width: 5),
             Text(
@@ -1841,7 +1875,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
-                color: filled ? Colors.black : Colors.grey.shade800,
+                color: filled ? _themePalette.onPrimary : _onSurface,
               ),
             ),
           ],
@@ -1854,16 +1888,16 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: _surfaceMuted,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _outlineVariant),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: Colors.grey.shade700,
+          color: _onSurfaceVariant,
         ),
       ),
     );
@@ -1879,7 +1913,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isManual ? Colors.grey.shade100 : _themeSoft,
+        color: isManual ? _surfaceMuted : _themeSoft,
         shape: BoxShape.circle,
       ),
       child: Text(
@@ -1887,7 +1921,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
         style: TextStyle(
           fontSize: size <= 30 ? 9 : 11,
           fontWeight: FontWeight.w900,
-          color: isManual ? Colors.grey.shade700 : _themeDark,
+          color: isManual ? _onSurfaceVariant : _themeAccent,
         ),
       ),
     );
@@ -1911,7 +1945,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
               style: TextStyle(
                 fontSize: compact ? 12 : 14,
                 fontWeight: FontWeight.w900,
-                color: Colors.black87,
+                color: _onSurface,
               ),
             ),
             if (isYou)
@@ -1920,7 +1954,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: _themeDark,
+                  color: _themeAccent,
                 ),
               ),
           ],
@@ -1932,7 +1966,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
             style: TextStyle(
               fontSize: compact ? 9 : 11,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade500,
+              color: _onSurfaceVariant,
             ),
           ),
         ],
@@ -1948,7 +1982,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.88),
+          color: _surface.withValues(alpha: _isDarkMode ? 0.96 : 0.88),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: _themeBorder, width: 1.2),
         ),
@@ -1960,14 +1994,14 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                 height: 21,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: _themeDark,
+                  color: _themeAccent,
                 ),
               )
             else
               Icon(
                 Icons.add_circle_outline_rounded,
                 size: 22,
-                color: _themeDark,
+                color: _themeAccent,
               ),
             const SizedBox(width: 11),
             Expanded(
@@ -1978,7 +2012,7 @@ class _ResponsibilityPostState extends State<ResponsibilityPost> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: _themeDark,
+                  color: _themeAccent,
                 ),
               ),
             ),

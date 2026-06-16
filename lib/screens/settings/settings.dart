@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -469,7 +472,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 12),
               Center(
                 child: Text(
-                  'Dinadrawing',
+                  '',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     letterSpacing: 0.4,
@@ -1273,7 +1276,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     final bytes = await file.readAsBytes();
 
-                    onPhotoSelected(bytes, file.name);
+                    final croppedBytes = await _showCropDialog(bytes);
+
+                    if (croppedBytes == null) {
+                      return;
+                    }
+
+                    onPhotoSelected(croppedBytes, file.name);
                   },
                 ),
                 if (hasAvatar) ...[
@@ -1317,6 +1326,241 @@ class _SettingsPageState extends State<SettingsPage> {
       return null;
     }
   }
+
+  Future<Uint8List?> _showCropDialog(Uint8List imageData) async {
+    // Build a fixed, responsive dialog where the crop area is flexible
+    final transformationController = TransformationController();
+    final previewKey = GlobalKey();
+
+    double currentScale = 1.0;
+
+    return showDialog<Uint8List?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final media = MediaQuery.of(dialogContext);
+        final maxHeight = media.size.height * 0.88;
+        final dialogWidth = media.size.width < 720 ? media.size.width * 0.94 : 720.0;
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+          child: StatefulBuilder(builder: (context, setState) {
+            return SizedBox(
+              width: dialogWidth,
+              height: maxHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(null),
+                          child: const Text('Cancel'),
+                        ),
+                        Text(
+                          'Crop Photo',
+                          style: Theme.of(dialogContext).textTheme.titleMedium,
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              final boundary = previewKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+                              if (boundary == null) {
+                                Navigator.of(dialogContext).pop(null);
+                                return;
+                              }
+
+                              final pixelRatio = media.devicePixelRatio;
+                              final ui.Image img = await boundary.toImage(pixelRatio: pixelRatio);
+                              final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+                              final bytes = byteData?.buffer.asUint8List();
+
+                              Navigator.of(dialogContext).pop(bytes);
+                            } catch (_) {
+                              Navigator.of(dialogContext).pop(null);
+                            }
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Crop area (expand to fill available space)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: dialogWidth - 72,
+                            maxHeight: maxHeight - 180,
+                            minWidth: 200,
+                            minHeight: 200,
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              RepaintBoundary(
+                                key: previewKey,
+                                child: ClipRect(
+                                  child: InteractiveViewer(
+                                    transformationController: transformationController,
+                                    clipBehavior: Clip.hardEdge,
+                                    panEnabled: true,
+                                    minScale: 1.0,
+                                    maxScale: 4.0,
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      child: FittedBox(
+                                        fit: BoxFit.cover,
+                                        child: SizedBox(
+                                          width: 600,
+                                          height: 600,
+                                          child: Image.memory(imageData),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // Crop border overlay (visual only)
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: CustomPaint(
+                                    painter: _CircularCropOverlayPainter(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Zoom slider
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.zoom_out, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Slider(
+                            value: currentScale,
+                            min: 1.0,
+                            max: 4.0,
+                            divisions: 30,
+                            onChanged: (v) {
+                              setState(() {
+                                currentScale = v;
+                                // apply scale while keeping translation simple
+                                transformationController.value = Matrix4.identity()..scale(currentScale);
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.zoom_in, size: 20),
+                      ],
+                    ),
+                  ),
+
+                  // Action buttons
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(null),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 120,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              try {
+                                final boundary = previewKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+                                if (boundary == null) {
+                                  Navigator.of(dialogContext).pop(null);
+                                  return;
+                                }
+
+                                final pixelRatio = media.devicePixelRatio;
+                                final ui.Image img = await boundary.toImage(pixelRatio: pixelRatio);
+                                final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+                                final bytes = byteData?.buffer.asUint8List();
+
+                                Navigator.of(dialogContext).pop(bytes);
+                              } catch (_) {
+                                Navigator.of(dialogContext).pop(null);
+                              }
+                            },
+                            child: const Text('Save'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  
+  
+  
+  
+}
+
+class _CircularCropOverlayPainter extends CustomPainter {
+  final Color overlayColor = Colors.black.withOpacity(0.45);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fullRect = Offset.zero & size;
+
+    // Circle radius and center
+    final radius = math.min(size.width, size.height) / 2 - 8;
+    final center = Offset(size.width / 2, size.height / 2);
+    // Draw dark overlay outside the circle by clearing the circle area
+    canvas.saveLayer(fullRect, Paint());
+
+    // draw full overlay
+    canvas.drawRect(fullRect, Paint()..color = overlayColor);
+
+    // clear the circular area to make it fully visible
+    canvas.drawCircle(center, radius, Paint()..blendMode = BlendMode.clear);
+
+    canvas.restore();
+
+    // Draw white circle border
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    canvas.drawCircle(center, radius, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ─────────────────────────────────────────────

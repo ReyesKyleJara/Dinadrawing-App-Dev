@@ -7,15 +7,13 @@ import '../screens/plans/create_plan.dart';
 import '../screens/plans/join_plan.dart';
 import '../screens/settings/settings.dart';
 import '../screens/quick_decision/quick_decision.dart';
+import '../services/plan_service.dart';
 
 const Color _brandYellow = Color(0xFFF2B73F);
 const Color _brandYellowDark = Color(0xFFD89B22);
 
 class MainWrapper extends StatefulWidget {
-  const MainWrapper({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const MainWrapper({super.key, this.initialIndex = 0});
 
   final int initialIndex;
 
@@ -25,30 +23,92 @@ class MainWrapper extends StatefulWidget {
   }
 }
 
-class _MainWrapperState extends State<MainWrapper> {
+class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   late int _currentIndex;
 
   bool _showMenu = false;
   int _myPlansRefreshKey = 0;
+  int _activityRefreshKey = 0;
+  int _activityUnreadCount = 0;
 
   @override
   void initState() {
     super.initState();
 
+    WidgetsBinding.instance.addObserver(this);
+
     _currentIndex = widget.initialIndex;
+
+    _loadUnifiedActivityUnreadCount();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadUnifiedActivityUnreadCount();
+    }
   }
 
   List<Widget> get _pages {
     return [
       const HomeScreen(),
-      MyPlansScreen(
-        key: ValueKey(
-          'my-plans-$_myPlansRefreshKey',
-        ),
+      MyPlansScreen(key: ValueKey('my-plans-$_myPlansRefreshKey')),
+      ActivityScreen(
+        key: ValueKey('activity-$_activityRefreshKey'),
+        onUnreadCountChanged: _handleActivityUnreadCountChanged,
+        onPlanAccepted: _handlePlanAccepted,
       ),
-      const ActivityScreen(),
       const SettingsPage(),
     ];
+  }
+
+  Future<void> _loadUnifiedActivityUnreadCount() async {
+    final result = await PlanService.getActivityFeed();
+
+    if (!mounted || result['success'] != true) {
+      return;
+    }
+
+    final rawCount = result['unread_count'];
+
+    final count = rawCount is int
+        ? rawCount
+        : int.tryParse(rawCount?.toString() ?? '') ?? 0;
+
+    _handleActivityUnreadCountChanged(count);
+  }
+
+  void _handleActivityUnreadCountChanged(int count) {
+    if (!mounted) {
+      return;
+    }
+
+    final safeCount = count < 0 ? 0 : count;
+
+    if (safeCount == _activityUnreadCount) {
+      return;
+    }
+
+    setState(() {
+      _activityUnreadCount = safeCount;
+    });
+  }
+
+  void _handlePlanAccepted() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _myPlansRefreshKey++;
+    });
   }
 
   void _toggleMenu() {
@@ -132,7 +192,13 @@ class _MainWrapperState extends State<MainWrapper> {
       if (index == 1) {
         _myPlansRefreshKey++;
       }
+
+      if (index == 2) {
+        _activityRefreshKey++;
+      }
     });
+
+    _loadUnifiedActivityUnreadCount();
   }
 
   @override
@@ -147,9 +213,7 @@ class _MainWrapperState extends State<MainWrapper> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: pages[_currentIndex],
-          ),
+          Positioned.fill(child: pages[_currentIndex]),
 
           if (_showMenu)
             Positioned.fill(
@@ -157,9 +221,7 @@ class _MainWrapperState extends State<MainWrapper> {
                 behavior: HitTestBehavior.opaque,
                 onTap: _closeMenu,
                 child: Container(
-                  color: Colors.black.withValues(
-                    alpha: isDark ? 0.42 : 0.18,
-                  ),
+                  color: Colors.black.withValues(alpha: isDark ? 0.42 : 0.18),
                 ),
               ),
             ),
@@ -182,9 +244,7 @@ class _MainWrapperState extends State<MainWrapper> {
                     color: colors.surface,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: colors.outlineVariant.withValues(
-                        alpha: 0.75,
-                      ),
+                      color: colors.outlineVariant.withValues(alpha: 0.75),
                     ),
                   ),
                   child: Column(
@@ -217,50 +277,41 @@ class _MainWrapperState extends State<MainWrapper> {
         ],
       ),
 
-      floatingActionButton:
-          _currentIndex == 0 || _currentIndex == 1
-              ? SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: FloatingActionButton(
-                    heroTag: 'main-wrapper-action-button',
-                    onPressed: _toggleMenu,
-                    backgroundColor: _brandYellow,
-                    foregroundColor: Colors.black,
-                    elevation: _showMenu ? 8 : 4,
-                    shape: const CircleBorder(),
-                    child: AnimatedRotation(
-                      turns: _showMenu ? 0.125 : 0,
-                      duration: const Duration(
-                        milliseconds: 180,
-                      ),
-                      child: Icon(
-                        _showMenu
-                            ? Icons.close_rounded
-                            : Icons.add_rounded,
-                        size: 25,
-                        color: Colors.black,
-                      ),
-                    ),
+      floatingActionButton: _currentIndex == 0 || _currentIndex == 1
+          ? SizedBox(
+              width: 48,
+              height: 48,
+              child: FloatingActionButton(
+                heroTag: 'main-wrapper-action-button',
+                onPressed: _toggleMenu,
+                backgroundColor: _brandYellow,
+                foregroundColor: Colors.black,
+                elevation: _showMenu ? 8 : 4,
+                shape: const CircleBorder(),
+                child: AnimatedRotation(
+                  turns: _showMenu ? 0.125 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: Icon(
+                    _showMenu ? Icons.close_rounded : Icons.add_rounded,
+                    size: 25,
+                    color: Colors.black,
                   ),
-                )
-              : null,
+                ),
+              ),
+            )
+          : null,
 
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: colors.surface,
           border: Border(
             top: BorderSide(
-              color: colors.outlineVariant.withValues(
-                alpha: 0.65,
-              ),
+              color: colors.outlineVariant.withValues(alpha: 0.65),
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: isDark ? 0.25 : 0.06,
-              ),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
               blurRadius: 14,
               offset: const Offset(0, -3),
             ),
@@ -290,34 +341,27 @@ class _MainWrapperState extends State<MainWrapper> {
             showUnselectedLabels: true,
             items: [
               _buildNavItem(
-                defaultPath:
-                    'images/navbar-icons/home-icon.png',
-                activePath:
-                    'images/navbar-icons/home-icon_clicked.png',
+                defaultPath: 'images/navbar-icons/home-icon.png',
+                activePath: 'images/navbar-icons/home-icon_clicked.png',
                 index: 0,
                 label: 'Home',
               ),
               _buildNavItem(
-                defaultPath:
-                    'images/navbar-icons/myplans-icon.png',
-                activePath:
-                    'images/navbar-icons/myplans-icon_clicked.png',
+                defaultPath: 'images/navbar-icons/myplans-icon.png',
+                activePath: 'images/navbar-icons/myplans-icon_clicked.png',
                 index: 1,
                 label: 'My Plans',
               ),
               _buildNavItem(
-                defaultPath:
-                    'images/navbar-icons/notification-icon.png',
-                activePath:
-                    'images/navbar-icons/notification-icon_clicked.png',
+                defaultPath: 'images/navbar-icons/notification-icon.png',
+                activePath: 'images/navbar-icons/notification-icon_clicked.png',
                 index: 2,
                 label: 'Activity',
+                badgeCount: _activityUnreadCount,
               ),
               _buildNavItem(
-                defaultPath:
-                    'images/navbar-icons/settings-icon.png',
-                activePath:
-                    'images/navbar-icons/settings-icon_clicked.png',
+                defaultPath: 'images/navbar-icons/settings-icon.png',
+                activePath: 'images/navbar-icons/settings-icon_clicked.png',
                 index: 3,
                 label: 'Settings',
               ),
@@ -332,15 +376,11 @@ class _MainWrapperState extends State<MainWrapper> {
     final colors = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Divider(
         height: 1,
         thickness: 1,
-        color: colors.outlineVariant.withValues(
-          alpha: 0.70,
-        ),
+        color: colors.outlineVariant.withValues(alpha: 0.70),
       ),
     );
   }
@@ -356,10 +396,7 @@ class _MainWrapperState extends State<MainWrapper> {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 12,
-          horizontal: 14,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
         child: Row(
           children: [
             Container(
@@ -369,11 +406,7 @@ class _MainWrapperState extends State<MainWrapper> {
                 color: colors.primaryContainer,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(
-                icon,
-                color: colors.onPrimaryContainer,
-                size: 18,
-              ),
+              child: Icon(icon, color: colors.onPrimaryContainer, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -402,36 +435,68 @@ class _MainWrapperState extends State<MainWrapper> {
     required String activePath,
     required int index,
     required String label,
+    int badgeCount = 0,
   }) {
     final colors = Theme.of(context).colorScheme;
     final isSelected = _currentIndex == index;
 
-    final iconColor = isSelected
-        ? _brandYellowDark
-        : colors.onSurfaceVariant;
+    final iconColor = isSelected ? _brandYellowDark : colors.onSurfaceVariant;
+
+    final badgeText = badgeCount > 99 ? '99+' : badgeCount.toString();
 
     return BottomNavigationBarItem(
       icon: Padding(
-        padding: const EdgeInsets.only(
-          bottom: 4,
-        ),
-        child: Image.asset(
-          isSelected ? activePath : defaultPath,
-          width: 24,
-          height: 24,
-          color: iconColor,
-          colorBlendMode: BlendMode.srcIn,
-          errorBuilder: (
-            context,
-            error,
-            stackTrace,
-          ) {
-            return Icon(
-              Icons.error_outline_rounded,
-              color: iconColor,
-              size: 24,
-            );
-          },
+        padding: const EdgeInsets.only(bottom: 4),
+        child: SizedBox(
+          width: 34,
+          height: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Image.asset(
+                isSelected ? activePath : defaultPath,
+                width: 24,
+                height: 24,
+                color: iconColor,
+                colorBlendMode: BlendMode.srcIn,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.error_outline_rounded,
+                    color: iconColor,
+                    size: 24,
+                  );
+                },
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  right: -1,
+                  top: -5,
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 17,
+                      minHeight: 17,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colors.error,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: colors.surface, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        color: colors.onError,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
       label: label,

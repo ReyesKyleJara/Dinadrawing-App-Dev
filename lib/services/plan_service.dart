@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class PlanService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String baseUrl = 'http://192.168.1.190:8000/api';
 
   static Map<String, dynamic> _decodeResponse(http.Response response) {
     if (response.body.trim().isEmpty) {
@@ -138,7 +138,7 @@ class PlanService {
           );
 
           return <String, dynamic>{
-            'id': ?itemId,
+            'id': itemId,
             'title': title,
             'member_user_id': memberUserId,
             'is_manual': _boolValue(
@@ -245,6 +245,184 @@ class PlanService {
     return _resultFromResponse(response);
   }
 
+  static Future<Map<String, dynamic>> sendPlanInvitation({
+    required int planId,
+    required String username,
+  }) async {
+    final cleanUsername = username.trim().replaceFirst(RegExp(r'^@+'), '');
+
+    if (cleanUsername.isEmpty) {
+      return {
+        'success': false,
+        'code': 'invalid_username',
+        'message': 'Enter a username.',
+      };
+    }
+
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/plans/$planId/invitations'),
+      headers: headers,
+      body: jsonEncode({'username': cleanUsername}),
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to send the invitation.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getPlanInvitations() async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse(
+        additionalData: {
+          'invitations': <Map<String, dynamic>>[],
+          'unread_count': 0,
+        },
+      );
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/invitations'),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to load invitations.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> markPlanInvitationRead({
+    required int invitationId,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse(
+        '$baseUrl/invitations/'
+        '$invitationId/read',
+      ),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to mark the invitation as read.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> respondToPlanInvitation({
+    required int invitationId,
+    required String responseValue,
+  }) async {
+    if (responseValue != 'accepted' && responseValue != 'declined') {
+      return {
+        'success': false,
+        'message': 'Choose whether to accept or decline the invitation.',
+      };
+    }
+
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse(
+        '$baseUrl/invitations/'
+        '$invitationId/respond',
+      ),
+      headers: headers,
+      body: jsonEncode({'response': responseValue}),
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to respond to the invitation.',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Unified Activity
+  // ---------------------------------------------------------------------------
+
+  static Future<Map<String, dynamic>> getActivityFeed() async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse(
+        additionalData: {
+          'activities': <Map<String, dynamic>>[],
+          'unread_count': 0,
+        },
+      );
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/activity'),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to load activity.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> markActivityNotificationRead({
+    required int notificationId,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse(
+        '$baseUrl/activity-notifications/'
+        '$notificationId/read',
+      ),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to mark the notification as read.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> markAllActivityRead() async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/activity/read-all'),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to mark activity as read.',
+    );
+  }
+
   static Future<Map<String, dynamic>> leavePlan(
     int planId, {
     int? newAdminId,
@@ -290,7 +468,7 @@ class PlanService {
         'plan_date': planDate,
         'location': location,
         'status': status,
-        'banner_color': ?bannerColor,
+        'banner_color': bannerColor,
       }),
     );
 
@@ -446,6 +624,99 @@ class PlanService {
     );
 
     return _resultFromResponse(response);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Post Comments
+  // ---------------------------------------------------------------------------
+
+  static Future<Map<String, dynamic>> getPostComments({
+    required int postId,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse(
+        additionalData: {
+          'comments': <Map<String, dynamic>>[],
+          'comment_count': 0,
+        },
+      );
+    }
+
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/plan-posts/'
+        '$postId/comments',
+      ),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to load comments.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> addPostComment({
+    required int postId,
+    required String content,
+  }) async {
+    final cleanContent = content.trim();
+
+    if (cleanContent.isEmpty) {
+      return {'success': false, 'message': 'Please write a comment.'};
+    }
+
+    if (cleanContent.length > 2000) {
+      return {
+        'success': false,
+        'message': 'Comments cannot exceed 2,000 characters.',
+      };
+    }
+
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.post(
+      Uri.parse(
+        '$baseUrl/plan-posts/'
+        '$postId/comments',
+      ),
+      headers: headers,
+      body: jsonEncode({'content': cleanContent}),
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to add the comment.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> deletePostComment({
+    required int commentId,
+  }) async {
+    final headers = await _authHeaders();
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    final response = await http.delete(
+      Uri.parse(
+        '$baseUrl/plan-post-comments/'
+        '$commentId',
+      ),
+      headers: headers,
+    );
+
+    return _resultFromResponse(
+      response,
+      fallbackMessage: 'Unable to delete the comment.',
+    );
   }
 
   static Future<Map<String, dynamic>> createPlanPost({
@@ -1017,7 +1288,7 @@ class PlanService {
       Uri.parse('$baseUrl/responsibility-items/$itemId/preassign'),
       headers: headers,
       body: jsonEncode({
-        'user_id': ?userId,
+        'user_id': userId,
         if (userId == null &&
             cleanManualName != null &&
             cleanManualName.isNotEmpty)

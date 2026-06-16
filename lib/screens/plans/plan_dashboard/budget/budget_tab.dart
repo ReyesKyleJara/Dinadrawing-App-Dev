@@ -29,6 +29,7 @@ class BudgetTab extends StatefulWidget {
 class _BudgetTabState extends State<BudgetTab> {
   bool _isLoading = true;
   bool _isResetting = false;
+  bool _isResolvingReview = false;
 
   String? _pageError;
 
@@ -87,7 +88,9 @@ class _BudgetTabState extends State<BudgetTab> {
     });
   }
 
-  Future<void> _openBudgetEditor({int initialStep = 0}) async {
+  Future<void> _openBudgetEditor({
+    _BudgetEditorMode mode = _BudgetEditorMode.fullSetup,
+  }) async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -95,7 +98,7 @@ class _BudgetTabState extends State<BudgetTab> {
           planId: widget.planId,
           initialBudget: _budget,
           availableMembers: _availableMembers,
-          initialStep: initialStep,
+          mode: mode,
         ),
       ),
     );
@@ -125,6 +128,280 @@ class _BudgetTabState extends State<BudgetTab> {
     if (changed == true) {
       await _loadBudget(showLoading: false);
     }
+  }
+
+  Future<void> _openBudgetReview() async {
+    if (!_canManageBudget || !_needsReview || _isResolvingReview) {
+      return;
+    }
+
+    var selectedAction = 'redistribute_equally';
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final theme = Theme.of(context);
+            final colors = theme.colorScheme;
+            final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(26),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.outlineVariant,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _budgetYellow.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: const Icon(
+                            Icons.manage_accounts_outlined,
+                            color: _budgetYellowDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Review Member Shares',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: colors.onSurface,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _reviewPromptText,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _buildReviewOptionCard(
+                      context: context,
+                      selected: selectedAction == 'redistribute_equally',
+                      title: 'Redistribute equally',
+                      description:
+                          'Recalculate the full estimated budget among the remaining included members. Paid statuses for changed shares will return to Unpaid.',
+                      icon: Icons.balance_rounded,
+                      onTap: () {
+                        setSheetState(() {
+                          selectedAction = 'redistribute_equally';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _buildReviewOptionCard(
+                      context: context,
+                      selected: selectedAction == 'keep_unallocated',
+                      title: 'Leave it unallocated for now',
+                      description:
+                          'Keep all current member shares unchanged. The departed amount stays visible as Unallocated and the budget becomes Custom.',
+                      icon: Icons.pie_chart_outline_rounded,
+                      onTap: () {
+                        setSheetState(() {
+                          selectedAction = 'keep_unallocated';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(sheetContext, selectedAction);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _budgetYellow,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                        ),
+                        child: const Text(
+                          'Apply Changes',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (action == null || !mounted) {
+      return;
+    }
+
+    await _resolveBudgetReview(action);
+  }
+
+  Widget _buildReviewOptionCard({
+    required BuildContext context,
+    required bool selected,
+    required String title,
+    required String description,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected
+                ? _budgetYellow.withValues(alpha: 0.12)
+                : colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? _budgetYellow : colors.outlineVariant,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: selected ? _budgetYellowDark : colors.onSurfaceVariant,
+                size: 21,
+              ),
+              const SizedBox(width: 11),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color: selected ? _budgetYellowDark : colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resolveBudgetReview(String action) async {
+    setState(() {
+      _isResolvingReview = true;
+      _pageError = null;
+    });
+
+    final result = await BudgetService.resolveBudgetReview(
+      planId: widget.planId,
+      action: action,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] != true) {
+      setState(() {
+        _isResolvingReview = false;
+        _pageError = BudgetService.errorMessage(
+          result,
+          fallback: 'Unable to update the member shares.',
+        );
+      });
+
+      return;
+    }
+
+    final updatedBudget = BudgetService.budgetFromResult(result);
+
+    if (updatedBudget != null) {
+      setState(() {
+        _budget = updatedBudget;
+        _isResolvingReview = false;
+        _pageError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isResolvingReview = false;
+    });
+
+    await _loadBudget(showLoading: false);
   }
 
   Future<void> _confirmResetBudget() async {
@@ -275,11 +552,11 @@ class _BudgetTabState extends State<BudgetTab> {
   void _handleMenuAction(_BudgetMenuAction action) {
     switch (action) {
       case _BudgetMenuAction.editExpenses:
-        _openBudgetEditor(initialStep: 0);
+        _openBudgetEditor(mode: _BudgetEditorMode.expensesOnly);
         break;
 
       case _BudgetMenuAction.manageShares:
-        _openBudgetEditor(initialStep: 1);
+        _openBudgetEditor(mode: _BudgetEditorMode.sharesOnly);
         break;
 
       case _BudgetMenuAction.contributionTracking:
@@ -348,6 +625,11 @@ class _BudgetTabState extends State<BudgetTab> {
                 const SizedBox(height: 16),
               ],
 
+              if (_needsReview) ...[
+                _buildBudgetReviewWarning(),
+                const SizedBox(height: 16),
+              ],
+
               _buildSummaryCard(),
 
               const SizedBox(height: 20),
@@ -364,7 +646,7 @@ class _BudgetTabState extends State<BudgetTab> {
                 actionLabel: _canManageBudget ? 'Edit' : null,
                 onAction: _canManageBudget
                     ? () {
-                        _openBudgetEditor(initialStep: 0);
+                        _openBudgetEditor(mode: _BudgetEditorMode.expensesOnly);
                       }
                     : null,
               ),
@@ -376,12 +658,13 @@ class _BudgetTabState extends State<BudgetTab> {
               const SizedBox(height: 28),
 
               _buildSectionHeader(
-                title: 'Member Shares',
-                description: 'Planned share of each included member.',
-                actionLabel: _canManageBudget ? 'Manage' : null,
+                title: 'People & Shares',
+                description:
+                    'Planned share of everyone included in this budget.',
+                actionLabel: _canManageBudget ? 'Edit' : null,
                 onAction: _canManageBudget
                     ? () {
-                        _openBudgetEditor(initialStep: 1);
+                        _openBudgetEditor(mode: _BudgetEditorMode.sharesOnly);
                       }
                     : null,
               ),
@@ -397,7 +680,7 @@ class _BudgetTabState extends State<BudgetTab> {
           ),
         ),
 
-        if (_isResetting)
+        if (_isResetting || _isResolvingReview)
           Positioned.fill(
             child: ColoredBox(
               color: Colors.black.withValues(alpha: 0.35),
@@ -430,6 +713,150 @@ class _BudgetTabState extends State<BudgetTab> {
 
   List<Map<String, dynamic>> get _allocations {
     return _asMapList(_budget?['allocations']);
+  }
+
+  bool get _needsReview {
+    return _asBool(_budget?['needs_review']);
+  }
+
+  List<Map<String, dynamic>> get _reviewDepartures {
+    final rawContext = _budget?['review_context'];
+
+    if (rawContext is! Map) {
+      return <Map<String, dynamic>>[];
+    }
+
+    final rawDepartures = rawContext['departures'];
+
+    if (rawDepartures is! List) {
+      return <Map<String, dynamic>>[];
+    }
+
+    return rawDepartures
+        .whereType<Map>()
+        .map((departure) => Map<String, dynamic>.from(departure))
+        .toList();
+  }
+
+  double get _departedPlannedShare {
+    return _reviewDepartures.fold<double>(
+      0,
+      (sum, departure) => sum + _asDouble(departure['planned_share']),
+    );
+  }
+
+  String get _reviewPromptText {
+    final departures = _reviewDepartures;
+    final amount = _departedPlannedShare;
+
+    if (departures.length == 1) {
+      final name = departures.first['name']?.toString().trim();
+
+      final displayName = name == null || name.isEmpty ? 'A member' : name;
+
+      return '$displayName left the plan. Their planned share of ${_formatPeso(amount)} is no longer assigned.';
+    }
+
+    if (departures.length > 1) {
+      return '${departures.length} members left the plan. Their combined planned share of ${_formatPeso(amount)} is no longer assigned.';
+    }
+
+    return 'A plan member left. Review the active member shares before continuing.';
+  }
+
+  Widget _buildBudgetReviewWarning() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? _budgetYellow.withValues(alpha: 0.10) : _budgetCream,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: _budgetYellow.withValues(alpha: 0.72),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _budgetYellow.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: _budgetYellowDark,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Budget needs review',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colors.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _reviewPromptText,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          if (_canManageBudget)
+            SizedBox(
+              width: double.infinity,
+              height: 43,
+              child: ElevatedButton.icon(
+                onPressed: _isResolvingReview ? null : _openBudgetReview,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _budgetYellow,
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.manage_accounts_outlined, size: 19),
+                label: const Text(
+                  'Review Member Shares',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            )
+          else
+            Text(
+              'The Plan Admin needs to review the member shares.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: _budgetYellowDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyBudgetState() {
@@ -736,7 +1163,7 @@ class _BudgetTabState extends State<BudgetTab> {
               _buildOverviewChip(
                 icon: Icons.groups_outlined,
                 label:
-                    '$includedCount included member${includedCount == 1 ? '' : 's'}',
+                    '$includedCount included ${includedCount == 1 ? 'person' : 'people'}',
               ),
             ],
           ),
@@ -1186,8 +1613,8 @@ class _BudgetTabState extends State<BudgetTab> {
     if (_allocations.isEmpty) {
       return _buildSimpleMessageCard(
         icon: Icons.group_off_outlined,
-        title: 'No members available',
-        message: 'There are no plan members assigned to this budget.',
+        title: 'No people added',
+        message: 'There is no one assigned to this budget yet.',
       );
     }
 
@@ -1224,13 +1651,19 @@ class _BudgetTabState extends State<BudgetTab> {
 
     final included = _asBool(allocation['is_included']);
 
-    final name = allocation['name']?.toString() ?? 'Plan Member';
+    final isFormerMember = _asBool(allocation['is_former_member']);
+
+    final isManual = _asBool(allocation['is_manual']);
+
+    final name = allocation['name']?.toString() ?? 'Budget Person';
 
     final username = allocation['username']?.toString().trim();
 
     final profilePhotoUrl = allocation['profile_photo_url']?.toString().trim();
 
     final share = _asDouble(allocation['planned_share']);
+
+    final hasVisiblePaidStatus = allocation['is_paid'] != null;
 
     final isPaid = _asBool(allocation['is_paid']);
 
@@ -1243,8 +1676,16 @@ class _BudgetTabState extends State<BudgetTab> {
 
     String memberDescription;
 
-    if (!included) {
-      memberDescription = 'Excluded from the budget';
+    if (isFormerMember) {
+      memberDescription =
+          'Former member • Previous planned share: ${_formatPeso(share)}';
+    } else if (!included) {
+      memberDescription = 'Removed from the budget';
+    } else if (isManual && _trackingEnabled) {
+      memberDescription =
+          'Added manually • Planned Share: ${_formatPeso(share)}';
+    } else if (isManual) {
+      memberDescription = 'Added manually';
     } else if (_trackingEnabled) {
       memberDescription = 'Planned Share: ${_formatPeso(share)}';
     } else {
@@ -1289,7 +1730,7 @@ class _BudgetTabState extends State<BudgetTab> {
                   ],
                 ),
 
-                if (username != null && username.isNotEmpty) ...[
+                if (!isManual && username != null && username.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     username.startsWith('@') ? username : '@$username',
@@ -1317,13 +1758,31 @@ class _BudgetTabState extends State<BudgetTab> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!included)
+              if (isFormerMember) ...[
+                _buildStatusPill(
+                  label: 'Former Member',
+                  background: _budgetYellow.withValues(alpha: 0.16),
+                  foreground: _budgetYellowDark,
+                ),
+                if (_trackingEnabled && hasVisiblePaidStatus) ...[
+                  const SizedBox(height: 6),
+                  _buildStatusPill(
+                    label: isPaid ? 'Paid' : 'Unpaid',
+                    background: isPaid
+                        ? const Color(0xFFE2F2E5)
+                        : colors.surfaceContainerHighest,
+                    foreground: isPaid
+                        ? const Color(0xFF397044)
+                        : colors.onSurfaceVariant,
+                  ),
+                ],
+              ] else if (!included)
                 _buildStatusPill(
                   label: 'Excluded',
                   background: colors.surfaceContainerHighest,
                   foreground: colors.onSurfaceVariant,
                 )
-              else if (_trackingEnabled)
+              else if (_trackingEnabled && hasVisiblePaidStatus)
                 _buildStatusPill(
                   label: isPaid ? 'Paid' : 'Unpaid',
                   background: isPaid
@@ -1332,6 +1791,17 @@ class _BudgetTabState extends State<BudgetTab> {
                   foreground: isPaid
                       ? const Color(0xFF397044)
                       : colors.onSurfaceVariant,
+                  isLoading: isUpdating,
+                  onTap: canMarkPaid && !isUpdating
+                      ? () {
+                          _togglePaidStatus(allocation);
+                        }
+                      : null,
+                  tooltip: canMarkPaid
+                      ? isPaid
+                            ? 'Tap to mark unpaid'
+                            : 'Tap to mark paid'
+                      : null,
                 )
               else
                 Text(
@@ -1341,40 +1811,6 @@ class _BudgetTabState extends State<BudgetTab> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-
-              if (included && _trackingEnabled && canMarkPaid) ...[
-                const SizedBox(height: 7),
-
-                if (isUpdating)
-                  const SizedBox(
-                    width: 19,
-                    height: 19,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: _budgetYellow,
-                    ),
-                  )
-                else
-                  InkWell(
-                    onTap: () {
-                      _togglePaidStatus(allocation);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        isPaid ? 'Mark Unpaid' : 'Mark as Paid',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: _budgetYellowDark,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
             ],
           ),
         ],
@@ -1407,22 +1843,59 @@ class _BudgetTabState extends State<BudgetTab> {
     required String label,
     required Color background,
     required Color foreground,
+    VoidCallback? onTap,
+    bool isLoading = false,
+    String? tooltip,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    final pill = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      constraints: const BoxConstraints(minWidth: 72),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
+        border: onTap == null
+            ? null
+            : Border.all(color: foreground.withValues(alpha: 0.28)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
-        ),
+      alignment: Alignment.center,
+      child: isLoading
+          ? SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: foreground,
+              ),
+            )
+          : Text(
+              label,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+    );
+
+    if (onTap == null) {
+      return pill;
+    }
+
+    final tappablePill = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: pill,
       ),
     );
+
+    if (tooltip == null || tooltip.trim().isEmpty) {
+      return tappablePill;
+    }
+
+    return Tooltip(message: tooltip, child: tappablePill);
   }
 
   Widget _buildTransparencyFooter() {

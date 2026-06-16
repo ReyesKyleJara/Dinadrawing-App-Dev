@@ -25,26 +25,42 @@ class _ExpenseDraft {
 
 class _MemberAllocationDraft {
   _MemberAllocationDraft({
+    this.allocationId,
     required this.userId,
     required this.name,
     required this.username,
     required this.profilePhotoUrl,
     required this.isPlanAdmin,
+    required this.isManual,
     required this.isIncluded,
     required double plannedShare,
   }) : shareController = TextEditingController(
          text: plannedShare.toStringAsFixed(2),
        );
 
-  final int userId;
+  final int? allocationId;
+  final int? userId;
   final String name;
   final String? username;
   final String? profilePhotoUrl;
   final bool isPlanAdmin;
+  final bool isManual;
 
   bool isIncluded;
 
   final TextEditingController shareController;
+
+  String get identityKey {
+    if (userId != null) {
+      return 'user:$userId';
+    }
+
+    if (allocationId != null) {
+      return 'allocation:$allocationId';
+    }
+
+    return 'manual:${name.trim().toLowerCase()}';
+  }
 
   void dispose() {
     shareController.dispose();
@@ -119,9 +135,11 @@ InputDecoration _tableInputDecoration(
 void _normalizeMoneyController(TextEditingController controller) {
   final value = _parseAmount(controller.text);
 
+  final normalized = value.toStringAsFixed(2);
+
   controller.value = TextEditingValue(
-    text: value.toStringAsFixed(2),
-    selection: TextSelection.collapsed(offset: value.toStringAsFixed(2).length),
+    text: normalized,
+    selection: TextSelection.collapsed(offset: normalized.length),
   );
 }
 
@@ -212,7 +230,8 @@ String _formatPeso(double value) {
     }
   }
 
-  return '${negative ? '-' : ''}₱${buffer.toString()}.$decimal';
+  return '${negative ? '-' : ''}'
+      '₱${buffer.toString()}.$decimal';
 }
 
 String _formatDateTime(dynamic value) {
@@ -247,5 +266,8 @@ String _formatDateTime(dynamic value) {
 
   final period = dateTime.hour >= 12 ? 'PM' : 'AM';
 
-  return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year} • $hour:$minute $period';
+  return '${months[dateTime.month - 1]} '
+      '${dateTime.day}, '
+      '${dateTime.year} • '
+      '$hour:$minute $period';
 }

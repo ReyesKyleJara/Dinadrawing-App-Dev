@@ -12,10 +12,7 @@ import 'responsibility_post.dart';
 class FeedTab extends StatefulWidget {
   final int planId;
 
-  const FeedTab({
-    super.key,
-    required this.planId,
-  });
+  const FeedTab({super.key, required this.planId});
 
   @override
   State<FeedTab> createState() => _FeedTabState();
@@ -75,9 +72,7 @@ class _FeedTabState extends State<FeedTab> {
 
     return value
         .whereType<Map>()
-        .map(
-          (item) => Map<String, dynamic>.from(item),
-        )
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
@@ -118,9 +113,7 @@ class _FeedTabState extends State<FeedTab> {
     return int.tryParse(value.toString());
   }
 
-  String _getMemberDisplayName(
-    Map<String, dynamic> member,
-  ) {
+  String _getMemberDisplayName(Map<String, dynamic> member) {
     final name = member['name']?.toString();
     final username = member['username']?.toString();
     final email = member['email']?.toString();
@@ -140,96 +133,96 @@ class _FeedTabState extends State<FeedTab> {
     return 'Member';
   }
 
-Future<void> _loadPlanMembers() async {
-  try {
-    final user = await AuthService.getCurrentUser();
-    final result = await PlanService.getPlanById(widget.planId);
+  Future<void> _loadPlanMembers() async {
+    try {
+      final user = await AuthService.getCurrentUser();
+      final result = await PlanService.getPlanById(widget.planId);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    final currentId = _parseNullableInt(user?['id']);
-    final parsedMembers = <Map<String, dynamic>>[];
+      final currentId = _parseNullableInt(user?['id']);
+      final parsedMembers = <Map<String, dynamic>>[];
 
-    void addMember(dynamic rawMember) {
-      if (rawMember is! Map) return;
+      void addMember(dynamic rawMember) {
+        if (rawMember is! Map) return;
 
-      final member = Map<String, dynamic>.from(rawMember);
-      final memberId = _parseNullableInt(
-        member['id'] ?? member['user_id'],
-      );
+        final member = Map<String, dynamic>.from(rawMember);
+        final memberId = _parseNullableInt(member['id'] ?? member['user_id']);
 
-      final alreadyAdded = parsedMembers.any((existing) {
-        final existingId = _parseNullableInt(
-          existing['id'] ?? existing['user_id'],
-        );
+        final alreadyAdded = parsedMembers.any((existing) {
+          final existingId = _parseNullableInt(
+            existing['id'] ?? existing['user_id'],
+          );
 
-        if (memberId != null && existingId != null) {
-          return memberId == existingId;
-        }
+          if (memberId != null && existingId != null) {
+            return memberId == existingId;
+          }
 
-        final existingUsername =
-            existing['username']?.toString().trim().toLowerCase();
+          final existingUsername = existing['username']
+              ?.toString()
+              .trim()
+              .toLowerCase();
 
-        final memberUsername =
-            member['username']?.toString().trim().toLowerCase();
+          final memberUsername = member['username']
+              ?.toString()
+              .trim()
+              .toLowerCase();
 
-        return existingUsername != null &&
-            existingUsername.isNotEmpty &&
-            existingUsername == memberUsername;
-      });
+          return existingUsername != null &&
+              existingUsername.isNotEmpty &&
+              existingUsername == memberUsername;
+        });
 
-      if (alreadyAdded) return;
+        if (alreadyAdded) return;
 
-      parsedMembers.add({
-        ...member,
-        'displayName': _getMemberDisplayName(member),
-      });
-    }
-
-    final plan = result['plan'];
-
-    if (plan is Map) {
-      final planMap = Map<String, dynamic>.from(plan);
-      final rawMembers = planMap['members'];
-
-      if (rawMembers is List) {
-        for (final member in rawMembers) {
-          addMember(member);
-        }
+        parsedMembers.add({
+          ...member,
+          'displayName': _getMemberDisplayName(member),
+        });
       }
 
-      // Include the plan admin if returned separately.
-      addMember(planMap['admin']);
+      final plan = result['plan'];
+
+      if (plan is Map) {
+        final planMap = Map<String, dynamic>.from(plan);
+        final rawMembers = planMap['members'];
+
+        if (rawMembers is List) {
+          for (final member in rawMembers) {
+            addMember(member);
+          }
+        }
+
+        // Include the plan admin if returned separately.
+        addMember(planMap['admin']);
+      }
+
+      // Make sure the current user is included with the real name/username.
+      addMember(user);
+
+      parsedMembers.sort((a, b) {
+        final aId = _parseNullableInt(a['id'] ?? a['user_id']);
+        final bId = _parseNullableInt(b['id'] ?? b['user_id']);
+
+        final aIsYou = currentId != null && aId == currentId;
+        final bIsYou = currentId != null && bId == currentId;
+
+        if (aIsYou && !bIsYou) return -1;
+        if (!aIsYou && bIsYou) return 1;
+
+        return _getMemberDisplayName(
+          a,
+        ).toLowerCase().compareTo(_getMemberDisplayName(b).toLowerCase());
+      });
+
+      setState(() {
+        currentUserId = currentId;
+        planMembers = parsedMembers;
+      });
+    } catch (error) {
+      debugPrint('Failed to load plan members: $error');
     }
-
-    // Make sure the current user is included with the real name/username.
-    addMember(user);
-
-    parsedMembers.sort((a, b) {
-      final aId = _parseNullableInt(a['id'] ?? a['user_id']);
-      final bId = _parseNullableInt(b['id'] ?? b['user_id']);
-
-      final aIsYou = currentId != null && aId == currentId;
-      final bIsYou = currentId != null && bId == currentId;
-
-      if (aIsYou && !bIsYou) return -1;
-      if (!aIsYou && bIsYou) return 1;
-
-      return _getMemberDisplayName(a)
-          .toLowerCase()
-          .compareTo(
-            _getMemberDisplayName(b).toLowerCase(),
-          );
-    });
-
-    setState(() {
-      currentUserId = currentId;
-      planMembers = parsedMembers;
-    });
-  } catch (error) {
-    debugPrint('Failed to load plan members: $error');
   }
-}
 
   Map<String, dynamic> _mapPostFromApi(dynamic item) {
     final post = Map<String, dynamic>.from(item as Map);
@@ -257,25 +250,23 @@ Future<void> _loadPlanMembers() async {
       'time': _formatPostTime(post['created_at']?.toString()),
       'content': post['content']?.toString() ?? '',
       'imageUrl': post['image_url']?.toString() ?? '',
+      'commentCount': _parseInt(post['comment_count']),
 
-      'isPinned': _parseBool(
-        post['is_pinned_value'] ?? post['is_pinned'],
-      ),
+      'isPinned': _parseBool(post['is_pinned_value'] ?? post['is_pinned']),
       'isPlanAdmin': _parseBool(post['is_plan_admin']),
       'isPostOwner': _parseBool(post['is_post_owner']),
       'canPinPost': _parseBool(post['can_pin_post']),
       'canDeletePost': _parseBool(post['can_delete_post']),
 
-      'question': post['poll_question']?.toString() ??
+      'question':
+          post['poll_question']?.toString() ??
           post['content']?.toString() ??
           '',
       'options': _parseStringList(post['poll_options']),
       'endsOn': post['ends_on']?.toString() ?? '',
       'anonymous': _parseBool(post['anonymous'], fallback: false),
       'allowMultiple': _parseBool(post['allow_multiple']),
-      'allowMembersAddOptions': _parseBool(
-        post['allow_members_add_options'],
-      ),
+      'allowMembersAddOptions': _parseBool(post['allow_members_add_options']),
       'voteCounts': _parseIntList(post['vote_counts']),
       'votePercentages': _parseIntList(post['vote_percentages']),
       'userVotes': _parseIntList(post['user_votes']),
@@ -288,10 +279,12 @@ Future<void> _loadPlanMembers() async {
       ),
       'canEditPoll': _parseBool(post['can_edit_poll']),
       'canToggleVoting': _parseBool(post['can_toggle_voting']),
-      'votingStartsAt': post['voting_starts_at_value']?.toString() ??
+      'votingStartsAt':
+          post['voting_starts_at_value']?.toString() ??
           post['voting_starts_at']?.toString() ??
           '',
-      'votingEndsAt': post['voting_ends_at_value']?.toString() ??
+      'votingEndsAt':
+          post['voting_ends_at_value']?.toString() ??
           post['voting_ends_at']?.toString() ??
           '',
       'isVotingClosed': _parseBool(
@@ -301,7 +294,8 @@ Future<void> _loadPlanMembers() async {
       'canVote': _parseBool(post['can_vote'], fallback: true),
       'votingMessage': post['voting_message']?.toString() ?? '',
 
-      'responsibilityTitle': post['responsibility_title']?.toString() ??
+      'responsibilityTitle':
+          post['responsibility_title']?.toString() ??
           post['content']?.toString() ??
           'Responsibilities',
       'responsibilityMode':
@@ -317,15 +311,11 @@ Future<void> _loadPlanMembers() async {
       'responsibilityIsFinalized': _parseBool(
         post['responsibility_is_finalized'],
       ),
-      'responsibilityTotalCount': _parseInt(
-        post['responsibility_total_count'],
-      ),
+      'responsibilityTotalCount': _parseInt(post['responsibility_total_count']),
       'responsibilityFilledCount': _parseInt(
         post['responsibility_filled_count'],
       ),
-      'canManageResponsibility': _parseBool(
-        post['can_manage_responsibility'],
-      ),
+      'canManageResponsibility': _parseBool(post['can_manage_responsibility']),
       'canFinalizeResponsibility': _parseBool(
         post['can_finalize_responsibility'],
       ),
@@ -347,15 +337,15 @@ Future<void> _loadPlanMembers() async {
         posts[index] = updatedPost;
       }
 
-      final pinnedPosts = posts.where((post) => post['isPinned'] == true).toList();
+      final pinnedPosts = posts
+          .where((post) => post['isPinned'] == true)
+          .toList();
 
-      final regularPosts =
-          posts.where((post) => post['isPinned'] != true).toList();
+      final regularPosts = posts
+          .where((post) => post['isPinned'] != true)
+          .toList();
 
-      posts = [
-        ...pinnedPosts,
-        ...regularPosts,
-      ];
+      posts = [...pinnedPosts, ...regularPosts];
     });
   }
 
@@ -363,6 +353,53 @@ Future<void> _loadPlanMembers() async {
     setState(() {
       posts.removeWhere((post) => _parseInt(post['id']) == postId);
     });
+  }
+
+  void _updatePostCommentCount(int postId, int commentCount) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      final index = posts.indexWhere((post) => _parseInt(post['id']) == postId);
+
+      if (index == -1) {
+        return;
+      }
+
+      posts[index] = {
+        ...posts[index],
+        'commentCount': commentCount < 0 ? 0 : commentCount,
+      };
+    });
+  }
+
+  Future<void> _openCommentsSheet(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
+
+    if (postId <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid post.')));
+
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return _PostCommentsSheet(
+          postId: postId,
+          initialCommentCount: _parseInt(post['commentCount']),
+          onCommentCountChanged: (count) {
+            _updatePostCommentCount(postId, count);
+          },
+        );
+      },
+    );
   }
 
   Future<void> _loadPosts() async {
@@ -390,9 +427,9 @@ Future<void> _loadPlanMembers() async {
         isLoadingPosts = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load posts: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load posts: $e')));
     }
   }
 
@@ -441,8 +478,8 @@ Future<void> _loadPlanMembers() async {
       final hour = date.hour > 12
           ? date.hour - 12
           : date.hour == 0
-              ? 12
-              : date.hour;
+          ? 12
+          : date.hour;
 
       final minute = date.minute.toString().padLeft(2, '0');
       final period = date.hour >= 12 ? 'PM' : 'AM';
@@ -457,9 +494,9 @@ Future<void> _loadPlanMembers() async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid poll post.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid poll post.')));
       return;
     }
 
@@ -474,9 +511,7 @@ Future<void> _loadPlanMembers() async {
           ),
           title: const Text(
             'Add poll option',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
           content: TextField(
             controller: optionCtrl,
@@ -526,22 +561,20 @@ Future<void> _loadPlanMembers() async {
 
         _replacePostInList(updatedPost);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Option added.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Option added.')));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to add option.'),
-          ),
+          SnackBar(content: Text(result['message'] ?? 'Failed to add option.')),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
   }
 
@@ -549,9 +582,9 @@ Future<void> _loadPlanMembers() async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid poll post.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid poll post.')));
       return;
     }
 
@@ -583,9 +616,7 @@ Future<void> _loadPlanMembers() async {
       if (nextVotes.contains(optionIndex)) {
         if (nextVotes.length == 1) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Select at least one option.'),
-            ),
+            const SnackBar(content: Text('Select at least one option.')),
           );
           return;
         }
@@ -612,17 +643,15 @@ Future<void> _loadPlanMembers() async {
         _replacePostInList(updatedPost);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to save vote.'),
-          ),
+          SnackBar(content: Text(result['message'] ?? 'Failed to save vote.')),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
   }
 
@@ -630,9 +659,9 @@ Future<void> _loadPlanMembers() async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid post.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid post.')));
       return;
     }
 
@@ -662,17 +691,15 @@ Future<void> _loadPlanMembers() async {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to update pin.'),
-          ),
+          SnackBar(content: Text(result['message'] ?? 'Failed to update pin.')),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
   }
 
@@ -680,9 +707,9 @@ Future<void> _loadPlanMembers() async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid poll.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid poll.')));
       return;
     }
 
@@ -720,33 +747,23 @@ Future<void> _loadPlanMembers() async {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
   }
 
-  Future<void> _toggleResponsibilityFinalized(
-    Map<String, dynamic> post,
-  ) async {
-    final postId = _parseInt(
-      post['id'],
-      fallback: -1,
-    );
+  Future<void> _toggleResponsibilityFinalized(Map<String, dynamic> post) async {
+    final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Invalid responsibility post.',
-          ),
-        ),
+        const SnackBar(content: Text('Invalid responsibility post.')),
       );
       return;
     }
 
-    final currentlyFinalized =
-        post['responsibilityIsFinalized'] == true;
+    final currentlyFinalized = post['responsibilityIsFinalized'] == true;
 
     final nextFinalizedState = !currentlyFinalized;
 
@@ -806,9 +823,7 @@ Future<void> _loadPlanMembers() async {
               ),
               child: Text(
                 nextFinalizedState ? 'Finalize' : 'Reopen',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -827,17 +842,14 @@ Future<void> _loadPlanMembers() async {
       if (!mounted) return;
 
       if (result['success'] == true && result['post'] is Map) {
-        final updatedPost = _mapPostFromApi(
-          result['post'],
-        );
+        final updatedPost = _mapPostFromApi(result['post']);
 
         _replacePostInList(updatedPost);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result['message'] ??
-                  'Failed to update responsibilities.',
+              result['message'] ?? 'Failed to update responsibilities.',
             ),
           ),
         );
@@ -845,25 +857,19 @@ Future<void> _loadPlanMembers() async {
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Connection error: $error',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $error')));
     }
   }
 
-  Future<void> _deletePost(
-    Map<String, dynamic> post,
-  ) async {
+  Future<void> _deletePost(Map<String, dynamic> post) async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid post.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid post.')));
       return;
     }
 
@@ -872,19 +878,15 @@ Future<void> _loadPlanMembers() async {
     final itemName = type == 'poll'
         ? 'poll'
         : type == 'responsibility'
-            ? 'responsibility list'
-            : 'post';
+        ? 'responsibility list'
+        : 'post';
 
-    final confirmed = await _showDeletePostConfirmation(
-      itemName: itemName,
-    );
+    final confirmed = await _showDeletePostConfirmation(itemName: itemName);
 
     if (confirmed != true || !mounted) return;
 
     try {
-      final result = await PlanService.deletePost(
-        postId: postId,
-      );
+      final result = await PlanService.deletePost(postId: postId);
 
       if (!mounted) return;
 
@@ -900,15 +902,13 @@ Future<void> _loadPlanMembers() async {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
   }
 
-  Future<bool?> _showDeletePostConfirmation({
-    required String itemName,
-  }) {
+  Future<bool?> _showDeletePostConfirmation({required String itemName}) {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -956,9 +956,7 @@ Future<void> _loadPlanMembers() async {
               ),
               child: const Text(
                 'Delete',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
           ],
@@ -971,9 +969,9 @@ Future<void> _loadPlanMembers() async {
     final postId = _parseInt(post['id'], fallback: -1);
 
     if (postId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid poll.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid poll.')));
       return;
     }
 
@@ -1010,9 +1008,7 @@ Future<void> _loadPlanMembers() async {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
         return StatefulBuilder(
@@ -1144,9 +1140,12 @@ Future<void> _loadPlanMembers() async {
                           : 'You can still edit the question and options.',
                       style: TextStyle(
                         fontSize: 13,
-                        color: hasVotes ? brandYellowDark : Colors.grey.shade600,
-                        fontWeight:
-                            hasVotes ? FontWeight.w700 : FontWeight.w500,
+                        color: hasVotes
+                            ? brandYellowDark
+                            : Colors.grey.shade600,
+                        fontWeight: hasVotes
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -1201,12 +1200,14 @@ Future<void> _loadPlanMembers() async {
                                             ? 'Locked'
                                             : null,
                                         border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           borderSide: const BorderSide(
                                             color: brandYellow,
                                             width: 1.5,
@@ -1231,10 +1232,7 @@ Future<void> _loadPlanMembers() async {
                           }),
                           TextButton.icon(
                             onPressed: addOptionField,
-                            icon: const Icon(
-                              Icons.add,
-                              color: brandYellow,
-                            ),
+                            icon: const Icon(Icons.add, color: brandYellow),
                             label: const Text(
                               'Add option',
                               style: TextStyle(
@@ -1312,12 +1310,13 @@ Future<void> _loadPlanMembers() async {
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
-                                value: [
-                                  '1 Day',
-                                  '3 Days',
-                                  '1 Week',
-                                  'Custom',
-                                ].contains(endsOn)
+                                value:
+                                    [
+                                      '1 Day',
+                                      '3 Days',
+                                      '1 Week',
+                                      'Custom',
+                                    ].contains(endsOn)
                                     ? endsOn
                                     : '1 Week',
                                 isExpanded: true,
@@ -1325,30 +1324,33 @@ Future<void> _loadPlanMembers() async {
                                   Icons.keyboard_arrow_down,
                                   color: brandYellow,
                                 ),
-                                items: const [
-                                  '1 Day',
-                                  '3 Days',
-                                  '1 Week',
-                                  'Custom',
-                                ].map((value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 18,
-                                          color: Colors.grey,
+                                items:
+                                    const [
+                                      '1 Day',
+                                      '3 Days',
+                                      '1 Week',
+                                      'Custom',
+                                    ].map((value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.calendar_today_outlined,
+                                              size: 18,
+                                              color: Colors.grey,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              value,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          value,
-                                          style: const TextStyle(fontSize: 15),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
+                                      );
+                                    }).toList(),
                                 onChanged: (value) {
                                   if (value == null) return;
 
@@ -1422,26 +1424,22 @@ Future<void> _loadPlanMembers() async {
 
         _replacePostInList(updatedPost);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Poll updated.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Poll updated.')));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              updateResult['message'] ?? 'Failed to update poll.',
-            ),
+            content: Text(updateResult['message'] ?? 'Failed to update poll.'),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
     }
   }
 
@@ -1466,11 +1464,11 @@ Future<void> _loadPlanMembers() async {
             ),
           ),
           Switch(
-  value: value,
-  activeThumbColor: brandYellow,
-  activeTrackColor: brandYellow.withValues(alpha: 0.35),
-  onChanged: enabled ? onChanged : null,
-),
+            value: value,
+            activeThumbColor: brandYellow,
+            activeTrackColor: brandYellow.withValues(alpha: 0.35),
+            onChanged: enabled ? onChanged : null,
+          ),
         ],
       ),
     );
@@ -1486,9 +1484,7 @@ Future<void> _loadPlanMembers() async {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
         bool modalIsSubmitting = false;
@@ -1516,7 +1512,9 @@ Future<void> _loadPlanMembers() async {
                   modalIsSubmitting) {
                 ScaffoldMessenger.of(parentContext).showSnackBar(
                   const SnackBar(
-                    content: Text('Please add text or an image before posting.'),
+                    content: Text(
+                      'Please add text or an image before posting.',
+                    ),
                   ),
                 );
                 return;
@@ -1543,9 +1541,7 @@ Future<void> _loadPlanMembers() async {
                   if (!mounted) return;
 
                   ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Post created successfully!'),
-                    ),
+                    const SnackBar(content: Text('Post created successfully!')),
                   );
                 } else {
                   final message =
@@ -1555,9 +1551,9 @@ Future<void> _loadPlanMembers() async {
                     modalIsSubmitting = false;
                   });
 
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    SnackBar(content: Text(message)),
-                  );
+                  ScaffoldMessenger.of(
+                    parentContext,
+                  ).showSnackBar(SnackBar(content: Text(message)));
                 }
               } catch (e) {
                 if (!mounted) return;
@@ -1566,9 +1562,9 @@ Future<void> _loadPlanMembers() async {
                   modalIsSubmitting = false;
                 });
 
-                ScaffoldMessenger.of(parentContext).showSnackBar(
-                  SnackBar(content: Text('Connection error: $e')),
-                );
+                ScaffoldMessenger.of(
+                  parentContext,
+                ).showSnackBar(SnackBar(content: Text('Connection error: $e')));
               }
             }
 
@@ -1707,8 +1703,9 @@ Future<void> _loadPlanMembers() async {
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.55),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.55,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -1795,11 +1792,9 @@ Future<void> _loadPlanMembers() async {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Poll added to feed.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Poll added to feed.')));
     }
   }
 
@@ -1841,20 +1836,20 @@ Future<void> _loadPlanMembers() async {
     final mappedPost = _mapPostFromApi(result);
 
     if (editingPost == null) {
-  setState(() {
-    final firstUnpinnedIndex = posts.indexWhere(
-      (post) => post['isPinned'] != true,
-    );
+      setState(() {
+        final firstUnpinnedIndex = posts.indexWhere(
+          (post) => post['isPinned'] != true,
+        );
 
-    if (firstUnpinnedIndex == -1) {
-      posts.add(mappedPost);
-    } else {
-      posts.insert(firstUnpinnedIndex, mappedPost);
+        if (firstUnpinnedIndex == -1) {
+          posts.add(mappedPost);
+        } else {
+          posts.insert(firstUnpinnedIndex, mappedPost);
+        }
+      });
+
+      return;
     }
-  });
-
-  return;
-}
 
     _replacePostInList(mappedPost);
   }
@@ -1874,9 +1869,7 @@ Future<void> _loadPlanMembers() async {
             const Padding(
               padding: EdgeInsets.only(top: 60),
               child: Center(
-                child: CircularProgressIndicator(
-                  color: brandYellow,
-                ),
+                child: CircularProgressIndicator(color: brandYellow),
               ),
             )
           else if (posts.isEmpty)
@@ -1908,11 +1901,7 @@ Future<void> _loadPlanMembers() async {
             const CircleAvatar(
               radius: 18,
               backgroundColor: Colors.grey,
-              child: Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: Icon(Icons.person, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1926,10 +1915,7 @@ Future<void> _loadPlanMembers() async {
                 alignment: Alignment.centerLeft,
                 child: const Text(
                   'Type something..',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
                 ),
               ),
             ),
@@ -1944,11 +1930,7 @@ Future<void> _loadPlanMembers() async {
       padding: const EdgeInsets.only(top: 60),
       child: Column(
         children: [
-          Icon(
-            Icons.forum_outlined,
-            size: 42,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.forum_outlined, size: 42, color: Colors.grey.shade400),
           const SizedBox(height: 12),
           const Text(
             'No posts yet',
@@ -1962,10 +1944,7 @@ Future<void> _loadPlanMembers() async {
           Text(
             'Start the conversation by creating the first post.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -1991,11 +1970,7 @@ Future<void> _loadPlanMembers() async {
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
           ],
         ),
       ),
@@ -2016,28 +1991,19 @@ Future<void> _loadPlanMembers() async {
         post['canDeletePost'] == true;
   }
 
-  Widget _buildPostMenuButton(
-    Map<String, dynamic> post,
-  ) {
+  Widget _buildPostMenuButton(Map<String, dynamic> post) {
     final type = post['type']?.toString();
 
     final isPoll = type == 'poll';
     final isResponsibility = type == 'responsibility';
     final isPinned = post['isPinned'] == true;
     final isVotingClosed = post['isVotingClosed'] == true;
-    final isResponsibilityFinalized =
-        post['responsibilityIsFinalized'] == true;
+    final isResponsibilityFinalized = post['responsibilityIsFinalized'] == true;
 
     return PopupMenuButton<String>(
       padding: EdgeInsets.zero,
-      icon: Icon(
-        Icons.more_vert,
-        color: Colors.grey.shade500,
-        size: 22,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      icon: Icon(Icons.more_vert, color: Colors.grey.shade500, size: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       onSelected: (value) {
         switch (value) {
           case 'pin':
@@ -2082,11 +2048,7 @@ Future<void> _loadPlanMembers() async {
               value: 'edit_poll',
               child: Row(
                 children: [
-                  Icon(
-                    Icons.edit_outlined,
-                    size: 20,
-                    color: Colors.black87,
-                  ),
+                  Icon(Icons.edit_outlined, size: 20, color: Colors.black87),
                   SizedBox(width: 12),
                   Text('Edit poll'),
                 ],
@@ -2114,18 +2076,13 @@ Future<void> _loadPlanMembers() async {
               value: 'edit_responsibility',
               child: Row(
                 children: [
-                  Icon(
-                    Icons.edit_outlined,
-                    size: 20,
-                    color: Colors.black87,
-                  ),
+                  Icon(Icons.edit_outlined, size: 20, color: Colors.black87),
                   SizedBox(width: 12),
                   Text('Edit responsibilities'),
                 ],
               ),
             ),
-          if (isResponsibility &&
-              post['canFinalizeResponsibility'] == true)
+          if (isResponsibility && post['canFinalizeResponsibility'] == true)
             PopupMenuItem<String>(
               value: 'toggle_responsibility',
               child: Row(
@@ -2161,8 +2118,8 @@ Future<void> _loadPlanMembers() async {
                     isPoll
                         ? 'Delete poll'
                         : isResponsibility
-                            ? 'Delete responsibilities'
-                            : 'Delete post',
+                        ? 'Delete responsibilities'
+                        : 'Delete post',
                     style: const TextStyle(
                       color: Colors.redAccent,
                       fontWeight: FontWeight.w700,
@@ -2202,11 +2159,7 @@ Future<void> _loadPlanMembers() async {
           if (isPinned) ...[
             Row(
               children: [
-                const Icon(
-                  Icons.push_pin,
-                  size: 14,
-                  color: brandYellowDark,
-                ),
+                const Icon(Icons.push_pin, size: 14, color: brandYellowDark),
                 const SizedBox(width: 6),
                 Text(
                   'Pinned',
@@ -2276,76 +2229,57 @@ Future<void> _loadPlanMembers() async {
               },
             ),
           const SizedBox(height: 18),
-          Divider(
-            height: 1,
-            color: Colors.grey.shade200,
-          ),
+          Divider(height: 1, color: Colors.grey.shade200),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {},
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.favorite_border,
-                        size: 22,
+          Align(
+            alignment: Alignment.center,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                _openCommentsSheet(post);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 21,
+                      color: Colors.grey.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _commentActionLabel(_parseInt(post['commentCount'])),
+                      style: TextStyle(
                         color: Colors.grey.shade700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Like',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 28),
-              InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {},
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline,
-                        size: 22,
-                        color: Colors.grey.shade700,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Comment',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  String _commentActionLabel(int commentCount) {
+    if (commentCount <= 0) {
+      return 'Comment';
+    }
+
+    if (commentCount == 1) {
+      return '1 Comment';
+    }
+
+    return '$commentCount Comments';
   }
 
   Widget _buildTextBody(Map<String, dynamic> post) {
@@ -2356,10 +2290,7 @@ Future<void> _loadPlanMembers() async {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (content.trim().isNotEmpty)
-          Text(
-            content,
-            style: const TextStyle(fontSize: 14),
-          ),
+          Text(content, style: const TextStyle(fontSize: 14)),
         if (content.trim().isNotEmpty && imageUrl.trim().isNotEmpty)
           const SizedBox(height: 12),
         if (imageUrl.trim().isNotEmpty)
@@ -2405,10 +2336,7 @@ Future<void> _loadPlanMembers() async {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 185),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(999),
@@ -2448,8 +2376,7 @@ Future<void> _loadPlanMembers() async {
     final String endsOn = post['endsOn']?.toString() ?? '';
     final bool anonymous = post['anonymous'] == true;
     final bool allowMultiple = post['allowMultiple'] == true;
-    final bool allowMembersAddOptions =
-        post['allowMembersAddOptions'] == true;
+    final bool allowMembersAddOptions = post['allowMembersAddOptions'] == true;
 
     final String votingStatus = post['votingStatus']?.toString() ?? 'open';
     final String votingMessage = post['votingMessage']?.toString() ?? '';
@@ -2464,17 +2391,11 @@ Future<void> _loadPlanMembers() async {
       decoration: BoxDecoration(
         color: brandCreamLight,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFF2D999),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFF2D999), width: 1),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFFCF4),
-            Color(0xFFFFF6DA),
-          ],
+          colors: [Color(0xFFFFFCF4), Color(0xFFFFF6DA)],
         ),
       ),
       child: Column(
@@ -2505,10 +2426,7 @@ Future<void> _loadPlanMembers() async {
                 ),
               ),
               const Spacer(),
-              _buildPollStatusChip(
-                votingStatus: votingStatus,
-                endsOn: endsOn,
-              ),
+              _buildPollStatusChip(votingStatus: votingStatus, endsOn: endsOn),
             ],
           ),
           const SizedBox(height: 18),
@@ -2554,10 +2472,7 @@ Future<void> _loadPlanMembers() async {
               ),
               child: Text(
                 'No poll options available.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
             ),
             if (allowMembersAddOptions && votingStatus != 'closed') ...[
@@ -2569,8 +2484,9 @@ Future<void> _loadPlanMembers() async {
               final index = entry.key;
               final option = entry.value;
 
-              final percentage =
-                  index < votePercentages.length ? votePercentages[index] : 0;
+              final percentage = index < votePercentages.length
+                  ? votePercentages[index]
+                  : 0;
 
               final isSelected = userVotes.contains(index);
 
@@ -2610,25 +2526,15 @@ Future<void> _loadPlanMembers() async {
       onTap: () => _addOptionToPoll(post),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 13,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFF2D999),
-            width: 1.3,
-          ),
+          border: Border.all(color: const Color(0xFFF2D999), width: 1.3),
         ),
         child: const Row(
           children: [
-            Icon(
-              Icons.add_circle_outline,
-              size: 22,
-              color: brandYellowDark,
-            ),
+            Icon(Icons.add_circle_outline, size: 22, color: brandYellowDark),
             SizedBox(width: 12),
             Text(
               'Add an option',
@@ -2672,10 +2578,7 @@ Future<void> _loadPlanMembers() async {
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             children: [
-              Container(
-                width: double.infinity,
-                color: Colors.white,
-              ),
+              Container(width: double.infinity, color: Colors.white),
               Positioned.fill(
                 child: Align(
                   alignment: Alignment.centerLeft,
@@ -2705,10 +2608,13 @@ Future<void> _loadPlanMembers() async {
                         shape: allowMultiple
                             ? BoxShape.rectangle
                             : BoxShape.circle,
-                        borderRadius:
-                            allowMultiple ? BorderRadius.circular(6) : null,
+                        borderRadius: allowMultiple
+                            ? BorderRadius.circular(6)
+                            : null,
                         border: Border.all(
-                          color: isSelected ? brandYellow : Colors.grey.shade500,
+                          color: isSelected
+                              ? brandYellow
+                              : Colors.grey.shade500,
                           width: 2,
                         ),
                       ),
@@ -2840,5 +2746,738 @@ Future<void> _loadPlanMembers() async {
 
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
+}
 
+class _PostCommentsSheet extends StatefulWidget {
+  const _PostCommentsSheet({
+    required this.postId,
+    required this.initialCommentCount,
+    required this.onCommentCountChanged,
+  });
+
+  final int postId;
+  final int initialCommentCount;
+  final ValueChanged<int> onCommentCountChanged;
+
+  @override
+  State<_PostCommentsSheet> createState() {
+    return _PostCommentsSheetState();
+  }
+}
+
+class _PostCommentsSheetState extends State<_PostCommentsSheet> {
+  static const Color _brandYellow = Color(0xFFF5B335);
+  static const Color _brandYellowDark = Color(0xFFB87500);
+
+  final TextEditingController _commentController = TextEditingController();
+
+  final FocusNode _commentFocusNode = FocusNode();
+
+  final Set<int> _deletingCommentIds = <int>{};
+
+  List<Map<String, dynamic>> _comments = <Map<String, dynamic>>[];
+
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+
+  String? _loadError;
+  String? _submitError;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadComments();
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    _commentFocusNode.dispose();
+
+    super.dispose();
+  }
+
+  int? _asInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    return int.tryParse(value.toString());
+  }
+
+  bool _asBool(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+
+    if (value is num) {
+      return value != 0;
+    }
+
+    final text = value?.toString().trim().toLowerCase();
+
+    return text == 'true' || text == '1';
+  }
+
+  Map<String, dynamic>? _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+
+    return null;
+  }
+
+  Future<void> _loadComments() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
+
+    final result = await PlanService.getPostComments(postId: widget.postId);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] != true) {
+      setState(() {
+        _isLoading = false;
+        _loadError = result['message']?.toString().trim().isNotEmpty == true
+            ? result['message'].toString().trim()
+            : 'Unable to load comments.';
+      });
+
+      return;
+    }
+
+    final rawComments = result['comments'];
+
+    final comments = rawComments is List
+        ? rawComments
+              .whereType<Map>()
+              .map((comment) => Map<String, dynamic>.from(comment))
+              .toList()
+        : <Map<String, dynamic>>[];
+
+    final count = _asInt(result['comment_count']) ?? comments.length;
+
+    setState(() {
+      _comments = comments;
+      _isLoading = false;
+      _loadError = null;
+    });
+
+    widget.onCommentCountChanged(count);
+  }
+
+  Future<void> _submitComment() async {
+    final content = _commentController.text.trim();
+
+    if (content.isEmpty || _isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _submitError = null;
+    });
+
+    final result = await PlanService.addPostComment(
+      postId: widget.postId,
+      content: content,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] != true || result['comment'] is! Map) {
+      setState(() {
+        _isSubmitting = false;
+        _submitError = result['message']?.toString().trim().isNotEmpty == true
+            ? result['message'].toString().trim()
+            : 'Unable to add the comment.';
+      });
+
+      return;
+    }
+
+    final comment = Map<String, dynamic>.from(result['comment'] as Map);
+
+    final count = _asInt(result['comment_count']) ?? (_comments.length + 1);
+
+    setState(() {
+      _comments = [..._comments, comment];
+      _isSubmitting = false;
+      _submitError = null;
+      _commentController.clear();
+    });
+
+    widget.onCommentCountChanged(count);
+
+    _commentFocusNode.requestFocus();
+  }
+
+  Future<void> _deleteComment(Map<String, dynamic> comment) async {
+    final commentId = _asInt(comment['id']);
+
+    if (commentId == null || _deletingCommentIds.contains(commentId)) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final colors = theme.colorScheme;
+
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Delete comment?',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Text(
+            'This comment will be permanently removed.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: colors.onError,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _deletingCommentIds.add(commentId);
+    });
+
+    final result = await PlanService.deletePostComment(commentId: commentId);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] != true) {
+      setState(() {
+        _deletingCommentIds.remove(commentId);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Unable to delete the comment.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final count = _asInt(result['comment_count']) ?? (_comments.length - 1);
+
+    setState(() {
+      _deletingCommentIds.remove(commentId);
+
+      _comments = _comments
+          .where((item) => _asInt(item['id']) != commentId)
+          .toList();
+    });
+
+    widget.onCommentCountChanged(count < 0 ? 0 : count);
+  }
+
+  String _displayName(Map<String, dynamic> comment) {
+    final user = _asMap(comment['user']);
+
+    final name = user?['name']?.toString().trim();
+
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+
+    final username = user?['username']?.toString().trim();
+
+    if (username != null && username.isNotEmpty) {
+      return username.startsWith('@') ? username : '@$username';
+    }
+
+    return 'Member';
+  }
+
+  String _initials(String value) {
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    if (parts.isEmpty) {
+      return '?';
+    }
+
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${parts.first[0]}'
+            '${parts.last[0]}'
+        .toUpperCase();
+  }
+
+  String _timeAgo(dynamic value) {
+    final date = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
+
+    if (date == null) {
+      return '';
+    }
+
+    final difference = DateTime.now().difference(date);
+
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    }
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m';
+    }
+
+    if (difference.inHours < 24) {
+      return '${difference.inHours}h';
+    }
+
+    if (difference.inDays < 7) {
+      return '${difference.inDays}d';
+    }
+
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
+        height: MediaQuery.sizeOf(context).height * 0.86,
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.outlineVariant,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Comments',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: colors.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colors.outlineVariant),
+            Expanded(child: _buildCommentBody()),
+            Divider(height: 1, color: colors.outlineVariant),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: _brandYellow.withValues(alpha: 0.18),
+                          child: const Icon(
+                            Icons.person_rounded,
+                            size: 19,
+                            color: _brandYellowDark,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            focusNode: _commentFocusNode,
+                            enabled: !_isSubmitting,
+                            minLines: 1,
+                            maxLines: 5,
+                            maxLength: 2000,
+                            textCapitalization: TextCapitalization.sentences,
+                            textInputAction: TextInputAction.newline,
+                            onChanged: (_) {
+                              if (_submitError != null) {
+                                setState(() {
+                                  _submitError = null;
+                                });
+                              }
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Write a comment...',
+                              counterText: '',
+                              filled: true,
+                              fillColor: colors.surfaceContainerHighest
+                                  .withValues(alpha: 0.5),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: const BorderSide(
+                                  color: _brandYellow,
+                                  width: 1.4,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: _isSubmitting ? null : _submitComment,
+                          style: IconButton.styleFrom(
+                            backgroundColor: _brandYellow,
+                            foregroundColor: Colors.black,
+                            disabledBackgroundColor:
+                                colors.surfaceContainerHighest,
+                          ),
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 19),
+                        ),
+                      ],
+                    ),
+                    if (_submitError != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _submitError!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommentBody() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _brandYellow),
+      );
+    }
+
+    if (_loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 42,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: _loadComments,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try Again'),
+                style: TextButton.styleFrom(foregroundColor: _brandYellowDark),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_comments.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: _brandYellow.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 31,
+                  color: _brandYellowDark,
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                'No comments yet',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Start the conversation.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: _brandYellow,
+      onRefresh: _loadComments,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: _comments.length,
+        separatorBuilder: (_, _) {
+          return const SizedBox(height: 16);
+        },
+        itemBuilder: (context, index) {
+          return _buildCommentCard(_comments[index]);
+        },
+      ),
+    );
+  }
+
+  Widget _buildCommentCard(Map<String, dynamic> comment) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    final commentId = _asInt(comment['id']);
+
+    final deleting =
+        commentId != null && _deletingCommentIds.contains(commentId);
+
+    final canDelete = _asBool(comment['can_delete']);
+
+    final displayName = _displayName(comment);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 19,
+          backgroundColor: colors.surfaceContainerHighest,
+          child: Text(
+            _initials(displayName),
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(13, 10, 8, 10),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayName,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurface,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    if (deleting)
+                      const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _brandYellowDark,
+                          ),
+                        ),
+                      )
+                    else if (canDelete)
+                      PopupMenuButton<String>(
+                        tooltip: 'Comment options',
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.more_horiz_rounded,
+                          size: 20,
+                          color: colors.onSurfaceVariant,
+                        ),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            _deleteComment(comment);
+                          }
+                        },
+                        itemBuilder: (_) {
+                          return const [
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 19,
+                                    color: Colors.redAccent,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Delete comment',
+                                    style: TextStyle(color: Colors.redAccent),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ];
+                        },
+                      ),
+                  ],
+                ),
+                Text(
+                  comment['content']?.toString() ?? '',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurface,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _timeAgo(comment['created_at']),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

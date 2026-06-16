@@ -674,127 +674,367 @@ class _MembersPageState extends State<MembersPage> {
     );
   }
 
-  void _showInviteDialog() {
-    showDialog<void>(
+  Future<void> _showInviteDialog() async {
+    final usernameController = TextEditingController();
+
+    var isSending = false;
+    String? inlineMessage;
+    bool isSuccess = false;
+
+    await showDialog<void>(
       context: context,
+      barrierDismissible: !isSending,
       builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Invite New Member',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () {
-                        Navigator.pop(dialogContext);
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
-                        child: Icon(Icons.close, size: 20, color: Colors.grey),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Share the plan code to invite others.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'PLAN CODE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                    letterSpacing: 0.5,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> sendInvitation() async {
+              if (isSending) {
+                return;
+              }
+
+              final cleanUsername = usernameController.text.trim().replaceFirst(
+                RegExp(r'^@+'),
+                '',
+              );
+
+              if (cleanUsername.isEmpty) {
+                setDialogState(() {
+                  inlineMessage = 'Enter a username.';
+                  isSuccess = false;
+                });
+
+                return;
+              }
+
+              setDialogState(() {
+                isSending = true;
+                inlineMessage = null;
+                isSuccess = false;
+              });
+
+              final result = await PlanService.sendPlanInvitation(
+                planId: widget.planId,
+                username: cleanUsername,
+              );
+
+              if (!dialogContext.mounted) {
+                return;
+              }
+
+              if (result['success'] == true) {
+                setDialogState(() {
+                  isSending = false;
+                  inlineMessage = 'Invited!';
+                  isSuccess = true;
+                });
+
+                usernameController.clear();
+                return;
+              }
+
+              setDialogState(() {
+                isSending = false;
+                inlineMessage =
+                    result['message']?.toString().trim().isNotEmpty == true
+                    ? result['message'].toString().trim()
+                    : 'Unable to send the invitation. Try again.';
+                isSuccess = false;
+              });
+            }
+
+            final theme = Theme.of(context);
+            final colors = theme.colorScheme;
+            final canSubmit =
+                usernameController.text.trim().isNotEmpty && !isSending;
+
+            return Dialog(
+              backgroundColor: colors.surface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    24,
+                    24 + MediaQuery.viewInsetsOf(context).bottom,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: brandYellow.withValues(alpha: 0.5),
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          inviteCode,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(6),
-                        onTap: () async {
-                          await Clipboard.setData(
-                            ClipboardData(text: inviteCode),
-                          );
-
-                          if (!mounted) {
-                            return;
-                          }
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Code copied!')),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: brandYellow.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'COPY',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: brandYellowDark,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Invite New Member',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: colors.onSurface,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
+                          IconButton(
+                            onPressed: isSending
+                                ? null
+                                : () {
+                                    Navigator.pop(dialogContext);
+                                  },
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: colors.onSurfaceVariant,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Invite someone directly using their exact username, or share the plan code.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        'INVITE BY USERNAME',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: usernameController,
+                              enabled: !isSending,
+                              textInputAction: TextInputAction.send,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              onChanged: (_) {
+                                setDialogState(() {
+                                  inlineMessage = null;
+                                  isSuccess = false;
+                                });
+                              },
+                              onSubmitted: (_) {
+                                if (canSubmit) {
+                                  sendInvitation();
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'username',
+                                prefixText: '@',
+                                filled: true,
+                                fillColor: colors.surfaceContainerHighest
+                                    .withValues(alpha: 0.45),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                  borderSide: BorderSide(
+                                    color: colors.outlineVariant,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                  borderSide: BorderSide(
+                                    color: colors.outlineVariant,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                  borderSide: const BorderSide(
+                                    color: brandYellow,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: canSubmit ? sendInvitation : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: brandYellow,
+                                foregroundColor: Colors.black,
+                                disabledBackgroundColor:
+                                    colors.surfaceContainerHighest,
+                                disabledForegroundColor:
+                                    colors.onSurfaceVariant,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                              ),
+                              child: isSending
+                                  ? const SizedBox(
+                                      width: 19,
+                                      height: 19,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Invite',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (inlineMessage != null) ...[
+                        const SizedBox(height: 9),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              isSuccess
+                                  ? Icons.check_circle_rounded
+                                  : Icons.error_outline_rounded,
+                              size: 17,
+                              color: isSuccess
+                                  ? Colors.green.shade700
+                                  : colors.error,
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                inlineMessage!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isSuccess
+                                      ? Colors.green.shade700
+                                      : colors.error,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(color: colors.outlineVariant),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OR',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(color: colors.outlineVariant),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'SHARE PLAN CODE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerHighest.withValues(
+                            alpha: 0.35,
+                          ),
+                          border: Border.all(
+                            color: brandYellow.withValues(alpha: 0.5),
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                inviteCode,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colors.onSurface,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            TextButton.icon(
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: inviteCode),
+                                );
+
+                                if (!dialogContext.mounted) {
+                                  return;
+                                }
+
+                                setDialogState(() {
+                                  inlineMessage = 'Plan code copied!';
+                                  isSuccess = true;
+                                });
+                              },
+                              icon: const Icon(Icons.copy_rounded, size: 15),
+                              label: const Text('Copy'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: brandYellowDark,
+                                backgroundColor: brandYellow.withValues(
+                                  alpha: 0.14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
+
+    usernameController.dispose();
   }
 }

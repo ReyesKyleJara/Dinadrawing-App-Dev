@@ -30,18 +30,28 @@ class BudgetExpenseInput {
 
 class BudgetAllocationInput {
   const BudgetAllocationInput({
-    required this.userId,
+    this.allocationId,
+    this.userId,
+    this.manualName,
     required this.isIncluded,
     required this.plannedShare,
   });
 
-  final int userId;
+  final int? allocationId;
+  final int? userId;
+  final String? manualName;
   final bool isIncluded;
   final double plannedShare;
 
   Map<String, dynamic> toJson() {
+    final cleanManualName = manualName?.trim();
+
     return {
+      if (allocationId != null) 'id': allocationId,
       'user_id': userId,
+      'manual_name': cleanManualName == null || cleanManualName.isEmpty
+          ? null
+          : cleanManualName,
       'is_included': isIncluded,
       'planned_share': isIncluded ? plannedShare : 0,
     };
@@ -234,32 +244,67 @@ class BudgetService {
     if (allocations.isEmpty) {
       return {
         'success': false,
-        'message': 'No plan members are available for allocation.',
+        'message': 'Add at least one person to the budget.',
       };
     }
 
-    final includedMembers = allocations.where(
+    final includedPeople = allocations.where(
       (allocation) => allocation.isIncluded,
     );
 
-    if (includedMembers.isEmpty) {
+    if (includedPeople.isEmpty) {
       return {
         'success': false,
-        'message': 'Include at least one member in the budget.',
+        'message': 'Add at least one person to the budget.',
       };
     }
 
-    final userIds = allocations.map((allocation) => allocation.userId).toList();
+    final userIds = <int>{};
+    final manualNames = <String>{};
 
-    if (userIds.toSet().length != userIds.length) {
-      return {
-        'success': false,
-        'message': 'A member appears more than once in the allocation.',
-      };
+    for (final allocation in allocations) {
+      final cleanManualName = allocation.manualName?.trim() ?? '';
+
+      final hasUser = allocation.userId != null;
+
+      final hasManualName = cleanManualName.isNotEmpty;
+
+      /*
+       * Valid:
+       *
+       * Actual member:
+       * userId != null
+       * manualName empty
+       *
+       * Manual person:
+       * userId == null
+       * manualName not empty
+       */
+      if (hasUser == hasManualName) {
+        return {
+          'success': false,
+          'message':
+              'Each budget person must be either a plan member or a manually added name.',
+        };
+      }
+
+      if (allocation.userId != null && !userIds.add(allocation.userId!)) {
+        return {
+          'success': false,
+          'message': 'The same plan member was added more than once.',
+        };
+      }
+
+      if (hasManualName && !manualNames.add(cleanManualName.toLowerCase())) {
+        return {
+          'success': false,
+          'message': 'The same manually added person appears more than once.',
+        };
+      }
     }
 
     if (splitType == 'custom') {
-      for (final allocation in includedMembers) {
+      for (final allocation in includedPeople) {
         if (allocation.plannedShare < 0) {
           return {
             'success': false,
@@ -268,27 +313,27 @@ class BudgetService {
         }
       }
 
-      final estimatedBudget = expenses.fold<double>(
-        0,
-        (sum, expense) => sum + expense.estimatedAmount,
-      );
+      final estimatedBudget = expenses.fold<double>(0, (sum, expense) {
+        return sum + expense.estimatedAmount;
+      });
 
-      final allocatedAmount = includedMembers.fold<double>(
-        0,
-        (sum, allocation) => sum + allocation.plannedShare,
-      );
+      final allocatedAmount = includedPeople.fold<double>(0, (sum, allocation) {
+        return sum + allocation.plannedShare;
+      });
 
-      final difference = (estimatedBudget - allocatedAmount).abs();
+      final excess = allocatedAmount - estimatedBudget;
 
       /*
-       * Allows less than one centavo of floating-point
-       * difference. The backend still performs the final
-       * authoritative validation.
+       * Custom allocation may leave an amount
+       * unallocated.
+       *
+       * It becomes invalid only when shares exceed
+       * the estimated budget.
        */
-      if (difference >= 0.01) {
+      if (excess >= 0.01) {
         return {
           'success': false,
-          'message': 'Custom allocations must match the estimated budget.',
+          'message': 'Custom allocations cannot exceed the estimated budget.',
         };
       }
     }
@@ -455,6 +500,36 @@ class BudgetService {
         body: jsonEncode(body),
       );
     }, fallbackMessage: 'Unable to update contribution tracking settings.');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Resolve Budget Review
+  // ---------------------------------------------------------------------------
+
+  static Future<Map<String, dynamic>> resolveBudgetReview({
+    required int planId,
+    required String action,
+  }) async {
+    if (action != 'redistribute_equally' && action != 'keep_unallocated') {
+      return {
+        'success': false,
+        'message': 'Choose how the departed member share should be handled.',
+      };
+    }
+
+    final headers = await _authHeaders(hasBody: true);
+
+    if (headers == null) {
+      return _notLoggedInResponse();
+    }
+
+    return _executeRequest(() {
+      return http.patch(
+        Uri.parse('$baseUrl/plans/$planId/budget/review'),
+        headers: headers,
+        body: jsonEncode({'action': action}),
+      );
+    }, fallbackMessage: 'Unable to resolve the budget review.');
   }
 
   // ---------------------------------------------------------------------------

@@ -4,18 +4,22 @@ part of 'budget_tab.dart';
 // Budget Setup and Editing
 // -----------------------------------------------------------------------------
 
+enum _BudgetEditorMode { fullSetup, expensesOnly, sharesOnly }
+
 class BudgetPlanEditorPage extends StatefulWidget {
   const BudgetPlanEditorPage({
     super.key,
     required this.planId,
     required this.initialBudget,
     required this.availableMembers,
+    this.mode = _BudgetEditorMode.fullSetup,
     this.initialStep = 0,
   });
 
   final int planId;
   final Map<String, dynamic>? initialBudget;
   final List<Map<String, dynamic>> availableMembers;
+  final _BudgetEditorMode mode;
   final int initialStep;
 
   @override
@@ -36,11 +40,41 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
 
   bool get _isEditing => widget.initialBudget != null;
 
+  bool get _isSectionEditor {
+    return widget.mode != _BudgetEditorMode.fullSetup;
+  }
+
+  String get _pageTitle {
+    switch (widget.mode) {
+      case _BudgetEditorMode.expensesOnly:
+        return 'Edit Planned Expenses';
+      case _BudgetEditorMode.sharesOnly:
+        return 'Edit People & Shares';
+      case _BudgetEditorMode.fullSetup:
+        return _isEditing ? 'Edit Budget Plan' : 'Set Up Budget';
+    }
+  }
+
+  int get _sectionStep {
+    switch (widget.mode) {
+      case _BudgetEditorMode.expensesOnly:
+        return 0;
+      case _BudgetEditorMode.sharesOnly:
+        return 1;
+      case _BudgetEditorMode.fullSetup:
+        return _currentStep;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
 
-    _currentStep = widget.initialStep.clamp(0, 2);
+    _currentStep = switch (widget.mode) {
+      _BudgetEditorMode.expensesOnly => 0,
+      _BudgetEditorMode.sharesOnly => 1,
+      _BudgetEditorMode.fullSetup => widget.initialStep.clamp(0, 2),
+    };
 
     _initializeExpenses();
     _initializeMembers();
@@ -70,36 +104,98 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
         ? 'custom'
         : 'equal';
 
-    final existingAllocations = {
-      for (final allocation in _asMapList(widget.initialBudget?['allocations']))
-        if (_asInt(allocation['user_id']) != null)
-          _asInt(allocation['user_id'])!: allocation,
-    };
+    final rawAllocations = _asMapList(widget.initialBudget?['allocations']);
 
-    for (final member in widget.availableMembers) {
-      final userId = _asInt(member['id']);
+    if (widget.initialBudget == null) {
+      for (final member in widget.availableMembers) {
+        final userId = _asInt(member['id']);
 
-      if (userId == null) {
-        continue;
+        if (userId == null) {
+          continue;
+        }
+
+        _members.add(
+          _MemberAllocationDraft(
+            userId: userId,
+            name: member['name']?.toString() ?? 'Plan Member',
+            username: member['username']?.toString(),
+            profilePhotoUrl: member['profile_photo_url']?.toString(),
+            isPlanAdmin: _asBool(member['is_plan_admin']),
+            isManual: false,
+            isIncluded: true,
+            plannedShare: 0,
+          ),
+        );
       }
+    } else {
+      final availableMembersById = {
+        for (final member in widget.availableMembers)
+          if (_asInt(member['id']) != null) _asInt(member['id'])!: member,
+      };
 
-      final existing = existingAllocations[userId];
+      for (final allocation in rawAllocations) {
+        if (_asBool(allocation['is_former_member']) ||
+            !_asBool(allocation['is_included'])) {
+          continue;
+        }
 
-      _members.add(
-        _MemberAllocationDraft(
-          userId: userId,
-          name: member['name']?.toString() ?? 'Plan Member',
-          username: member['username']?.toString(),
-          profilePhotoUrl: member['profile_photo_url']?.toString(),
-          isPlanAdmin: _asBool(member['is_plan_admin']),
-          isIncluded: existing == null
-              ? true
-              : _asBool(existing['is_included']),
-          plannedShare: existing == null
-              ? 0
-              : _asDouble(existing['planned_share']),
-        ),
-      );
+        final allocationId = _asInt(allocation['id']);
+        final userId = _asInt(allocation['user_id']);
+
+        if (userId != null) {
+          final member = availableMembersById[userId];
+
+          if (member == null) {
+            continue;
+          }
+
+          _members.add(
+            _MemberAllocationDraft(
+              allocationId: allocationId,
+              userId: userId,
+              name:
+                  member['name']?.toString() ??
+                  allocation['name']?.toString() ??
+                  'Plan Member',
+              username:
+                  member['username']?.toString() ??
+                  allocation['username']?.toString(),
+              profilePhotoUrl:
+                  member['profile_photo_url']?.toString() ??
+                  allocation['profile_photo_url']?.toString(),
+              isPlanAdmin: _asBool(member['is_plan_admin']),
+              isManual: false,
+              isIncluded: true,
+              plannedShare: _asDouble(allocation['planned_share']),
+            ),
+          );
+
+          continue;
+        }
+
+        final manualName =
+            allocation['manual_name']?.toString().trim().isNotEmpty == true
+            ? allocation['manual_name'].toString().trim()
+            : allocation['name']?.toString().trim() ?? '';
+
+        if (manualName.isEmpty) {
+          continue;
+        }
+
+        _members.add(
+          _MemberAllocationDraft(
+            allocationId: allocationId,
+            userId: null,
+            name: manualName,
+            username: null,
+            profilePhotoUrl: null,
+            isPlanAdmin: false,
+            isManual: true,
+            isIncluded: true,
+            plannedShare: _asDouble(allocation['planned_share']),
+          ),
+        );
+      }
     }
 
     if (_splitType == 'custom' && widget.initialBudget == null) {
@@ -132,7 +228,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
     return _members.where((member) => member.isIncluded).toList();
   }
 
-  Map<int, int> get _equalShareCentsByUser {
+  Map<String, int> get _equalShareCentsByPerson {
     final included = _includedMembers;
 
     if (included.isEmpty) {
@@ -140,13 +236,11 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
     }
 
     final base = _totalEstimatedCents ~/ included.length;
-
     final remainder = _totalEstimatedCents % included.length;
-
-    final result = <int, int>{};
+    final result = <String, int>{};
 
     for (var index = 0; index < included.length; index++) {
-      result[included[index].userId] = base + (index < remainder ? 1 : 0);
+      result[included[index].identityKey] = base + (index < remainder ? 1 : 0);
     }
 
     return result;
@@ -169,10 +263,10 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
   }
 
   void _applyEqualSharesToCustomInputs() {
-    final shares = _equalShareCentsByUser;
+    final shares = _equalShareCentsByPerson;
 
     for (final member in _members) {
-      final cents = member.isIncluded ? shares[member.userId] ?? 0 : 0;
+      final cents = member.isIncluded ? shares[member.identityKey] ?? 0 : 0;
 
       member.shareController.text = _fromCents(cents).toStringAsFixed(2);
     }
@@ -223,17 +317,396 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
     });
   }
 
-  void _toggleMemberIncluded(_MemberAllocationDraft member, bool included) {
+  void _removeBudgetPerson(_MemberAllocationDraft member) {
     setState(() {
-      member.isIncluded = included;
+      _members.remove(member);
+      member.dispose();
       _formError = null;
-
-      if (!included) {
-        member.shareController.text = '0.00';
-      } else if (_splitType == 'custom') {
-        _applyEqualSharesToCustomInputs();
-      }
     });
+  }
+
+  bool _manualNameAlreadyAdded(String name) {
+    final cleanName = name.trim().toLowerCase();
+
+    return _members.any(
+      (member) =>
+          member.isManual && member.name.trim().toLowerCase() == cleanName,
+    );
+  }
+
+  Future<void> _showAddMorePeopleSheet() async {
+    final addedUserIds = _members
+        .map((member) => member.userId)
+        .whereType<int>()
+        .toSet();
+
+    final availableToAdd =
+        widget.availableMembers
+            .where((member) {
+              final id = _asInt(member['id']);
+
+              return id != null && !addedUserIds.contains(id);
+            })
+            .map((member) => Map<String, dynamic>.from(member))
+            .toList()
+          ..sort((first, second) {
+            final firstName = first['name']?.toString().toLowerCase() ?? '';
+            final secondName = second['name']?.toString().toLowerCase() ?? '';
+
+            return firstName.compareTo(secondName);
+          });
+
+    final manualController = TextEditingController();
+    String? manualError;
+
+    final selected = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final theme = Theme.of(context);
+            final colors = theme.colorScheme;
+            final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+            void addManualPerson() {
+              final name = manualController.text.trim();
+
+              if (name.isEmpty) {
+                setSheetState(() {
+                  manualError = 'Enter the person’s name.';
+                });
+
+                return;
+              }
+
+              if (_manualNameAlreadyAdded(name)) {
+                setSheetState(() {
+                  manualError = '$name is already in the budget.';
+                });
+
+                return;
+              }
+
+              Navigator.pop(sheetContext, {'type': 'manual', 'name': name});
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(26),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 42,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: colors.outlineVariant,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 19),
+                          Text(
+                            'Add More People',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: colors.onSurface,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'Add a plan member back to the budget, or enter someone who is not part of the plan.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                        children: [
+                          Text(
+                            'PLAN MEMBERS',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.55,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          if (availableToAdd.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: colors.surfaceContainerHighest
+                                    .withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Text(
+                                'All current plan members are already in the budget.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                  height: 1.35,
+                                ),
+                              ),
+                            )
+                          else
+                            ...availableToAdd.map((member) {
+                              final name =
+                                  member['name']?.toString() ?? 'Plan Member';
+                              final username = member['username']
+                                  ?.toString()
+                                  .trim();
+                              final photo = member['profile_photo_url']
+                                  ?.toString()
+                                  .trim();
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.pop(sheetContext, {
+                                        'type': 'member',
+                                        'member': member,
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: colors.outlineVariant,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          _buildPickerAvatar(
+                                            name: name,
+                                            profilePhotoUrl: photo,
+                                          ),
+                                          const SizedBox(width: 11),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  name,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color: colors.onSurface,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  username != null &&
+                                                          username.isNotEmpty
+                                                      ? (username.startsWith(
+                                                              '@',
+                                                            )
+                                                            ? username
+                                                            : '@$username')
+                                                      : 'Plan member',
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        color: colors
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.add_circle_outline_rounded,
+                                            color: _budgetYellowDark,
+                                            size: 22,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          const SizedBox(height: 18),
+                          Divider(color: colors.outlineVariant),
+                          const SizedBox(height: 18),
+                          Text(
+                            'OTHER PERSON',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.55,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          TextField(
+                            controller: manualController,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.done,
+                            onChanged: (_) {
+                              if (manualError != null) {
+                                setSheetState(() {
+                                  manualError = null;
+                                });
+                              }
+                            },
+                            onSubmitted: (_) {
+                              addManualPerson();
+                            },
+                            decoration: _tableInputDecoration(
+                              context,
+                              hint: 'Enter a name',
+                              prefixIcon: Icons.person_add_alt_1_rounded,
+                            ).copyWith(errorText: manualError),
+                          ),
+                          const SizedBox(height: 11),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              onPressed: addManualPerson,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _budgetYellow,
+                                foregroundColor: Colors.black,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text(
+                                'Add Person',
+                                style: TextStyle(fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    manualController.dispose();
+
+    if (selected == null || !mounted) {
+      return;
+    }
+
+    final type = selected['type']?.toString();
+
+    if (type == 'member' && selected['member'] is Map) {
+      final member = Map<String, dynamic>.from(selected['member'] as Map);
+      final userId = _asInt(member['id']);
+
+      if (userId == null) {
+        return;
+      }
+
+      setState(() {
+        _members.add(
+          _MemberAllocationDraft(
+            userId: userId,
+            name: member['name']?.toString() ?? 'Plan Member',
+            username: member['username']?.toString(),
+            profilePhotoUrl: member['profile_photo_url']?.toString(),
+            isPlanAdmin: _asBool(member['is_plan_admin']),
+            isManual: false,
+            isIncluded: true,
+            plannedShare: 0,
+          ),
+        );
+        _formError = null;
+
+        if (_splitType == 'custom') {
+          _applyEqualSharesToCustomInputs();
+        }
+      });
+
+      return;
+    }
+
+    final manualName = selected['name']?.toString().trim() ?? '';
+
+    if (type == 'manual' && manualName.isNotEmpty) {
+      setState(() {
+        _members.add(
+          _MemberAllocationDraft(
+            userId: null,
+            name: manualName,
+            username: null,
+            profilePhotoUrl: null,
+            isPlanAdmin: false,
+            isManual: true,
+            isIncluded: true,
+            plannedShare: 0,
+          ),
+        );
+        _formError = null;
+
+        if (_splitType == 'custom') {
+          _applyEqualSharesToCustomInputs();
+        }
+      });
+    }
+  }
+
+  Widget _buildPickerAvatar({required String name, String? profilePhotoUrl}) {
+    final colors = Theme.of(context).colorScheme;
+    final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+
+    return CircleAvatar(
+      radius: 19,
+      backgroundColor: colors.surfaceContainerHighest,
+      foregroundImage: profilePhotoUrl != null && profilePhotoUrl.isNotEmpty
+          ? NetworkImage(profilePhotoUrl)
+          : null,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: colors.onSurfaceVariant,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
   }
 
   bool _validateStep(int step) {
@@ -265,17 +738,16 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
     if (step == 1) {
       if (_includedMembers.isEmpty) {
         setState(() {
-          _formError = 'Include at least one plan member.';
+          _formError = 'Add at least one person to the budget.';
         });
 
         return false;
       }
 
-      if (_splitType == 'custom' && _unallocatedCents != 0) {
+      if (_splitType == 'custom' && _unallocatedCents < 0) {
         setState(() {
-          _formError = _unallocatedCents > 0
-              ? '${_formatPeso(_fromCents(_unallocatedCents))} still needs to be allocated.'
-              : 'Member shares exceed the budget by ${_formatPeso(_fromCents(_unallocatedCents.abs()))}.';
+          _formError =
+              'Member shares exceed the budget by ${_formatPeso(_fromCents(_unallocatedCents.abs()))}.';
         });
 
         return false;
@@ -302,6 +774,11 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
   }
 
   void _goBack() {
+    if (_isSectionEditor) {
+      Navigator.pop(context);
+      return;
+    }
+
     if (_currentStep > 0) {
       setState(() {
         _currentStep--;
@@ -331,17 +808,19 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
       );
     }).toList();
 
-    final equalShares = _equalShareCentsByUser;
+    final equalShares = _equalShareCentsByPerson;
 
     final allocations = _members.map((member) {
       final plannedShare = !member.isIncluded
           ? 0.0
           : _splitType == 'equal'
-          ? _fromCents(equalShares[member.userId] ?? 0)
+          ? _fromCents(equalShares[member.identityKey] ?? 0)
           : _parseAmount(member.shareController.text);
 
       return BudgetAllocationInput(
+        allocationId: member.allocationId,
         userId: member.userId,
+        manualName: member.isManual ? member.name : null,
         isIncluded: member.isIncluded,
         plannedShare: plannedShare,
       );
@@ -399,7 +878,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19),
         ),
         title: Text(
-          _isEditing ? 'Edit Budget Plan' : 'Set Up Budget',
+          _pageTitle,
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
       ),
@@ -407,7 +886,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
         top: false,
         child: Column(
           children: [
-            _buildStepIndicator(),
+            if (!_isSectionEditor) _buildStepIndicator(),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
@@ -418,9 +897,9 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                       _buildEditorError(_formError!),
                       const SizedBox(height: 18),
                     ],
-                    if (_currentStep == 0)
+                    if (_sectionStep == 0)
                       _buildExpenseStep()
-                    else if (_currentStep == 1)
+                    else if (_sectionStep == 1)
                       _buildAllocationStep()
                     else
                       _buildReviewStep(),
@@ -444,13 +923,14 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
       child: Container(
-        height: 50,
+        height: 56,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: List.generate(labels.length, (index) {
             final isActive = index == _currentStep;
 
@@ -461,6 +941,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   color: isActive
                       ? _budgetYellow
@@ -536,7 +1017,9 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Add Planned Expenses',
+          widget.mode == _BudgetEditorMode.expensesOnly
+              ? 'Edit Planned Expenses'
+              : 'Add Planned Expenses',
           style: theme.textTheme.headlineSmall?.copyWith(
             color: colors.onSurface,
             fontSize: 23,
@@ -825,7 +1308,9 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Plan the Member Shares',
+          widget.mode == _BudgetEditorMode.sharesOnly
+              ? 'Edit People & Shares'
+              : 'Plan the People & Shares',
           style: theme.textTheme.headlineSmall?.copyWith(
             color: colors.onSurface,
             fontSize: 23,
@@ -834,7 +1319,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
         ),
         const SizedBox(height: 7),
         Text(
-          'Choose who is included and how the estimated budget will be divided.',
+          'Choose who is part of this budget. You can remove plan members, add them back later, or add another person by name.',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colors.onSurfaceVariant,
             height: 1.45,
@@ -877,8 +1362,64 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
           ),
         ),
         const SizedBox(height: 20),
-        ..._members.map(_buildAllocationMemberCard),
-        const SizedBox(height: 12),
+        if (_members.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors.outlineVariant),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.group_add_outlined,
+                  color: colors.onSurfaceVariant,
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No people added yet',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Add at least one person before publishing the budget.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._members.map(_buildAllocationMemberCard),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: double.infinity,
+          height: 47,
+          child: OutlinedButton.icon(
+            onPressed: _showAddMorePeopleSheet,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _budgetYellowDark,
+              side: BorderSide(color: _budgetYellow.withValues(alpha: 0.8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(13),
+              ),
+            ),
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            label: const Text(
+              'Add More People',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         _buildAllocationSummary(),
       ],
     );
@@ -888,7 +1429,17 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    final equalShare = _fromCents(_equalShareCentsByUser[member.userId] ?? 0);
+    final equalShare = _fromCents(
+      _equalShareCentsByPerson[member.identityKey] ?? 0,
+    );
+
+    final subtitle = member.isManual
+        ? 'Added manually'
+        : member.username != null && member.username!.trim().isNotEmpty
+        ? (member.username!.startsWith('@')
+              ? member.username!
+              : '@${member.username}')
+        : 'Plan member';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -896,24 +1447,12 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: member.isIncluded
-              ? colors.outlineVariant
-              : colors.outlineVariant.withValues(alpha: 0.55),
-        ),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Checkbox(
-                value: member.isIncluded,
-                activeColor: _budgetYellow,
-                checkColor: Colors.black,
-                onChanged: (value) {
-                  _toggleMemberIncluded(member, value ?? false);
-                },
-              ),
               _editorAvatar(member),
               const SizedBox(width: 10),
               Expanded(
@@ -943,28 +1482,18 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                         ],
                       ],
                     ),
-                    if (member.username != null &&
-                        member.username!.trim().isNotEmpty)
-                      Text(
-                        member.username!.startsWith('@')
-                            ? member.username!
-                            : '@${member.username}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
                       ),
+                    ),
                   ],
                 ),
               ),
-              if (!member.isIncluded)
-                Text(
-                  'Excluded',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                )
-              else if (_splitType == 'equal')
+              if (_splitType == 'equal') ...[
+                const SizedBox(width: 8),
                 Text(
                   _formatPeso(equalShare),
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -972,9 +1501,23 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
+              ],
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Remove from budget',
+                visualDensity: VisualDensity.compact,
+                onPressed: () {
+                  _removeBudgetPerson(member);
+                },
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: colors.onSurfaceVariant,
+                  size: 20,
+                ),
+              ),
             ],
           ),
-          if (member.isIncluded && _splitType == 'custom') ...[
+          if (_splitType == 'custom') ...[
             const SizedBox(height: 12),
             TextField(
               controller: member.shareController,
@@ -1004,23 +1547,25 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
 
   Widget _editorAvatar(_MemberAllocationDraft member) {
     final colors = Theme.of(context).colorScheme;
-
     final initial = member.name.trim().isEmpty
         ? '?'
         : member.name.trim()[0].toUpperCase();
 
     return CircleAvatar(
       radius: 19,
-      backgroundColor: colors.surfaceContainerHighest,
+      backgroundColor: member.isManual
+          ? _budgetYellow.withValues(alpha: 0.16)
+          : colors.surfaceContainerHighest,
       foregroundImage:
-          member.profilePhotoUrl != null &&
+          !member.isManual &&
+              member.profilePhotoUrl != null &&
               member.profilePhotoUrl!.trim().isNotEmpty
           ? NetworkImage(member.profilePhotoUrl!)
           : null,
       child: Text(
         initial,
         style: TextStyle(
-          color: colors.onSurfaceVariant,
+          color: member.isManual ? _budgetYellowDark : colors.onSurfaceVariant,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -1149,22 +1694,35 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
               'Method',
               _splitType == 'equal' ? 'Split Equally' : 'Custom Allocation',
             ),
-            _reviewRow('Included Members', '${included.length}'),
+            _reviewRow('People Included', '${included.length}'),
+            if (_members.any((member) => member.isManual))
+              _reviewRow(
+                'Added Manually',
+                '${_members.where((member) => member.isManual).length}',
+              ),
             _reviewRow(
-              'Excluded Members',
-              '${_members.length - included.length}',
+              'Allocated Amount',
+              _formatPeso(_fromCents(_allocatedCents)),
+            ),
+            _reviewRow(
+              'Unallocated Amount',
+              _formatPeso(
+                _fromCents(_unallocatedCents < 0 ? 0 : _unallocatedCents),
+              ),
             ),
             Divider(color: colors.outlineVariant),
             ..._members.map((member) {
-              final share = !member.isIncluded
-                  ? null
-                  : _splitType == 'equal'
-                  ? _fromCents(_equalShareCentsByUser[member.userId] ?? 0)
+              final share = _splitType == 'equal'
+                  ? _fromCents(
+                      _equalShareCentsByPerson[member.identityKey] ?? 0,
+                    )
                   : _parseAmount(member.shareController.text);
 
               return _reviewRow(
-                member.name,
-                member.isIncluded ? _formatPeso(share ?? 0) : 'Excluded',
+                member.isManual
+                    ? '${member.name} (Added manually)'
+                    : member.name,
+                _formatPeso(share),
               );
             }),
           ],
@@ -1304,6 +1862,26 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
   Widget _buildBottomActions() {
     final colors = Theme.of(context).colorScheme;
 
+    final primaryAction = _isSectionEditor
+        ? _saveBudget
+        : _currentStep == 2
+        ? _saveBudget
+        : _goNext;
+
+    final primaryLabel = _isSectionEditor
+        ? 'Save Changes'
+        : _currentStep == 2
+        ? _isEditing
+              ? 'Save Changes'
+              : 'Publish Budget'
+        : 'Next';
+
+    final secondaryLabel = _isSectionEditor
+        ? 'Cancel'
+        : _currentStep == 0
+        ? 'Cancel'
+        : 'Back';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
       decoration: BoxDecoration(
@@ -1322,17 +1900,13 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                   borderRadius: BorderRadius.circular(13),
                 ),
               ),
-              child: Text(_currentStep == 0 ? 'Cancel' : 'Back'),
+              child: Text(secondaryLabel),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: _isSaving
-                  ? null
-                  : _currentStep == 2
-                  ? _saveBudget
-                  : _goNext,
+              onPressed: _isSaving ? null : primaryAction,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 backgroundColor: _budgetYellow,
@@ -1353,11 +1927,7 @@ class _BudgetPlanEditorPageState extends State<BudgetPlanEditorPage> {
                       ),
                     )
                   : Text(
-                      _currentStep == 2
-                          ? _isEditing
-                                ? 'Save Changes'
-                                : 'Publish Budget'
-                          : 'Next',
+                      primaryLabel,
                       style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
             ),
